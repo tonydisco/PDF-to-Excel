@@ -22,3 +22,7 @@ Thumbs.db
 
 # Giữ lại gói OCR tiếng Việt (cần cho ứng dụng)
 !tessdata/vie.traineddata
+
+# Demo cục bộ (đường dẫn máy cá nhân)
+chay_thu_CLI.command
+Demo_output/
