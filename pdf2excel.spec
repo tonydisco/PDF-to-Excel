@@ -12,6 +12,11 @@ datas = [
     ("assets", "assets"),          # icon + sprite
 ]
 
+# Tesseract-OCR portable đi kèm app (nếu có thư mục 'tesseract/').
+# CI Windows sẽ tạo thư mục này -> .exe chạy độc lập, không cần cài Tesseract.
+if os.path.isdir("tesseract"):
+    datas.append(("tesseract", "tesseract"))
+
 # icon theo nền tảng (nếu đã sinh bằng assets/make_icon.py)
 _icns = os.path.join("assets", "icon.icns")
 _ico = os.path.join("assets", "icon.ico")

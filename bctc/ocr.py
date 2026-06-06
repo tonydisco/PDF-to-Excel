@@ -52,12 +52,18 @@ def locate_tesseract():
     if tess is None:
         tess = shutil.which("tesseract")    # tìm trong PATH
 
-    # tessdata: ưu tiên bản vie đi kèm app
+    # tessdata: ưu tiên tessdata NẰM CẠNH tesseract (đủ eng/osd/vie nếu là bản
+    # đóng gói kèm), sau đó tới bản vie đi kèm app, cuối cùng là biến môi trường.
     tessdata = None
-    bundled_td = os.path.join(base, "tessdata")
-    if os.path.exists(os.path.join(bundled_td, "vie.traineddata")):
-        tessdata = bundled_td
-    elif os.environ.get("TESSDATA_PREFIX"):
+    cand_td = []
+    if tess:
+        cand_td.append(os.path.join(os.path.dirname(tess), "tessdata"))
+    cand_td.append(os.path.join(base, "tessdata"))
+    for d in cand_td:
+        if os.path.exists(os.path.join(d, "vie.traineddata")):
+            tessdata = d
+            break
+    if tessdata is None and os.environ.get("TESSDATA_PREFIX"):
         tessdata = os.environ["TESSDATA_PREFIX"]
 
     return tess, tessdata

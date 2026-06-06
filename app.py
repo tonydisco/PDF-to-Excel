@@ -18,6 +18,7 @@ import platform
 import tempfile
 import threading
 import traceback
+import webbrowser
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -1066,14 +1067,39 @@ class App(tk.Tk):
                         self._flog.error("FATAL:\n%s", payload)
                     except Exception:
                         pass
-                    first = payload.strip().splitlines()[0] if payload.strip() else "Lỗi không rõ"
-                    messagebox.showerror(
-                        "Không chạy được tiến trình",
-                        f"{first}\n\nXem chi tiết trong nhật ký:\n{self.log_path}")
+                    self._handle_fatal(payload)
                     self._reset()
         except queue.Empty:
             pass
         self.after(80, self._drain_queue)
+
+    def _handle_fatal(self, payload):
+        """Hiện popup lỗi rõ ràng; nếu thiếu Tesseract thì mời mở trang cài."""
+        text = (payload or "").strip()
+        first = text.splitlines()[0] if text else "Lỗi không rõ"
+        url = "https://github.com/UB-Mannheim/tesseract/wiki"
+        if "tesseract" in text.lower():
+            if platform.system() == "Windows":
+                ok = messagebox.askyesno(
+                    "Thiếu Tesseract-OCR",
+                    f"{first}\n\nỨng dụng cần Tesseract-OCR để nhận diện chữ. "
+                    "Bản cài đặt lẽ ra đã kèm sẵn — nếu vẫn báo thiếu, bạn có thể "
+                    "tự cài.\n\nMở trang tải Tesseract bây giờ?\n\n"
+                    f"(Nhật ký: {self.log_path})")
+                if ok:
+                    try:
+                        webbrowser.open(url)
+                    except Exception:
+                        pass
+            else:
+                messagebox.showerror(
+                    "Thiếu Tesseract-OCR",
+                    f"{first}\n\nmacOS: chạy 'brew install tesseract tesseract-lang'.\n"
+                    f"(Nhật ký: {self.log_path})")
+        else:
+            messagebox.showerror(
+                "Không chạy được tiến trình",
+                f"{first}\n\nXem chi tiết trong nhật ký:\n{self.log_path}")
 
     def _on_file_event(self, i, ev, data):
         # i là chỉ số trong lượt chạy -> ánh xạ về chỉ số dòng/file thực tế

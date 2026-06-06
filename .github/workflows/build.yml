@@ -28,6 +28,18 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt pyinstaller
+      - name: Gói kèm Tesseract-OCR (để .exe chạy độc lập)
+        shell: pwsh
+        run: |
+          choco install tesseract -y --no-progress
+          $src = "C:\Program Files\Tesseract-OCR"
+          if (-not (Test-Path $src)) { $src = "C:\Program Files (x86)\Tesseract-OCR" }
+          New-Item -ItemType Directory -Force -Path tesseract | Out-Null
+          Copy-Item "$src\*" -Destination tesseract -Recurse -Force
+          New-Item -ItemType Directory -Force -Path tesseract\tessdata | Out-Null
+          Copy-Item "tessdata\vie.traineddata" -Destination "tesseract\tessdata\vie.traineddata" -Force
+          Write-Host "Đã gom Tesseract:"
+          Get-ChildItem tesseract | Select-Object Name
       - name: Đóng gói .exe
         run: python -m PyInstaller --noconfirm --clean pdf2excel.spec
       - name: Đổi tên & gom
