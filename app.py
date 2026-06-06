@@ -586,7 +586,7 @@ class App(tk.Tk):
 
         self.title(APP_TITLE)
         self.geometry("940x636")
-        self.minsize(800, 520)
+        self.minsize(420, 320)          # nhỏ hơn min content -> tự hiện thanh cuộn
         self._set_icon()
 
         self.theme_name = "dark"
@@ -699,13 +699,33 @@ class App(tk.Tk):
 
     # ------------------------------------------------------------------ UI
     def _build(self):
-        self.header = Header(self, "Chuyển Báo cáo tài chính PDF → Excel",
+        # ===== Vùng CUỘN GỐC: cửa sổ nhỏ vẫn xem hết app bằng cách cuộn =====
+        # content được ép kích thước tối thiểu; khi cửa sổ < min -> hiện thanh cuộn.
+        self._root_cv = tk.Canvas(self, bg=C["bg"], highlightthickness=0, bd=0)
+        self._root_vsb = ttk.Scrollbar(self, orient="vertical", command=self._root_cv.yview)
+        self._root_hsb = ttk.Scrollbar(self, orient="horizontal", command=self._root_cv.xview)
+        self._root_cv.configure(yscrollcommand=self._root_vsb.set,
+                                xscrollcommand=self._root_hsb.set)
+        self._root_cv.grid(row=0, column=0, sticky="nsew")
+        self._root_vsb.grid(row=0, column=1, sticky="ns")
+        self._root_hsb.grid(row=1, column=0, sticky="ew")
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        content = tk.Frame(self._root_cv, bg=C["bg"])
+        self._content_id = self._root_cv.create_window((0, 0), window=content, anchor="nw")
+        self._root_cv.bind(EV_CONFIG, self._on_root_resize)
+        self.bind_all("<MouseWheel>", self._on_wheel)
+        self.bind_all("<Button-4>", lambda e: self._wheel_dir(e, -1))
+        self.bind_all("<Button-5>", lambda e: self._wheel_dir(e, 1))
+
+        self.header = Header(content, "Chuyển Báo cáo tài chính PDF → Excel",
                              "Bảng cân đối kế toán · Kết quả HĐKD · Lưu chuyển tiền tệ "
                              "— mỗi báo cáo 1 sheet (Thông tư 200)")
         self.header.pack(fill="x")
+        self._content = content
 
         # thanh tiến độ tổng (bo tròn, Sage) + dòng trạng thái
-        topbar = tk.Frame(self, bg=C["bg"])
+        topbar = tk.Frame(content, bg=C["bg"])
         topbar.pack(fill="x", padx=18, pady=(8, 0))
         self.overall = RoundProgress(topbar, app_bg=C["bg"], trough=C["trough"],
                                      fill=C["ok"], height=8, radius=4)
@@ -715,7 +735,7 @@ class App(tk.Tk):
         self.status_lbl.pack(anchor="w", pady=(4, 0))
 
         # ---- thanh công cụ (nhấn Sage) ----
-        tool = tk.Frame(self, bg=C["bg"])
+        tool = tk.Frame(content, bg=C["bg"])
         tool.pack(fill="x", padx=18, pady=(6, 0))
         self.btn_add = self._outline_btn(tool, "＋  Thêm file", self.add_files,
                                          C["ok"], 144, height=36)
@@ -738,7 +758,7 @@ class App(tk.Tk):
                  font=_font(9)).pack(side="right", padx=(0, 12))
 
         # ---- thanh chọn nhiều file để xoá ----
-        selbar = tk.Frame(self, bg=C["bg"])
+        selbar = tk.Frame(content, bg=C["bg"])
         selbar.pack(fill="x", padx=18, pady=(6, 0))
         self.sel_all = tk.Label(selbar, text="☐  Chọn tất cả", bg=C["bg"], fg=C["sub"],
                                 font=_font(10), cursor="hand2")
@@ -752,7 +772,7 @@ class App(tk.Tk):
         self.btn_del_sel.set_enabled(False)
 
         # ---- danh sách file (thẻ bo tròn, cuộn được) ----
-        listcard = RoundCard(self, app_bg=C["bg"], fill=C["list_bg"],
+        listcard = RoundCard(content, app_bg=C["bg"], fill=C["list_bg"],
                              border=C["border"], radius=16, pad=6)
         listcard.pack(fill="both", expand=True, padx=18, pady=8)
         self.canvas = tk.Canvas(listcard.body, bg=C["list_bg"], highlightthickness=0, bd=0)
@@ -766,9 +786,6 @@ class App(tk.Tk):
                         lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
         self.canvas.bind(EV_CONFIG,
                          lambda e: self.canvas.itemconfig(self._win, width=e.width))
-        self.bind_all("<MouseWheel>", self._on_wheel)
-        self.bind_all("<Button-4>", lambda e: self._wheel_dir(e, -1))
-        self.bind_all("<Button-5>", lambda e: self._wheel_dir(e, 1))
 
         self.placeholder = tk.Label(
             self.inner, bg=C["list_bg"], fg=C["sub"], justify="center",
@@ -778,7 +795,7 @@ class App(tk.Tk):
                  "Tối đa %d file mỗi lần" % MAX_FILES)
 
         # ---- hàng dưới: thư mục lưu + chất lượng ----
-        bottom = tk.Frame(self, bg=C["bg"])
+        bottom = tk.Frame(content, bg=C["bg"])
         bottom.pack(fill="x", padx=18, pady=(0, 6))
 
         opt = tk.Frame(bottom, bg=C["bg"])
@@ -827,7 +844,7 @@ class App(tk.Tk):
         self.btn_retry.set_enabled(False)
 
         # ---- lịch sử (thẻ bo tròn) ----
-        logcard = RoundCard(self, app_bg=C["bg"], fill=C["card"],
+        logcard = RoundCard(content, app_bg=C["bg"], fill=C["card"],
                             border=C["border"], radius=14, pad=8, fit=True)
         logcard.pack(fill="x", padx=18, pady=(0, 10))
         tk.Label(logcard.body, text="Lịch sử", bg=C["card"], fg=C["text"],
@@ -851,6 +868,20 @@ class App(tk.Tk):
         self._check_tesseract()
         self._sync_convert_btn()
 
+    # ---------- vùng cuộn gốc: ép content tối thiểu, tự ẩn thanh cuộn ----------
+    MIN_CONTENT_W = 740
+    MIN_CONTENT_H = 560
+
+    def _on_root_resize(self, e):
+        vw, vh = e.width, e.height
+        w = max(vw, self.MIN_CONTENT_W)
+        h = max(vh, self.MIN_CONTENT_H)
+        self._root_cv.itemconfig(self._content_id, width=w, height=h)
+        self._root_cv.configure(scrollregion=(0, 0, w, h))
+        # ẩn thanh cuộn khi không cần (grid_remove giữ nguyên vị trí ô)
+        (self._root_vsb.grid if h > vh + 1 else self._root_vsb.grid_remove)()
+        (self._root_hsb.grid if w > vw + 1 else self._root_hsb.grid_remove)()
+
     # ---------- cuộn bằng con lăn chuột (theo vùng con trỏ) ----------
     def _wheel_target(self, e):
         node = self.winfo_containing(e.x_root, e.y_root)
@@ -860,7 +891,7 @@ class App(tk.Tk):
             if node is self.canvas or node is self.inner:
                 return self.canvas
             node = getattr(node, "master", None)
-        return self.canvas
+        return self._root_cv
 
     def _on_wheel(self, e):
         self._wheel_target(e).yview_scroll(-1 if e.delta > 0 else 1, "units")
