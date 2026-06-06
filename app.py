@@ -81,32 +81,32 @@ def _setup_logger(path):
 # ----------------------------------------------------------------------
 THEMES = {
     "light": {
-        "bg": "#F4F1DE", "card": "#FFFFFF", "list_bg": "#FFFFFF",
-        "row_alt": "#F4F8F5", "border": "#E6E1CC", "text": "#3D405B",
-        "sub": "#83869B", "trough": "#E4EBE6",
-        "accent": "#E07A5F", "accent_hover": "#CF6A50",
-        "header_bg": "#3D405B",
-        "ok": "#81B29A", "ok_hover": "#6FA088",
-        "sage_soft": "#E7F1EB", "sage_soft_hover": "#D9E9E0",
-        "warn": "#E8A23C", "err": "#C0503A", "dot": "#CBC9B8",
-        "soft_bg": "#FBEAE4", "soft_hover": "#F7DBD1",
-        "neutral_bg": "#ECE8D6", "neutral_hover": "#E3DEC8",
-        "log_bg": "#F9FBF9", "entry_bg": "#FFFFFF",
-        "disabled_bg": "#D8D3C0", "disabled_fg": "#F4F1DE",
+        "bg": "#FAFAF7", "card": "#FFFFFF", "list_bg": "#FFFFFF",
+        "row_alt": "#F3F3EE", "border": "#C7C7BC", "text": "#14161F",
+        "sub": "#565A6B", "trough": "#E6E6DD",
+        "accent": "#D8502E", "accent_hover": "#BF441F",
+        "header_bg": "#14161F",
+        "ok": "#15795A", "ok_hover": "#0F6147",
+        "sage_soft": "#E2F0EA", "sage_soft_hover": "#D2E7DD",
+        "warn": "#B9770A", "err": "#C0392B", "dot": "#B5B5A8",
+        "soft_bg": "#FBE9E3", "soft_hover": "#F6D9CF",
+        "neutral_bg": "#ECECE4", "neutral_hover": "#E0E0D6",
+        "log_bg": "#FBFBF9", "entry_bg": "#FFFFFF",
+        "disabled_bg": "#E4E4DC", "disabled_fg": "#A8A89E",
     },
     "dark": {
-        "bg": "#2B2D40", "card": "#353850", "list_bg": "#313347",
-        "row_alt": "#34423E", "border": "#4A4D67", "text": "#F4F1DE",
-        "sub": "#A4A7BB", "trough": "#3C4A45",
-        "accent": "#E07A5F", "accent_hover": "#EC8B72",
-        "header_bg": "#23253A",
-        "ok": "#81B29A", "ok_hover": "#93C1AA",
-        "sage_soft": "#33493F", "sage_soft_hover": "#3D564A",
-        "warn": "#F2CC8F", "err": "#E0654C", "dot": "#555873",
-        "soft_bg": "#3F4566", "soft_hover": "#4A5072",
-        "neutral_bg": "#3C3F58", "neutral_hover": "#474B66",
-        "log_bg": "#252736", "entry_bg": "#2F3247",
-        "disabled_bg": "#4A4D67", "disabled_fg": "#71748A",
+        "bg": "#14161B", "card": "#1C1F26", "list_bg": "#1C1F26",
+        "row_alt": "#232730", "border": "#3C424E", "text": "#F4F6FA",
+        "sub": "#A2A7B5", "trough": "#2A2E37",
+        "accent": "#EC6A45", "accent_hover": "#F5805F",
+        "header_bg": "#0C0E12",
+        "ok": "#34D399", "ok_hover": "#5BD9AC",
+        "sage_soft": "#1E3A30", "sage_soft_hover": "#264A3C",
+        "warn": "#F2B233", "err": "#E0654C", "dot": "#4A4F5C",
+        "soft_bg": "#3A2620", "soft_hover": "#4A3128",
+        "neutral_bg": "#262A33", "neutral_hover": "#303642",
+        "log_bg": "#15171D", "entry_bg": "#1C1F26",
+        "disabled_bg": "#2A2E37", "disabled_fg": "#6B7080",
     },
 }
 
@@ -148,6 +148,20 @@ def _shade(h, factor):
     return "#%02x%02x%02x" % (max(0, min(255, int(r * factor))),
                               max(0, min(255, int(g * factor))),
                               max(0, min(255, int(b * factor))))
+
+
+def _mix(h1, h2, t):
+    """Trộn hai màu: t = tỉ lệ của h2 (0..1)."""
+    r1, g1, b1 = _hex(h1)
+    r2, g2, b2 = _hex(h2)
+    return "#%02x%02x%02x" % (int(r1 + (r2 - r1) * t),
+                              int(g1 + (g2 - g1) * t),
+                              int(b1 + (b2 - b1) * t))
+
+
+def _tint(color, t=0.86):
+    """Màu nhạt (hover của nút viền): trộn màu về phía nền hiện hành."""
+    return _mix(color, C["bg"], t)
 
 
 def _round_rect(cv, x1, y1, x2, y2, r, **kw):
@@ -398,15 +412,24 @@ class Header(tk.Canvas):
 # Nút bo góc (Canvas) — phẳng, có hover
 # ======================================================================
 class RoundButton(tk.Canvas):
+    """Nút bo góc. Hai kiểu:
+       - VIỀN (outline): truyền outline=<màu>, outline_w>=2; nền = app_bg,
+         chữ + viền cùng màu; hover tô nền nhạt.
+       - ĐẶC (solid):   chỉ truyền bg/fg/hover như cũ (dùng cho CTA chính).
+    """
     def __init__(self, parent, text, command, *, bg, fg, hover, app_bg,
-                 width=150, height=44, radius=16, font=None):
+                 width=150, height=44, radius=14, font=None,
+                 outline="", outline_w=0, hover_outline=None):
         super().__init__(parent, width=width, height=height,
                          highlightthickness=0, bd=0, bg=app_bg)
         self.command = command
         self._bg, self._hover, self._fg = bg, hover, fg
+        self._outline = outline
+        self._outline_w = outline_w
+        self._hover_outline = hover_outline or outline
         self._enabled = True
         self._rect = _round_rect(self, 2, 2, width - 2, height - 2, radius,
-                                 fill=bg, outline="")
+                                 fill=bg, outline=outline, width=outline_w)
         self._txt = self.create_text(width // 2, height // 2, text=text,
                                      fill=fg, font=font or _font(11, "bold"))
         self.bind("<Enter>", self._enter)
@@ -415,12 +438,12 @@ class RoundButton(tk.Canvas):
 
     def _enter(self, _):
         if self._enabled:
-            self.itemconfig(self._rect, fill=self._hover)
+            self.itemconfig(self._rect, fill=self._hover, outline=self._hover_outline)
             self.config(cursor="hand2")
 
     def _leave(self, _):
         if self._enabled:
-            self.itemconfig(self._rect, fill=self._bg)
+            self.itemconfig(self._rect, fill=self._bg, outline=self._outline)
 
     def _click(self, _):
         if self._enabled and self.command:
@@ -431,7 +454,9 @@ class RoundButton(tk.Canvas):
 
     def set_enabled(self, on):
         self._enabled = on
-        self.itemconfig(self._rect, fill=self._bg if on else C["disabled_bg"])
+        self.itemconfig(self._rect,
+                        fill=self._bg if on else C["disabled_bg"],
+                        outline=self._outline if on else C["disabled_bg"])
         self.itemconfig(self._txt, fill=self._fg if on else C["disabled_fg"])
         self.config(cursor="hand2" if on else "")
 
@@ -619,6 +644,20 @@ class App(tk.Tk):
         st.map("Card.TCheckbutton", background=[("active", C["bg"])],
                foreground=[("active", C["text"])])
 
+    # ------------------------------------------------------ nút (viền/đặc)
+    def _outline_btn(self, parent, text, cmd, color, width, height=44, font=None):
+        """Nút VIỀN: nền trùng nền app, viền + chữ cùng màu, hover tô nhạt."""
+        return RoundButton(parent, text, cmd, bg=C["bg"], fg=color,
+                           hover=_tint(color), app_bg=C["bg"],
+                           outline=color, outline_w=2,
+                           width=width, height=height, font=font)
+
+    def _solid_btn(self, parent, text, cmd, color, width, height=44, font=None):
+        """Nút ĐẶC (CTA chính): nền màu, chữ trắng."""
+        return RoundButton(parent, text, cmd, bg=color, fg="#FFFFFF",
+                           hover=_shade(color, 0.9), app_bg=C["bg"],
+                           width=width, height=height, font=font)
+
     # ------------------------------------------------------------------ UI
     def _build(self):
         self.header = Header(self, "Chuyển Báo cáo tài chính PDF → Excel",
@@ -639,26 +678,22 @@ class App(tk.Tk):
         # ---- thanh công cụ (nhấn Sage) ----
         tool = tk.Frame(self, bg=C["bg"])
         tool.pack(fill="x", padx=22, pady=(8, 0))
-        self.btn_add = RoundButton(tool, "＋  Thêm file", self.add_files,
-                                   bg=C["ok"], fg="#FFFFFF", hover=C["ok_hover"],
-                                   app_bg=C["bg"], width=150)
+        self.btn_add = self._outline_btn(tool, "＋  Thêm file", self.add_files,
+                                         C["ok"], 150)
         self.btn_add.pack(side="left")
-        self.btn_folder = RoundButton(tool, "📁  Thêm thư mục", self.add_folder,
-                                      bg=C["sage_soft"], fg=C["ok"], hover=C["sage_soft_hover"],
-                                      app_bg=C["bg"], width=170)
+        self.btn_folder = self._outline_btn(tool, "📁  Thêm thư mục", self.add_folder,
+                                            C["ok"], 170)
         self.btn_folder.pack(side="left", padx=8)
-        self.btn_clear = RoundButton(tool, "🗑  Xoá hết", self.clear_files,
-                                     bg=C["neutral_bg"], fg=C["sub"], hover=C["neutral_hover"],
-                                     app_bg=C["bg"], width=120)
+        self.btn_clear = self._outline_btn(tool, "🗑  Xoá hết", self.clear_files,
+                                           C["sub"], 120)
         self.btn_clear.pack(side="left")
 
         theme_txt = "🌙  Tối" if self.theme_name == "light" else "☀️  Sáng"
-        self.btn_theme = RoundButton(tool, theme_txt, self.toggle_theme,
-                                     bg=C["neutral_bg"], fg=C["text"], hover=C["neutral_hover"],
-                                     app_bg=C["bg"], width=110)
+        self.btn_theme = self._outline_btn(tool, theme_txt, self.toggle_theme,
+                                           C["sub"], 110)
         self.btn_theme.pack(side="right")
         self.count_lbl = tk.Label(tool, text="%d / %d file" % (len(self.files), MAX_FILES),
-                                  bg=C["bg"], fg=C["ok"], font=_font(11, "bold"))
+                                  bg=C["bg"], fg=C["text"], font=_font(11, "bold"))
         self.count_lbl.pack(side="right", padx=(0, 14))
         tk.Label(tool, text="v" + APP_VERSION, bg=C["bg"], fg=C["sub"],
                  font=_font(9)).pack(side="right", padx=(0, 12))
@@ -706,39 +741,33 @@ class App(tk.Tk):
                                   font=_font(10), insertbackground=C["text"],
                                   highlightthickness=0, bd=0)
         self.out_entry.pack(fill="both", expand=True, padx=8)
-        RoundButton(opt, "Chọn…", self.pick_out, bg=C["neutral_bg"], fg=C["text"],
-                    hover=C["neutral_hover"], app_bg=C["bg"], width=86,
-                    height=36).pack(side="left")
+        self._outline_btn(opt, "Chọn…", self.pick_out, C["sub"], 86,
+                          height=36).pack(side="left")
         ttk.Checkbutton(opt, text="Chất lượng cao (chậm hơn)", style="Card.TCheckbutton",
                         variable=self.hi_quality).pack(side="left", padx=(14, 0))
 
         # ---- hàng nút: Chuyển đổi · Làm mới · Tạm dừng · Dừng hẳn ----
         runrow = tk.Frame(bottom, bg=C["bg"])
         runrow.pack(fill="x", pady=(12, 0))
-        self.convert_btn = RoundButton(runrow, "CHUYỂN ĐỔI  ▶", self.start,
-                                       bg=C["accent"], fg="#FFFFFF", hover=C["accent_hover"],
-                                       app_bg=C["bg"], width=230, height=50,
-                                       font=_font(13, "bold"))
+        self.convert_btn = self._solid_btn(runrow, "CHUYỂN ĐỔI  ▶", self.start,
+                                           C["accent"], 230, height=50,
+                                           font=_font(13, "bold"))
         self.convert_btn.pack(side="left")
-        self.btn_retry = RoundButton(runrow, LBL_RETRY, self.retry_failed,
-                                     bg=C["warn"], fg="#FFFFFF", hover=_shade(C["warn"], 0.9),
-                                     app_bg=C["bg"], width=140, height=50,
-                                     font=_font(12, "bold"))
+        self.btn_retry = self._outline_btn(runrow, LBL_RETRY, self.retry_failed,
+                                           C["warn"], 140, height=50,
+                                           font=_font(12, "bold"))
         self.btn_retry.pack(side="left", padx=(8, 0))
-        self.btn_refresh = RoundButton(runrow, "🔄  Làm mới", self.reset_tool,
-                                       bg=C["sage_soft"], fg=C["ok"], hover=C["sage_soft_hover"],
-                                       app_bg=C["bg"], width=120, height=50,
-                                       font=_font(12, "bold"))
+        self.btn_refresh = self._outline_btn(runrow, "🔄  Làm mới", self.reset_tool,
+                                             C["ok"], 120, height=50,
+                                             font=_font(12, "bold"))
         self.btn_refresh.pack(side="left", padx=(8, 0))
-        self.btn_stop = RoundButton(runrow, "⏹  Dừng", self.stop,
-                                    bg=C["err"], fg="#FFFFFF", hover=_shade(C["err"], 0.88),
-                                    app_bg=C["bg"], width=110, height=50,
-                                    font=_font(12, "bold"))
+        self.btn_stop = self._outline_btn(runrow, "⏹  Dừng", self.stop,
+                                          C["err"], 110, height=50,
+                                          font=_font(12, "bold"))
         self.btn_stop.pack(side="right")
-        self.btn_pause = RoundButton(runrow, LBL_PAUSE, self.toggle_pause,
-                                     bg=C["neutral_bg"], fg=C["text"], hover=C["neutral_hover"],
-                                     app_bg=C["bg"], width=140, height=50,
-                                     font=_font(12, "bold"))
+        self.btn_pause = self._outline_btn(runrow, LBL_PAUSE, self.toggle_pause,
+                                           C["sub"], 140, height=50,
+                                           font=_font(12, "bold"))
         self.btn_pause.pack(side="right", padx=(0, 8))
         self.btn_stop.set_enabled(False)
         self.btn_pause.set_enabled(False)
