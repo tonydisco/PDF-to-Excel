@@ -82,7 +82,7 @@ def _setup_logger(path):
 THEMES = {
     "light": {
         "bg": "#FAFAF7", "card": "#FFFFFF", "list_bg": "#FFFFFF",
-        "row_alt": "#F3F3EE", "border": "#C7C7BC", "text": "#14161F",
+        "row_alt": "#F3F3EE", "row_hover": "#E8F0EB", "border": "#C7C7BC", "text": "#14161F",
         "sub": "#565A6B", "trough": "#E6E6DD",
         "accent": "#D8502E", "accent_hover": "#BF441F",
         "header_bg": "#14161F",
@@ -96,7 +96,7 @@ THEMES = {
     },
     "dark": {
         "bg": "#14161B", "card": "#1C1F26", "list_bg": "#1C1F26",
-        "row_alt": "#232730", "border": "#3C424E", "text": "#F4F6FA",
+        "row_alt": "#232730", "row_hover": "#2C313B", "border": "#3C424E", "text": "#F4F6FA",
         "sub": "#A2A7B5", "trough": "#2A2E37",
         "accent": "#EC6A45", "accent_hover": "#F5805F",
         "header_bg": "#0C0E12",
@@ -468,7 +468,9 @@ class RoundButton(tk.Canvas):
 class FileRow(tk.Frame):
     def __init__(self, parent, name, bg, *, on_delete=None, on_select=None):
         super().__init__(parent, bg=bg)
-        self._bg = bg
+        self._base_bg = bg
+        self._hover_color = C["row_hover"]
+        self._hovering = False
         self._on_delete = on_delete
         self._on_select = on_select
         self.selected = False
@@ -504,15 +506,48 @@ class FileRow(tk.Frame):
                                  fill=C["ok"], height=8, radius=4)
         self.bar.pack(fill="x", pady=(6, 0))
 
-    def set_bg(self, bg):
-        """Đổi màu nền (tô lại xen kẽ sau khi xoá) — mượt, không dựng lại."""
-        self._bg = bg
-        for w in (self, self._pad, self._top, self.chk, self.dot,
-                  self.name_lbl, self.del_btn, self.meta_lbl, self.bar):
+        # ---- hiệu ứng hover: rê chuột vào dòng thì sáng lên ----
+        self._skins = (self, self._pad, self._top, self.chk, self.dot,
+                       self.name_lbl, self.del_btn, self.meta_lbl, self.bar)
+        for w in self._skins:
+            w.bind("<Enter>", self._on_enter, add="+")
+            w.bind("<Leave>", self._on_leave, add="+")
+
+    def _apply_bg(self, color):
+        for w in self._skins:
             try:
-                w.config(bg=bg)
+                w.config(bg=color)
             except Exception:
                 pass
+
+    def set_bg(self, bg):
+        """Đổi màu nền nền (tô lại xen kẽ sau khi xoá) — mượt, không dựng lại."""
+        self._base_bg = bg
+        self._apply_bg(self._hover_color if self._hovering else bg)
+
+    def _on_enter(self, _=None):
+        if not self._hovering:
+            self._hovering = True
+            self._apply_bg(self._hover_color)
+
+    def _on_leave(self, _=None):
+        # con trỏ có thể chỉ chuyển sang widget con -> kiểm tra lại sau
+        self.after_idle(self._check_leave)
+
+    def _check_leave(self):
+        try:
+            w = self.winfo_containing(*self.winfo_pointerxy())
+        except Exception:
+            w = None
+        node, inside = w, False
+        while node is not None:
+            if node is self:
+                inside = True
+                break
+            node = getattr(node, "master", None)
+        if not inside and self._hovering:
+            self._hovering = False
+            self._apply_bg(self._base_bg)
 
     def _toggle(self):
         if not self._deletable:
@@ -586,6 +621,7 @@ class FileRow(tk.Frame):
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
+        self.withdraw()                  # ẩn cho tới khi dựng xong -> mở 1 lần, không giật
         global FONT
         FONT = _pick_font()
 
@@ -630,6 +666,9 @@ class App(tk.Tk):
         self._init_styles()
         self._build()
         self._log_diagnostics()
+        # bố cục xong -> hiện cửa sổ MỘT lần (tránh nhấp nháy lúc dựng giao diện)
+        self.update_idletasks()
+        self.deiconify()
         self.after(80, self._drain_queue)
         self.after(120, self._tick)
 
@@ -718,10 +757,11 @@ class App(tk.Tk):
         self._root_cv.configure(yscrollcommand=self._root_vsb.set,
                                 xscrollcommand=self._root_hsb.set)
         self._root_cv.grid(row=0, column=0, sticky="nsew")
-        self._root_vsb.grid(row=0, column=1, sticky="ns")
-        self._root_hsb.grid(row=1, column=0, sticky="ew")
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
+        # thanh cuộn chỉ hiện khi cần (trạng thái lưu lại để không bật/tắt liên tục)
+        self._vsb_on = False
+        self._hsb_on = False
         content = tk.Frame(self._root_cv, bg=C["bg"])
         self._content_id = self._root_cv.create_window((0, 0), window=content, anchor="nw")
         self._root_cv.bind(EV_CONFIG, self._on_root_resize)
@@ -884,14 +924,31 @@ class App(tk.Tk):
     MIN_CONTENT_H = 560
 
     def _on_root_resize(self, e):
-        vw, vh = e.width, e.height
-        w = max(vw, self.MIN_CONTENT_W)
-        h = max(vh, self.MIN_CONTENT_H)
-        self._root_cv.itemconfig(self._content_id, width=w, height=h)
-        self._root_cv.configure(scrollregion=(0, 0, w, h))
-        # ẩn thanh cuộn khi không cần (grid_remove giữ nguyên vị trí ô)
-        (self._root_vsb.grid if h > vh + 1 else self._root_vsb.grid_remove)()
-        (self._root_hsb.grid if w > vw + 1 else self._root_hsb.grid_remove)()
+        if getattr(self, "_resizing", False):
+            return
+        self._resizing = True
+        try:
+            vw, vh = e.width, e.height
+            w = max(vw, self.MIN_CONTENT_W)
+            h = max(vh, self.MIN_CONTENT_H)
+            self._root_cv.itemconfig(self._content_id, width=w, height=h)
+            self._root_cv.configure(scrollregion=(0, 0, w, h))
+            # chỉ thay đổi khi TRẠNG THÁI khác -> tránh re-grid liên tục (gây giật)
+            need_v, need_h = h > vh + 1, w > vw + 1
+            if need_v != self._vsb_on:
+                if need_v:
+                    self._root_vsb.grid(row=0, column=1, sticky="ns")
+                else:
+                    self._root_vsb.grid_remove()
+                self._vsb_on = need_v
+            if need_h != self._hsb_on:
+                if need_h:
+                    self._root_hsb.grid(row=1, column=0, sticky="ew")
+                else:
+                    self._root_hsb.grid_remove()
+                self._hsb_on = need_h
+        finally:
+            self._resizing = False
 
     # ---------- cuộn bằng con lăn chuột (theo vùng con trỏ) ----------
     def _wheel_target(self, e):

@@ -7,6 +7,24 @@ import os
 import sys
 import shutil
 import platform
+import subprocess
+
+# ----------------------------------------------------------------------
+# Windows: chặn cửa sổ console NHẤP NHÁY khi gọi tesseract.exe.
+# App đóng gói dạng cửa sổ (không console); mỗi lần chạy tesseract.exe
+# (chương trình console) Windows sẽ bật 1 console chớp nhoáng -> trông như
+# "2-3 app mở lên rồi tắt" lúc khởi động. Thêm cờ CREATE_NO_WINDOW cho mọi
+# subprocess để ẩn hẳn các cửa sổ này.
+if sys.platform == "win32":
+    _CREATE_NO_WINDOW = 0x08000000
+    _OrigPopen = subprocess.Popen
+
+    class _SilentPopen(_OrigPopen):
+        def __init__(self, *args, **kwargs):
+            kwargs["creationflags"] = kwargs.get("creationflags", 0) | _CREATE_NO_WINDOW
+            super().__init__(*args, **kwargs)
+
+    subprocess.Popen = _SilentPopen      # pytesseract dùng subprocess.Popen
 
 import fitz                       # PyMuPDF
 import pytesseract
