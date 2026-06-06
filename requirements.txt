@@ -1,0 +1,8 @@
+# Thư viện cần thiết để chạy ứng dụng (Python 3.9+)
+PyMuPDF>=1.23.0      # render trang PDF scan -> ảnh
+pytesseract>=0.3.10  # cầu nối tới Tesseract OCR
+Pillow>=10.0.0       # xử lý ảnh
+openpyxl>=3.1.0      # ghi file Excel (.xlsx)
+
+# Chỉ cần khi ĐÓNG GÓI thành .exe / .app (không bắt buộc để chạy):
+# pyinstaller>=6.0

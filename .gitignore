@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# PyInstaller build output
+build/
+dist/
+*.manifest
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dữ liệu nhạy cảm — KHÔNG đưa báo cáo/ô tài chính lên repo
+*.pdf
+*.xlsx
+*.xls
+
+# Giữ lại gói OCR tiếng Việt (cần cho ứng dụng)
+!tessdata/vie.traineddata
