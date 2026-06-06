@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Điều phối: PDF scan -> OCR -> bóc tách -> Excel, kèm kiểm tra cân đối."""
 import os
+import traceback
 # Mỗi tiến trình tesseract chạy 1 luồng -> để ThreadPool song song hoá theo TRANG
 # (nhanh hơn nhiều so với để 1 tesseract tự đa luồng rồi xử lý tuần tự).
 os.environ.setdefault("OMP_THREAD_LIMIT", "1")
@@ -122,6 +123,7 @@ def convert_many(pdf_paths, out_dir, lang="vie", dpis=(180, 235),
             break
         except Exception as e:
             log(f"   ✖ Lỗi: {e}")
+            log("   ⋯ chi tiết:\n   " + traceback.format_exc().replace("\n", "\n   "))
             r = {"pdf": p, "name": os.path.basename(p),
                  "error": str(e), "out_path": None}
             on_file(i, "error", str(e))

@@ -13,6 +13,9 @@ import os
 import sys
 import time
 import queue
+import logging
+import platform
+import tempfile
 import threading
 import traceback
 
@@ -31,6 +34,43 @@ EV_CONFIG = "<Configure>"
 LBL_PAUSE = "⏸  Tạm dừng"
 LBL_RETRY = "↻  Thử lại lỗi"
 CAP_TIME = "THỜI GIAN"
+
+
+# ----------------------------------------------------------------------
+# Ghi log ra FILE để chẩn đoán (rất hữu ích khi chạy bản đóng gói .exe/.app)
+# ----------------------------------------------------------------------
+LOG_NAME = "BCTC_PDF_to_Excel.log"
+
+
+def _log_file_path():
+    """Chọn nơi ghi log mà người dùng chắc chắn ghi được."""
+    cands = []
+    if getattr(sys, "frozen", False):
+        cands.append(os.path.join(os.path.dirname(sys.executable), LOG_NAME))
+    cands.append(os.path.join(os.path.expanduser("~"), LOG_NAME))
+    cands.append(os.path.join(tempfile.gettempdir(), LOG_NAME))
+    for p in cands:
+        try:
+            with open(p, "a", encoding="utf-8"):
+                return p
+        except Exception:
+            continue
+    return os.path.join(tempfile.gettempdir(), LOG_NAME)
+
+
+def _setup_logger(path):
+    lg = logging.getLogger("bctc")
+    lg.setLevel(logging.DEBUG)
+    lg.propagate = False
+    if not lg.handlers:
+        try:
+            fh = logging.FileHandler(path, encoding="utf-8")
+            fh.setFormatter(logging.Formatter("%(asctime)s  %(message)s",
+                                              "%Y-%m-%d %H:%M:%S"))
+            lg.addHandler(fh)
+        except Exception:
+            pass
+    return lg
 
 # ----------------------------------------------------------------------
 # Bảng màu chuẩn (Coolors): cream F4F1DE · terracotta E07A5F · navy 3D405B
@@ -473,6 +513,12 @@ class App(tk.Tk):
         global FONT
         FONT = _pick_font()
 
+        # --- ghi log ra file (chẩn đoán, nhất là bản .exe/.app) ---
+        self.log_path = _log_file_path()
+        self._flog = _setup_logger(self.log_path)
+        self._flog.info("=" * 64)
+        self._flog.info("Khởi động BCTC PDF → Excel v%s", APP_VERSION)
+
         self.title(APP_TITLE)
         self.geometry("960x740")
         self.minsize(820, 620)
@@ -507,8 +553,41 @@ class App(tk.Tk):
 
         self._init_styles()
         self._build()
+        self._log_diagnostics()
         self.after(80, self._drain_queue)
         self.after(120, self._tick)
+
+    # ------------------------------------------------------------ chẩn đoán
+    def _log_diagnostics(self):
+        """Ghi thông tin môi trường + tình trạng Tesseract ra file log."""
+        try:
+            self._flog.info("App v%s | %s %s | Python %s", APP_VERSION,
+                            platform.system(), platform.release(),
+                            sys.version.split()[0])
+            self._flog.info("Frozen=%s | exe=%s | MEIPASS=%s",
+                            getattr(sys, "frozen", False), sys.executable,
+                            getattr(sys, "_MEIPASS", None))
+            tess, td = ocr.locate_tesseract()
+            self._flog.info("Tesseract path = %s", tess)
+            self._flog.info("tessdata dir   = %s", td)
+            import pytesseract
+            if tess:
+                pytesseract.pytesseract.tesseract_cmd = tess
+            try:
+                self._flog.info("Tesseract version = %s",
+                                pytesseract.get_tesseract_version())
+            except Exception as e:
+                self._flog.error("Không lấy được tesseract version: %r", e)
+            try:
+                self._flog.info("Languages = %s",
+                                pytesseract.get_languages(config=""))
+            except Exception as e:
+                self._flog.error("Không lấy được languages: %r", e)
+        except Exception:
+            try:
+                self._flog.error("Lỗi diagnostics:\n%s", traceback.format_exc())
+            except Exception:
+                pass
 
     def _set_icon(self):
         """Đặt icon cửa sổ (PNG) nếu có."""
@@ -685,6 +764,7 @@ class App(tk.Tk):
 
         self._rebuild_list()
         self._logln(f"BCTC PDF → Excel · phiên bản v{APP_VERSION}", "muted")
+        self._logln("📄 Nhật ký chi tiết: " + self.log_path, "muted")
         self._check_tesseract()
 
     # ---------- cuộn bằng con lăn chuột (theo vùng con trỏ) ----------
@@ -723,6 +803,10 @@ class App(tk.Tk):
         self.log.insert("end", text + "\n", tag or ())
         self.log.see("end")
         self.log.configure(state="disabled")
+        try:
+            self._flog.info(text)
+        except Exception:
+            pass
 
     def _check_tesseract(self):
         try:
@@ -937,6 +1021,11 @@ class App(tk.Tk):
 
         try:
             dpis = (180, 220, 290) if self.hi_quality.get() else (180, 235)
+            try:
+                self._flog.info("Bắt đầu convert %d file | dpis=%s | out=%s",
+                                len(files), dpis, out_dir)
+            except Exception:
+                pass
             results = engine.convert_many(
                 files, out_dir, lang="vie", dpis=dpis, log=log, progress=prog,
                 on_file=on_file,
@@ -973,6 +1062,14 @@ class App(tk.Tk):
                     self._finish(payload)
                 elif kind == "fatal":
                     self._logln("✖ Lỗi nghiêm trọng:\n" + payload, "err")
+                    try:
+                        self._flog.error("FATAL:\n%s", payload)
+                    except Exception:
+                        pass
+                    first = payload.strip().splitlines()[0] if payload.strip() else "Lỗi không rõ"
+                    messagebox.showerror(
+                        "Không chạy được tiến trình",
+                        f"{first}\n\nXem chi tiết trong nhật ký:\n{self.log_path}")
                     self._reset()
         except queue.Empty:
             pass
