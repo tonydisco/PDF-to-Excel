@@ -23,8 +23,9 @@ from tkinter import font as tkfont
 # cho phép chạy trực tiếp lẫn sau khi đóng gói
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from bctc import engine, ocr           # noqa: E402
+from version import __version__ as APP_VERSION   # noqa: E402
 
-APP_TITLE = "BCTC PDF → Excel  •  Thông tư 200"
+APP_TITLE = "BCTC PDF → Excel  •  Thông tư 200  •  v" + APP_VERSION
 MAX_FILES = engine.MAX_FILES
 EV_CONFIG = "<Configure>"
 LBL_PAUSE = "⏸  Tạm dừng"
@@ -579,6 +580,8 @@ class App(tk.Tk):
         self.count_lbl = tk.Label(tool, text="%d / %d file" % (len(self.files), MAX_FILES),
                                   bg=C["bg"], fg=C["ok"], font=_font(11, "bold"))
         self.count_lbl.pack(side="right", padx=(0, 14))
+        tk.Label(tool, text="v" + APP_VERSION, bg=C["bg"], fg=C["sub"],
+                 font=_font(9)).pack(side="right", padx=(0, 12))
 
         # ---- danh sách file (thẻ bo tròn, cuộn được) ----
         listcard = RoundCard(self, app_bg=C["bg"], fill=C["list_bg"],
@@ -681,6 +684,7 @@ class App(tk.Tk):
             self.log.tag_configure(tag, foreground=col)
 
         self._rebuild_list()
+        self._logln(f"BCTC PDF → Excel · phiên bản v{APP_VERSION}", "muted")
         self._check_tesseract()
 
     # ---------- cuộn bằng con lăn chuột (theo vùng con trỏ) ----------
