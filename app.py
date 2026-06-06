@@ -822,10 +822,11 @@ class App(tk.Tk):
         self.btn_del_sel.pack(side="right")
         self.btn_del_sel.set_enabled(False)
 
-        # ---- danh sách file (thẻ bo tròn, cuộn được) ----
+        # ---- danh sách file (thẻ bo tròn, cuộn được) — TẠO trước, PACK CUỐI ----
+        #  pack cuối cùng để chính danh sách là phần co lại khi thiếu chỗ (đã có
+        #  scroll riêng), nhờ vậy hàng nút và box Lịch sử luôn hiện đủ, không bị cắt.
         listcard = RoundCard(content, app_bg=C["bg"], fill=C["list_bg"],
                              border=C["border"], radius=16, pad=6)
-        listcard.pack(fill="both", expand=True, padx=18, pady=8)
         self.canvas = tk.Canvas(listcard.body, bg=C["list_bg"], highlightthickness=0, bd=0)
         vsb = ttk.Scrollbar(listcard.body, orient="vertical", command=self.canvas.yview)
         self.canvas.configure(yscrollcommand=vsb.set)
@@ -845,9 +846,29 @@ class App(tk.Tk):
                  "Bấm “Thêm file” (chỉ .pdf) hoặc “Thêm thư mục” để bắt đầu\n"
                  "Tối đa %d file mỗi lần" % MAX_FILES)
 
-        # ---- hàng dưới: thư mục lưu + chất lượng ----
+        # ---- lịch sử (ĐÁY cùng, chiều cao cố định -> không bị cắt) ----
+        logcard = RoundCard(content, app_bg=C["bg"], fill=C["card"],
+                            border=C["border"], radius=14, pad=8)
+        logcard.configure(height=132)
+        logcard.pack(side="bottom", fill="x", padx=18, pady=(0, 10))
+        tk.Label(logcard.body, text="Lịch sử", bg=C["card"], fg=C["text"],
+                 font=_font(10, "bold")).pack(anchor="w")
+        logf = tk.Frame(logcard.body, bg=C["card"])
+        logf.pack(fill="both", expand=True, pady=(3, 0))
+        self.log = tk.Text(logf, height=5, bg=C["log_bg"], fg=C["text"], bd=0,
+                           font=("Menlo", 9), wrap="word", state="disabled",
+                           highlightthickness=0, insertbackground=C["text"])
+        self.log.pack(side="left", fill="both", expand=True)
+        sb = ttk.Scrollbar(logf, command=self.log.yview)
+        sb.pack(side="right", fill="y")
+        self.log.configure(yscrollcommand=sb.set)
+        for tag, col in (("ok", C["ok"]), ("warn", C["warn"]),
+                         ("err", C["err"]), ("muted", C["sub"])):
+            self.log.tag_configure(tag, foreground=col)
+
+        # ---- hàng dưới: thư mục lưu + chất lượng (ngay trên Lịch sử) ----
         bottom = tk.Frame(content, bg=C["bg"])
-        bottom.pack(fill="x", padx=18, pady=(0, 6))
+        bottom.pack(side="bottom", fill="x", padx=18, pady=(0, 6))
 
         opt = tk.Frame(bottom, bg=C["bg"])
         opt.pack(fill="x")
@@ -894,24 +915,8 @@ class App(tk.Tk):
         self.btn_pause.set_enabled(False)
         self.btn_retry.set_enabled(False)
 
-        # ---- lịch sử (thẻ bo tròn) ----
-        logcard = RoundCard(content, app_bg=C["bg"], fill=C["card"],
-                            border=C["border"], radius=14, pad=8, fit=True)
-        logcard.pack(fill="x", padx=18, pady=(0, 10))
-        tk.Label(logcard.body, text="Lịch sử", bg=C["card"], fg=C["text"],
-                 font=_font(10, "bold")).pack(anchor="w")
-        logf = tk.Frame(logcard.body, bg=C["card"])
-        logf.pack(fill="x", pady=(3, 0))
-        self.log = tk.Text(logf, height=4, bg=C["log_bg"], fg=C["text"], bd=0,
-                           font=("Menlo", 9), wrap="word", state="disabled",
-                           highlightthickness=0, insertbackground=C["text"])
-        self.log.pack(side="left", fill="both", expand=True)
-        sb = ttk.Scrollbar(logf, command=self.log.yview)
-        sb.pack(side="right", fill="y")
-        self.log.configure(yscrollcommand=sb.set)
-        for tag, col in (("ok", C["ok"]), ("warn", C["warn"]),
-                         ("err", C["err"]), ("muted", C["sub"])):
-            self.log.tag_configure(tag, foreground=col)
+        # ---- danh sách: pack CUỐI cùng -> fill phần giữa, là phần co lại ----
+        listcard.pack(side="top", fill="both", expand=True, padx=18, pady=8)
 
         self._rebuild_list()
         self._logln(f"BCTC PDF → Excel · phiên bản v{APP_VERSION}", "muted")
@@ -921,7 +926,7 @@ class App(tk.Tk):
 
     # ---------- vùng cuộn gốc: ép content tối thiểu, tự ẩn thanh cuộn ----------
     MIN_CONTENT_W = 740
-    MIN_CONTENT_H = 560
+    MIN_CONTENT_H = 600
 
     def _on_root_resize(self, e):
         if getattr(self, "_resizing", False):
