@@ -1,0 +1,10 @@
+Capybara sprite
+===============
+"Capybara Sprite Sheet" by Rainloaf
+https://rainloaf.itch.io/capybara-sprite-sheet
+
+Sử dụng cho hiệu ứng capybara đi qua lại trên header lúc convert.
+File gốc: assets/mini_capy_src.png (hàng "WALK" được cắt ra assets/capybara.png).
+
+Giấy phép: được dùng tự do cho dự án cá nhân lẫn thương mại, có chỉnh sửa,
+KÈM ghi công (credit) cho Rainloaf. (Nguồn: trang itch.io ở trên.)

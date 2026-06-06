@@ -1,0 +1,80 @@
+name: Build installers
+
+# Build bản cài đặt cho Windows (.exe) và macOS (.app + .dmg).
+# - Chạy tự động mỗi lần push, hoặc bấm tay (workflow_dispatch).
+# - Tải file build ở tab "Actions" → chọn run → mục "Artifacts".
+# - Nếu push 1 tag dạng v* (vd: git tag v1.0 && git push --tags) thì còn
+#   tự tạo Release đính kèm cả 2 file.
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # ---------------------------------------------------------------- Windows
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Cài thư viện
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+      - name: Đóng gói .exe
+        run: python -m PyInstaller --noconfirm --clean pdf2excel.spec
+      - name: Đổi tên & gom
+        run: |
+          mkdir out
+          copy "dist\BCTC_PDF_to_Excel.exe" "out\BCTC_PDF_to_Excel-windows.exe"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BCTC_PDF_to_Excel-windows
+          path: out/BCTC_PDF_to_Excel-windows.exe
+      - name: Đính kèm Release (khi push tag v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/BCTC_PDF_to_Excel-windows.exe
+
+  # ------------------------------------------------------------------ macOS
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Cài thư viện
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+      - name: Tạo icon .icns
+        run: |
+          python assets/make_icon.py || true
+          iconutil -c icns assets/icon.iconset -o assets/icon.icns || true
+      - name: Đóng gói .app
+        run: python -m PyInstaller --noconfirm --clean pdf2excel.spec
+      - name: Tạo .dmg
+        run: |
+          mkdir -p dmg_root
+          cp -R "dist/BCTC_PDF_to_Excel.app" dmg_root/
+          ln -s /Applications dmg_root/Applications
+          hdiutil create -volname "BCTC PDF to Excel" -srcfolder dmg_root \
+            -ov -format UDZO "dist/BCTC_PDF_to_Excel-macos.dmg"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BCTC_PDF_to_Excel-macos
+          path: dist/BCTC_PDF_to_Excel-macos.dmg
+      - name: Đính kèm Release (khi push tag v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/BCTC_PDF_to_Excel-macos.dmg

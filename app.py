@@ -2,16 +2,23 @@
 """
 Giao diện chuyển đổi Báo cáo tài chính (PDF scan) -> Excel theo Thông tư 200.
 
+Giao diện phẳng (flat) bo tròn mềm mại, bảng màu Coolors (nhấn Sage), hỗ trợ
+Sáng/Tối; có bộ đếm giờ tổng, mỗi file một thanh tiến độ bo tròn (Sage), thời
+gian riêng; cho phép Tạm dừng / Dừng hẳn / Làm mới. Cuộn bằng con lăn chuột.
+Nhận file PDF hoặc cả thư mục (tối đa 150 file).
+
 Chạy:  python app.py
 """
 import os
 import sys
+import time
 import queue
 import threading
 import traceback
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+from tkinter import font as tkfont
 
 # cho phép chạy trực tiếp lẫn sau khi đóng gói
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -19,115 +26,694 @@ from bctc import engine, ocr           # noqa: E402
 
 APP_TITLE = "BCTC PDF → Excel  •  Thông tư 200"
 MAX_FILES = engine.MAX_FILES
-BG = "#0f172a"; CARD = "#1e293b"; FG = "#e2e8f0"; SUB = "#94a3b8"
-ACCENT = "#2563eb"; OK = "#22c55e"; WARN = "#f59e0b"; ERR = "#ef4444"
+EV_CONFIG = "<Configure>"
+LBL_PAUSE = "⏸  Tạm dừng"
+LBL_RETRY = "↻  Thử lại lỗi"
+CAP_TIME = "THỜI GIAN"
+
+# ----------------------------------------------------------------------
+# Bảng màu chuẩn (Coolors): cream F4F1DE · terracotta E07A5F · navy 3D405B
+#                           · sage 81B29A · sand F2CC8F
+# https://coolors.co/f4f1de-e07a5f-3d405b-81b29a-f2cc8f
+# Giao diện PHẲNG (không gradient), nhấn nhiều màu Sage.
+# ----------------------------------------------------------------------
+THEMES = {
+    "light": {
+        "bg": "#F4F1DE", "card": "#FFFFFF", "list_bg": "#FFFFFF",
+        "row_alt": "#F4F8F5", "border": "#E6E1CC", "text": "#3D405B",
+        "sub": "#83869B", "trough": "#E4EBE6",
+        "accent": "#E07A5F", "accent_hover": "#CF6A50",
+        "header_bg": "#3D405B",
+        "ok": "#81B29A", "ok_hover": "#6FA088",
+        "sage_soft": "#E7F1EB", "sage_soft_hover": "#D9E9E0",
+        "warn": "#E8A23C", "err": "#C0503A", "dot": "#CBC9B8",
+        "soft_bg": "#FBEAE4", "soft_hover": "#F7DBD1",
+        "neutral_bg": "#ECE8D6", "neutral_hover": "#E3DEC8",
+        "log_bg": "#F9FBF9", "entry_bg": "#FFFFFF",
+        "disabled_bg": "#D8D3C0", "disabled_fg": "#F4F1DE",
+    },
+    "dark": {
+        "bg": "#2B2D40", "card": "#353850", "list_bg": "#313347",
+        "row_alt": "#34423E", "border": "#4A4D67", "text": "#F4F1DE",
+        "sub": "#A4A7BB", "trough": "#3C4A45",
+        "accent": "#E07A5F", "accent_hover": "#EC8B72",
+        "header_bg": "#23253A",
+        "ok": "#81B29A", "ok_hover": "#93C1AA",
+        "sage_soft": "#33493F", "sage_soft_hover": "#3D564A",
+        "warn": "#F2CC8F", "err": "#E0654C", "dot": "#555873",
+        "soft_bg": "#3F4566", "soft_hover": "#4A5072",
+        "neutral_bg": "#3C3F58", "neutral_hover": "#474B66",
+        "log_bg": "#252736", "entry_bg": "#2F3247",
+        "disabled_bg": "#4A4D67", "disabled_fg": "#71748A",
+    },
+}
+
+# Bảng màu hiện hành (được hoán đổi tại chỗ khi đổi theme)
+C = dict(THEMES["light"])
+
+# Font lựa chọn lúc chạy (điền trong App.__init__)
+FONT = "Helvetica"
 
 
+def apply_theme(name):
+    C.clear()
+    C.update(THEMES[name])
+
+
+def _font(size, weight="normal"):
+    return (FONT, size, weight)
+
+
+def _pick_font():
+    try:
+        fams = set(tkfont.families())
+    except Exception:
+        return "Helvetica"
+    for f in ("SF Pro Text", "SF Pro Display", ".AppleSystemUIFont",
+              "Helvetica Neue", "Segoe UI", "Arial"):
+        if f in fams:
+            return f
+    return "Helvetica"
+
+
+def _hex(h):
+    h = h.lstrip("#")
+    return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+
+
+def _shade(h, factor):
+    r, g, b = _hex(h)
+    return "#%02x%02x%02x" % (max(0, min(255, int(r * factor))),
+                              max(0, min(255, int(g * factor))),
+                              max(0, min(255, int(b * factor))))
+
+
+def _round_rect(cv, x1, y1, x2, y2, r, **kw):
+    pts = [x1 + r, y1, x2 - r, y1, x2, y1, x2, y1 + r, x2, y2 - r, x2, y2,
+           x2 - r, y2, x1 + r, y2, x1, y2, x1, y2 - r, x1, y1 + r, x1, y1]
+    return cv.create_polygon(pts, smooth=True, **kw)
+
+
+def _fmt_time(sec):
+    sec = int(sec)
+    return f"{sec // 60:02d}:{sec % 60:02d}"
+
+
+def _middle_ellipsis(s, n=46):
+    if len(s) <= n:
+        return s
+    head = (n - 1) // 2
+    tail = n - 1 - head
+    return s[:head] + "…" + s[-tail:]
+
+
+# ======================================================================
+# Thẻ bo tròn (Canvas) — nền + viền bo góc, chứa nội dung trong .body
+# ======================================================================
+class RoundCard(tk.Canvas):
+    def __init__(self, parent, *, app_bg, fill, border, radius=16, pad=8, fit=False):
+        super().__init__(parent, highlightthickness=0, bd=0, bg=app_bg)
+        self._fill, self._border = fill, border
+        self._radius, self._pad, self._fit = radius, pad, fit
+        self.body = tk.Frame(self, bg=fill)
+        self._win = self.create_window(0, 0, window=self.body, anchor="nw")
+        self.bind(EV_CONFIG, self._on_cfg)
+        if fit:
+            self.body.bind(EV_CONFIG, self._on_fit)
+
+    def _on_fit(self, e):
+        self.configure(height=e.height + 2 * self._pad)
+
+    def _on_cfg(self, e):
+        w, h = e.width, e.height
+        self.delete("bg")
+        _round_rect(self, 1, 1, w - 1, h - 1, self._radius,
+                    fill=self._fill, outline=self._border, width=1, tags="bg")
+        self.tag_lower("bg")
+        p = self._pad
+        self.coords(self._win, p, p)
+        self.itemconfig(self._win, width=w - 2 * p, height=h - 2 * p)
+
+
+# ======================================================================
+# Thanh tiến độ bo tròn 4 góc (tự vẽ) — mềm mại, mặc định màu Sage
+# ======================================================================
+class RoundProgress(tk.Canvas):
+    def __init__(self, parent, *, app_bg, trough, fill, height=9, radius=4):
+        super().__init__(parent, height=height, highlightthickness=0, bd=0, bg=app_bg)
+        self._trough = trough
+        self._fill = fill
+        self._radius = radius
+        self._frac = 0.0
+        self._cw = 0
+        self._ch = height
+        self.bind(EV_CONFIG, self._on_cfg)
+
+    def _on_cfg(self, e):
+        self._cw, self._ch = e.width, e.height
+        self._draw()
+
+    def set_fill(self, color):
+        self._fill = color
+        self._draw()
+
+    def set_frac(self, f):
+        self._frac = max(0.0, min(1.0, f))
+        self._draw()
+
+    def get_frac(self):
+        return self._frac
+
+    def _draw(self):
+        if self._cw <= 1:
+            return
+        self.delete("all")
+        w, h = self._cw, self._ch
+        r = min(self._radius, h / 2)
+        _round_rect(self, 1, 1, w - 1, h - 1, r, fill=self._trough, outline="")
+        if self._frac > 0:
+            x2 = 1 + (w - 2) * self._frac
+            x2 = min(w - 1, max(1 + 2 * r, x2))
+            _round_rect(self, 1, 1, x2, h - 1, r, fill=self._fill, outline="")
+
+
+# ======================================================================
+# Header phẳng (flat) + bộ đếm giờ tổng
+# ======================================================================
+class Header(tk.Canvas):
+    # Sprite capybara (by Rainloaf — rainloaf.itch.io/capybara-sprite-sheet):
+    #   sheet assets/capybara.png = 5 cột x 2 hàng (56x42 mỗi khung)
+    #   hàng 0 = đi PHẢI · hàng 1 = đi TRÁI
+    CAPY_W, CAPY_H, CAPY_COLS = 56, 42, 5
+    CAPY_SPEED = 4          # px mỗi bước
+    CAPY_INTERVAL = 80      # ms mỗi bước
+    CAPY_MARGIN = 24        # lề ngang khi đi qua lại
+    CAPY_BOTTOM = 6         # khoảng cách tới mép dưới header
+
+    def __init__(self, parent, title, subtitle):
+        super().__init__(parent, height=132, highlightthickness=0, bd=0)
+        self._title = title
+        self._subtitle = subtitle
+        self._timer = "00:00"
+        self._caption = CAP_TIME
+
+        # ---- trạng thái capybara (kỹ thuật sprite) ----
+        self._capy_R, self._capy_L, self._capy_sheet = [], [], None
+        self._load_capy_sprite()
+        self._capy_running = False
+        self._capy_paused = False
+        self._capy_dir = 1          # 1 = phải, -1 = trái
+        self._capy_x = float(self.CAPY_MARGIN)
+        self._capy_fi = 0           # chỉ số khung đi bộ
+        self._capy_step = 0
+        self._capy_job = None
+        self._capy_item = None
+        self._capy_xmin = self.CAPY_MARGIN
+        self._capy_xmax = self.CAPY_MARGIN
+
+        self.bind(EV_CONFIG, self._redraw)
+
+    # -------------------------------------------- nạp & cắt khung từ sprite-sheet
+    def _load_capy_sprite(self):
+        try:
+            base = os.path.dirname(os.path.abspath(__file__))
+            p = os.path.join(base, "assets", "capybara.png")
+            if not os.path.exists(p):
+                return
+            self._capy_sheet = tk.PhotoImage(file=p)   # giữ tham chiếu, tránh GC
+            w, h = self.CAPY_W, self.CAPY_H
+
+            def cut(col, row):
+                fr = tk.PhotoImage(width=w, height=h)
+                fr.tk.call(fr, "copy", self._capy_sheet, "-from",
+                           col * w, row * h, col * w + w, row * h + h, "-to", 0, 0)
+                return fr
+
+            self._capy_R = [cut(c, 0) for c in range(self.CAPY_COLS)]
+            self._capy_L = [cut(c, 1) for c in range(self.CAPY_COLS)]
+        except Exception:
+            self._capy_R, self._capy_L, self._capy_sheet = [], [], None
+
+    def _capy_ready(self):
+        return bool(self._capy_R) and bool(self._capy_L)
+
+    def _capy_ytop(self):
+        h = self.winfo_height() or 132
+        return h - self.CAPY_H - self.CAPY_BOTTOM
+
+    def set_timer(self, t):
+        self._timer = t
+        if hasattr(self, "_id_timer"):
+            self.itemconfig(self._id_timer, text=t)
+
+    def set_caption(self, c):
+        self._caption = c
+        if hasattr(self, "_id_cap"):
+            self.itemconfig(self._id_cap, text=c)
+
+    # ----------------------------------------------------- điều khiển capybara
+    def capy_start(self):
+        if not self._capy_ready():
+            return
+        self._capy_running = True
+        self._capy_paused = False
+        self._capy_dir = 1
+        self._capy_x = float(self._capy_xmin)
+        self._capy_fi = 0
+        self._capy_step = 0
+        if self._capy_item is not None:
+            self.itemconfig(self._capy_item, state="normal", image=self._capy_R[0])
+            self.coords(self._capy_item, self._capy_x, self._capy_ytop())
+        if self._capy_job is None:
+            self._capy_job = self.after(self.CAPY_INTERVAL, self._capy_anim)
+
+    def capy_pause(self, paused):
+        self._capy_paused = bool(paused)
+
+    def capy_stop(self):
+        self._capy_running = False
+        self._capy_paused = False
+        if self._capy_job is not None:
+            try:
+                self.after_cancel(self._capy_job)
+            except Exception:
+                pass
+            self._capy_job = None
+        if self._capy_item is not None:
+            self.itemconfig(self._capy_item, state="hidden")
+
+    def _capy_anim(self):
+        self._capy_job = None
+        if not self._capy_running:
+            return
+        if (not self._capy_paused and self._capy_item is not None
+                and self._capy_ready()):
+            self._capy_x += self.CAPY_SPEED * self._capy_dir
+            if self._capy_x >= self._capy_xmax:
+                self._capy_x = float(self._capy_xmax)
+                self._capy_dir = -1
+            elif self._capy_x <= self._capy_xmin:
+                self._capy_x = float(self._capy_xmin)
+                self._capy_dir = 1
+            # đổi khung đi bộ mỗi 2 bước cho dáng đi tự nhiên
+            self._capy_step += 1
+            if self._capy_step % 2 == 0:
+                self._capy_fi = (self._capy_fi + 1) % self.CAPY_COLS
+            frames = self._capy_R if self._capy_dir >= 0 else self._capy_L
+            self.itemconfig(self._capy_item, image=frames[self._capy_fi])
+            self.coords(self._capy_item, self._capy_x, self._capy_ytop())
+        self._capy_job = self.after(self.CAPY_INTERVAL, self._capy_anim)
+
+    def _redraw(self, e):
+        self.delete("all")
+        w, h = e.width, e.height
+        self.configure(bg=C["header_bg"])
+        self.create_rectangle(0, 0, w, h, fill=C["header_bg"], outline="")
+        self.create_text(28, 30, text=self._title, anchor="w",
+                         fill="#FFFFFF", font=_font(20, "bold"))
+        self.create_text(28, 56, text=self._subtitle, anchor="w",
+                         fill="#F4F1DE", font=_font(11))
+        self._id_cap = self.create_text(w - 28, 26, text=self._caption,
+                                        anchor="e", fill="#F2CC8F", font=_font(10, "bold"))
+        self._id_timer = self.create_text(w - 28, 58, text=self._timer,
+                                          anchor="e", fill="#FFFFFF", font=_font(30, "bold"))
+
+        # ---- capybara: tạo lại item ảnh ở dải dưới header ----
+        self._capy_item = None
+        if self._capy_ready():
+            self._capy_xmin = self.CAPY_MARGIN
+            self._capy_xmax = max(self._capy_xmin, w - self.CAPY_MARGIN - self.CAPY_W)
+            self._capy_x = min(max(self._capy_x, self._capy_xmin), self._capy_xmax)
+            frames = self._capy_R if self._capy_dir >= 0 else self._capy_L
+            self._capy_item = self.create_image(
+                self._capy_x, h - self.CAPY_H - self.CAPY_BOTTOM,
+                anchor="nw", image=frames[self._capy_fi])
+            if not self._capy_running:
+                self.itemconfig(self._capy_item, state="hidden")
+
+
+# ======================================================================
+# Nút bo góc (Canvas) — phẳng, có hover
+# ======================================================================
+class RoundButton(tk.Canvas):
+    def __init__(self, parent, text, command, *, bg, fg, hover, app_bg,
+                 width=150, height=44, radius=16, font=None):
+        super().__init__(parent, width=width, height=height,
+                         highlightthickness=0, bd=0, bg=app_bg)
+        self.command = command
+        self._bg, self._hover, self._fg = bg, hover, fg
+        self._enabled = True
+        self._rect = _round_rect(self, 2, 2, width - 2, height - 2, radius,
+                                 fill=bg, outline="")
+        self._txt = self.create_text(width // 2, height // 2, text=text,
+                                     fill=fg, font=font or _font(11, "bold"))
+        self.bind("<Enter>", self._enter)
+        self.bind("<Leave>", self._leave)
+        self.bind("<Button-1>", self._click)
+
+    def _enter(self, _):
+        if self._enabled:
+            self.itemconfig(self._rect, fill=self._hover)
+            self.config(cursor="hand2")
+
+    def _leave(self, _):
+        if self._enabled:
+            self.itemconfig(self._rect, fill=self._bg)
+
+    def _click(self, _):
+        if self._enabled and self.command:
+            self.command()
+
+    def set_text(self, t):
+        self.itemconfig(self._txt, text=t)
+
+    def set_enabled(self, on):
+        self._enabled = on
+        self.itemconfig(self._rect, fill=self._bg if on else C["disabled_bg"])
+        self.itemconfig(self._txt, fill=self._fg if on else C["disabled_fg"])
+        self.config(cursor="hand2" if on else "")
+
+
+# ======================================================================
+# Một dòng file: chấm trạng thái + tên + thời gian + thanh tiến độ bo tròn
+# ======================================================================
+class FileRow(tk.Frame):
+    def __init__(self, parent, name, bg):
+        super().__init__(parent, bg=bg)
+        self._bg = bg
+        pad = tk.Frame(self, bg=bg)
+        pad.pack(fill="x", padx=16, pady=10)
+
+        top = tk.Frame(pad, bg=bg)
+        top.pack(fill="x")
+        self.dot = tk.Canvas(top, width=12, height=12, bg=bg,
+                             highlightthickness=0, bd=0)
+        self._dot_id = self.dot.create_oval(2, 2, 11, 11, fill=C["dot"], outline="")
+        self.dot.pack(side="left", padx=(0, 10))
+        self.name_lbl = tk.Label(top, text=_middle_ellipsis(name), bg=bg, fg=C["text"],
+                                 font=_font(11, "bold"), anchor="w")
+        self.name_lbl.pack(side="left")
+        self.meta_lbl = tk.Label(top, text="Chờ", bg=bg, fg=C["sub"],
+                                 font=_font(10), anchor="e")
+        self.meta_lbl.pack(side="right")
+
+        self.bar = RoundProgress(pad, app_bg=bg, trough=C["trough"],
+                                 fill=C["ok"], height=9, radius=4)
+        self.bar.pack(fill="x", pady=(7, 0))
+
+    def _set_dot(self, color):
+        self.dot.itemconfig(self._dot_id, fill=color)
+
+    def get_frac(self):
+        return self.bar.get_frac()
+
+    def set_pending(self):
+        self.bar.set_fill(C["ok"])
+        self.bar.set_frac(0)
+        self._set_dot(C["dot"])
+        self.meta_lbl.config(text="Chờ", fg=C["sub"])
+
+    def set_processing(self, frac, elapsed):
+        # Sage xuyên suốt trong lúc xử lý
+        self.bar.set_fill(C["ok"])
+        self.bar.set_frac(max(0.03, frac))
+        self._set_dot(C["ok"])
+        self.meta_lbl.config(text=f"Đang xử lý · {elapsed:.1f}s · {int(frac*100)}%",
+                             fg=C["ok"])
+
+    def set_done(self, elapsed, warn=False):
+        # Thành công -> Sage; chỉ chuyển Cam khi có cảnh báo
+        self.bar.set_fill(C["warn"] if warn else C["ok"])
+        self.bar.set_frac(1.0)
+        self._set_dot(C["warn"] if warn else C["ok"])
+        self.meta_lbl.config(text=("⚠ Cần soát · %.1fs" % elapsed) if warn
+                             else ("✓ Xong · %.1fs" % elapsed),
+                             fg=C["warn"] if warn else C["ok"])
+
+    def set_error(self, elapsed):
+        # Chỉ màu Đỏ khi thất bại
+        self.bar.set_fill(C["err"])
+        self.bar.set_frac(1.0)
+        self._set_dot(C["err"])
+        self.meta_lbl.config(text="✖ Lỗi · %.1fs" % elapsed, fg=C["err"])
+
+    def set_stopped(self):
+        self.bar.set_fill(C["dot"])
+        self._set_dot(C["sub"])
+        self.meta_lbl.config(text="⏹ Đã dừng", fg=C["sub"])
+
+
+# ======================================================================
+# Ứng dụng chính
+# ======================================================================
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
+        global FONT
+        FONT = _pick_font()
+
         self.title(APP_TITLE)
-        self.geometry("860x640")
-        self.minsize(760, 560)
-        self.configure(bg=BG)
+        self.geometry("960x740")
+        self.minsize(820, 620)
+        self._set_icon()
+
+        self.theme_name = "light"
+        apply_theme(self.theme_name)
+        self.configure(bg=C["bg"])
+
         self.files = []
+        self.rows = []
+        self.failed = set()      # chỉ số file bị lỗi (để thử lại)
+        self._run_map = []       # ánh xạ chỉ số lượt chạy -> chỉ số file
         self.out_dir = tk.StringVar(value="")
         self.hi_quality = tk.BooleanVar(value=False)
         self.msg_q = queue.Queue()
         self.running = False
+
+        # điều khiển dừng / tạm dừng
+        self._cancel = threading.Event()
+        self._resume = threading.Event()
+        self._resume.set()
+        self.paused = False
+        self.paused_total = 0.0
+        self._pause_t = None
+
+        # đếm giờ
+        self.t0 = None
+        self.file_t0 = {}
+        self.file_elapsed = {}
+        self.active_index = None
+
+        self._init_styles()
         self._build()
         self.after(80, self._drain_queue)
+        self.after(120, self._tick)
+
+    def _set_icon(self):
+        """Đặt icon cửa sổ (PNG) nếu có."""
+        try:
+            base = os.path.dirname(os.path.abspath(__file__))
+            for nm in ("icon_256.png", "icon.png"):
+                p = os.path.join(base, "assets", nm)
+                if os.path.exists(p):
+                    self._icon_img = tk.PhotoImage(file=p)
+                    self.iconphoto(True, self._icon_img)
+                    break
+        except Exception:
+            pass
+
+    # ------------------------------------------------------------------ styles
+    def _init_styles(self):
+        st = ttk.Style(self)
+        try:
+            st.theme_use("clam")
+        except Exception:
+            pass
+        st.configure("Vertical.TScrollbar", background=C["border"],
+                     troughcolor=C["card"], bordercolor=C["card"],
+                     arrowcolor=C["sub"], relief="flat")
+        st.map("Vertical.TScrollbar", background=[("active", C["ok"])])
+        st.configure("Card.TCheckbutton", background=C["bg"], foreground=C["sub"],
+                     font=_font(10))
+        st.map("Card.TCheckbutton", background=[("active", C["bg"])],
+               foreground=[("active", C["text"])])
 
     # ------------------------------------------------------------------ UI
     def _build(self):
-        style = ttk.Style(self)
-        try:
-            style.theme_use("clam")
-        except Exception:
-            pass
-        style.configure("TButton", padding=8, font=("Segoe UI", 10))
-        style.configure("Accent.TButton", foreground="#fff",
-                        background=ACCENT, padding=10, font=("Segoe UI", 11, "bold"))
-        style.map("Accent.TButton", background=[("active", "#1d4ed8")])
-        style.configure("TProgressbar", thickness=18, background=ACCENT)
+        self.header = Header(self, "Chuyển Báo cáo tài chính PDF → Excel",
+                             "Bảng cân đối kế toán · Kết quả HĐKD · Lưu chuyển tiền tệ "
+                             "— mỗi báo cáo 1 sheet (Thông tư 200)")
+        self.header.pack(fill="x")
 
-        header = tk.Frame(self, bg=BG)
-        header.pack(fill="x", padx=20, pady=(18, 6))
-        tk.Label(header, text="Chuyển Báo cáo tài chính PDF → Excel", bg=BG, fg=FG,
-                 font=("Segoe UI", 18, "bold")).pack(anchor="w")
-        tk.Label(header, text="Bóc 3 báo cáo: Bảng cân đối kế toán · Kết quả HĐKD · "
-                 "Lưu chuyển tiền tệ — mỗi báo cáo 1 sheet (mẫu Thông tư 200).",
-                 bg=BG, fg=SUB, font=("Segoe UI", 10)).pack(anchor="w", pady=(2, 0))
-
-        body = tk.Frame(self, bg=BG)
-        body.pack(fill="both", expand=True, padx=20, pady=10)
-
-        # --- danh sách file ---
-        left = tk.Frame(body, bg=CARD, bd=0, highlightthickness=1,
-                        highlightbackground="#334155")
-        left.pack(side="left", fill="both", expand=True)
-        bar = tk.Frame(left, bg=CARD)
-        bar.pack(fill="x", padx=12, pady=10)
-        tk.Label(bar, text="File PDF (tối đa %d)" % MAX_FILES, bg=CARD, fg=FG,
-                 font=("Segoe UI", 11, "bold")).pack(side="left")
-        self.count_lbl = tk.Label(bar, text="0 file", bg=CARD, fg=SUB,
-                                   font=("Segoe UI", 10))
-        self.count_lbl.pack(side="right")
-
-        self.listbox = tk.Listbox(left, selectmode="extended", activestyle="none",
-                                  bg="#0b1220", fg=FG, bd=0, highlightthickness=0,
-                                  font=("Consolas", 10), selectbackground=ACCENT)
-        self.listbox.pack(fill="both", expand=True, padx=12, pady=(0, 8))
-
-        btns = tk.Frame(left, bg=CARD)
-        btns.pack(fill="x", padx=12, pady=(0, 12))
-        ttk.Button(btns, text="+ Thêm file", command=self.add_files).pack(side="left")
-        ttk.Button(btns, text="Xoá chọn", command=self.remove_selected).pack(side="left", padx=6)
-        ttk.Button(btns, text="Xoá hết", command=self.clear_files).pack(side="left")
-
-        # --- bảng điều khiển ---
-        right = tk.Frame(body, bg=BG, width=300)
-        right.pack(side="right", fill="y", padx=(14, 0))
-        right.pack_propagate(False)
-
-        tk.Label(right, text="Thư mục lưu Excel", bg=BG, fg=FG,
-                 font=("Segoe UI", 11, "bold")).pack(anchor="w")
-        of = tk.Frame(right, bg=BG); of.pack(fill="x", pady=(4, 12))
-        self.out_entry = tk.Entry(of, textvariable=self.out_dir, bg="#0b1220", fg=FG,
-                                  bd=0, font=("Segoe UI", 9), insertbackground=FG)
-        self.out_entry.pack(side="left", fill="x", expand=True, ipady=6, padx=(0, 6))
-        ttk.Button(of, text="Chọn…", command=self.pick_out, width=7).pack(side="right")
-
-        tk.Checkbutton(right, text="Chất lượng cao (chậm hơn)",
-                       variable=self.hi_quality, bg=BG, fg=SUB, selectcolor=BG,
-                       activebackground=BG, activeforeground=FG,
-                       font=("Segoe UI", 9)).pack(anchor="w")
-
-        self.convert_btn = ttk.Button(right, text="CHUYỂN ĐỔI  ▶",
-                                      style="Accent.TButton", command=self.start)
-        self.convert_btn.pack(fill="x", pady=14)
-
-        self.progress = ttk.Progressbar(right, mode="determinate")
-        self.progress.pack(fill="x")
-        self.status_lbl = tk.Label(right, text="Sẵn sàng", bg=BG, fg=SUB,
-                                   font=("Segoe UI", 9))
+        # thanh tiến độ tổng (bo tròn, Sage) + dòng trạng thái
+        topbar = tk.Frame(self, bg=C["bg"])
+        topbar.pack(fill="x", padx=22, pady=(14, 0))
+        self.overall = RoundProgress(topbar, app_bg=C["bg"], trough=C["trough"],
+                                     fill=C["ok"], height=9, radius=4)
+        self.overall.pack(fill="x")
+        self.status_lbl = tk.Label(topbar, text="Sẵn sàng", bg=C["bg"], fg=C["sub"],
+                                   font=_font(10), anchor="w")
         self.status_lbl.pack(anchor="w", pady=(6, 0))
 
-        # --- nhật ký ---
-        tk.Label(self, text="Nhật ký", bg=BG, fg=FG,
-                 font=("Segoe UI", 10, "bold")).pack(anchor="w", padx=20)
-        logf = tk.Frame(self, bg=BG); logf.pack(fill="both", padx=20, pady=(2, 16))
-        self.log = tk.Text(logf, height=9, bg="#0b1220", fg=FG, bd=0,
-                           font=("Consolas", 9), wrap="word", state="disabled")
+        # ---- thanh công cụ (nhấn Sage) ----
+        tool = tk.Frame(self, bg=C["bg"])
+        tool.pack(fill="x", padx=22, pady=(8, 0))
+        self.btn_add = RoundButton(tool, "＋  Thêm file", self.add_files,
+                                   bg=C["ok"], fg="#FFFFFF", hover=C["ok_hover"],
+                                   app_bg=C["bg"], width=150)
+        self.btn_add.pack(side="left")
+        self.btn_folder = RoundButton(tool, "📁  Thêm thư mục", self.add_folder,
+                                      bg=C["sage_soft"], fg=C["ok"], hover=C["sage_soft_hover"],
+                                      app_bg=C["bg"], width=170)
+        self.btn_folder.pack(side="left", padx=8)
+        self.btn_clear = RoundButton(tool, "🗑  Xoá hết", self.clear_files,
+                                     bg=C["neutral_bg"], fg=C["sub"], hover=C["neutral_hover"],
+                                     app_bg=C["bg"], width=120)
+        self.btn_clear.pack(side="left")
+
+        theme_txt = "🌙  Tối" if self.theme_name == "light" else "☀️  Sáng"
+        self.btn_theme = RoundButton(tool, theme_txt, self.toggle_theme,
+                                     bg=C["neutral_bg"], fg=C["text"], hover=C["neutral_hover"],
+                                     app_bg=C["bg"], width=110)
+        self.btn_theme.pack(side="right")
+        self.count_lbl = tk.Label(tool, text="%d / %d file" % (len(self.files), MAX_FILES),
+                                  bg=C["bg"], fg=C["ok"], font=_font(11, "bold"))
+        self.count_lbl.pack(side="right", padx=(0, 14))
+
+        # ---- danh sách file (thẻ bo tròn, cuộn được) ----
+        listcard = RoundCard(self, app_bg=C["bg"], fill=C["list_bg"],
+                             border=C["border"], radius=18, pad=8)
+        listcard.pack(fill="both", expand=True, padx=22, pady=12)
+        self.canvas = tk.Canvas(listcard.body, bg=C["list_bg"], highlightthickness=0, bd=0)
+        vsb = ttk.Scrollbar(listcard.body, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=vsb.set)
+        vsb.pack(side="right", fill="y")
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.inner = tk.Frame(self.canvas, bg=C["list_bg"])
+        self._win = self.canvas.create_window((0, 0), window=self.inner, anchor="nw")
+        self.inner.bind(EV_CONFIG,
+                        lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+        self.canvas.bind(EV_CONFIG,
+                         lambda e: self.canvas.itemconfig(self._win, width=e.width))
+        self.bind_all("<MouseWheel>", self._on_wheel)
+        self.bind_all("<Button-4>", lambda e: self._wheel_dir(e, -1))
+        self.bind_all("<Button-5>", lambda e: self._wheel_dir(e, 1))
+
+        self.placeholder = tk.Label(
+            self.inner, bg=C["list_bg"], fg=C["sub"], justify="center",
+            font=_font(12),
+            text="\n\n📄\n\nChưa có file nào\n"
+                 "Bấm “Thêm file” (chỉ .pdf) hoặc “Thêm thư mục” để bắt đầu\n"
+                 "Tối đa %d file mỗi lần" % MAX_FILES)
+
+        # ---- hàng dưới: thư mục lưu + chất lượng ----
+        bottom = tk.Frame(self, bg=C["bg"])
+        bottom.pack(fill="x", padx=22, pady=(0, 8))
+
+        opt = tk.Frame(bottom, bg=C["bg"])
+        opt.pack(fill="x")
+        tk.Label(opt, text="Lưu Excel tại:", bg=C["bg"], fg=C["text"],
+                 font=_font(10, "bold")).pack(side="left")
+        entrycard = RoundCard(opt, app_bg=C["bg"], fill=C["entry_bg"],
+                              border=C["border"], radius=12, pad=3)
+        entrycard.configure(height=38)
+        entrycard.pack(side="left", fill="x", expand=True, padx=10)
+        self.out_entry = tk.Entry(entrycard.body, textvariable=self.out_dir,
+                                  bg=C["entry_bg"], fg=C["text"], relief="flat",
+                                  font=_font(10), insertbackground=C["text"],
+                                  highlightthickness=0, bd=0)
+        self.out_entry.pack(fill="both", expand=True, padx=8)
+        RoundButton(opt, "Chọn…", self.pick_out, bg=C["neutral_bg"], fg=C["text"],
+                    hover=C["neutral_hover"], app_bg=C["bg"], width=86,
+                    height=36).pack(side="left")
+        ttk.Checkbutton(opt, text="Chất lượng cao (chậm hơn)", style="Card.TCheckbutton",
+                        variable=self.hi_quality).pack(side="left", padx=(14, 0))
+
+        # ---- hàng nút: Chuyển đổi · Làm mới · Tạm dừng · Dừng hẳn ----
+        runrow = tk.Frame(bottom, bg=C["bg"])
+        runrow.pack(fill="x", pady=(12, 0))
+        self.convert_btn = RoundButton(runrow, "CHUYỂN ĐỔI  ▶", self.start,
+                                       bg=C["accent"], fg="#FFFFFF", hover=C["accent_hover"],
+                                       app_bg=C["bg"], width=230, height=50,
+                                       font=_font(13, "bold"))
+        self.convert_btn.pack(side="left")
+        self.btn_retry = RoundButton(runrow, LBL_RETRY, self.retry_failed,
+                                     bg=C["warn"], fg="#FFFFFF", hover=_shade(C["warn"], 0.9),
+                                     app_bg=C["bg"], width=140, height=50,
+                                     font=_font(12, "bold"))
+        self.btn_retry.pack(side="left", padx=(8, 0))
+        self.btn_refresh = RoundButton(runrow, "🔄  Làm mới", self.reset_tool,
+                                       bg=C["sage_soft"], fg=C["ok"], hover=C["sage_soft_hover"],
+                                       app_bg=C["bg"], width=120, height=50,
+                                       font=_font(12, "bold"))
+        self.btn_refresh.pack(side="left", padx=(8, 0))
+        self.btn_stop = RoundButton(runrow, "⏹  Dừng", self.stop,
+                                    bg=C["err"], fg="#FFFFFF", hover=_shade(C["err"], 0.88),
+                                    app_bg=C["bg"], width=110, height=50,
+                                    font=_font(12, "bold"))
+        self.btn_stop.pack(side="right")
+        self.btn_pause = RoundButton(runrow, LBL_PAUSE, self.toggle_pause,
+                                     bg=C["neutral_bg"], fg=C["text"], hover=C["neutral_hover"],
+                                     app_bg=C["bg"], width=140, height=50,
+                                     font=_font(12, "bold"))
+        self.btn_pause.pack(side="right", padx=(0, 8))
+        self.btn_stop.set_enabled(False)
+        self.btn_pause.set_enabled(False)
+        self.btn_retry.set_enabled(False)
+
+        # ---- nhật ký (thẻ bo tròn) ----
+        logcard = RoundCard(self, app_bg=C["bg"], fill=C["card"],
+                            border=C["border"], radius=16, pad=10, fit=True)
+        logcard.pack(fill="x", padx=22, pady=(0, 16))
+        tk.Label(logcard.body, text="Nhật ký", bg=C["card"], fg=C["text"],
+                 font=_font(10, "bold")).pack(anchor="w")
+        logf = tk.Frame(logcard.body, bg=C["card"])
+        logf.pack(fill="x", pady=(4, 0))
+        self.log = tk.Text(logf, height=6, bg=C["log_bg"], fg=C["text"], bd=0,
+                           font=("Menlo", 9), wrap="word", state="disabled",
+                           highlightthickness=0, insertbackground=C["text"])
         self.log.pack(side="left", fill="both", expand=True)
-        sb = ttk.Scrollbar(logf, command=self.log.yview); sb.pack(side="right", fill="y")
+        sb = ttk.Scrollbar(logf, command=self.log.yview)
+        sb.pack(side="right", fill="y")
         self.log.configure(yscrollcommand=sb.set)
-        for tag, col in (("ok", OK), ("warn", WARN), ("err", ERR), ("muted", SUB)):
+        for tag, col in (("ok", C["ok"]), ("warn", C["warn"]),
+                         ("err", C["err"]), ("muted", C["sub"])):
             self.log.tag_configure(tag, foreground=col)
 
+        self._rebuild_list()
         self._check_tesseract()
 
-    # --------------------------------------------------------------- helpers
+    # ---------- cuộn bằng con lăn chuột (theo vùng con trỏ) ----------
+    def _wheel_target(self, e):
+        node = self.winfo_containing(e.x_root, e.y_root)
+        while node is not None:
+            if node is self.log:
+                return self.log
+            if node is self.canvas or node is self.inner:
+                return self.canvas
+            node = getattr(node, "master", None)
+        return self.canvas
+
+    def _on_wheel(self, e):
+        self._wheel_target(e).yview_scroll(-1 if e.delta > 0 else 1, "units")
+
+    def _wheel_dir(self, e, d):
+        self._wheel_target(e).yview_scroll(d, "units")
+
+    # ----------------------------------------------------------- đổi theme
+    def toggle_theme(self):
+        if self.running:
+            return
+        self.theme_name = "dark" if self.theme_name == "light" else "light"
+        apply_theme(self.theme_name)
+        self._init_styles()
+        for w in self.winfo_children():
+            w.destroy()
+        self.rows.clear()
+        self.configure(bg=C["bg"])
+        self._build()
+
+    # ------------------------------------------------------------- helpers
     def _logln(self, text, tag=None):
         self.log.configure(state="normal")
         self.log.insert("end", text + "\n", tag or ())
@@ -144,41 +730,80 @@ class App(tk.Tk):
         except ocr.TesseractNotFound as e:
             self._logln("✖ " + str(e), "err")
 
-    def add_files(self):
-        paths = filedialog.askopenfilenames(
-            title="Chọn file PDF báo cáo tài chính",
-            filetypes=[("PDF", "*.pdf"), ("Tất cả", "*.*")])
+    # --------------------------------------------------------------- thêm file
+    def _add_paths(self, paths):
+        added = 0
+        hit_limit = False
         for p in paths:
-            if p not in self.files:
-                if len(self.files) >= MAX_FILES:
-                    messagebox.showwarning("Giới hạn", f"Tối đa {MAX_FILES} file mỗi lần.")
-                    break
-                self.files.append(p)
+            if not p.lower().endswith(".pdf"):
+                continue
+            if p in self.files:
+                continue
+            if len(self.files) >= MAX_FILES:
+                hit_limit = True
+                break
+            self.files.append(p)
+            added += 1
+        if hit_limit:
+            messagebox.showwarning("Giới hạn", f"Chỉ nhận tối đa {MAX_FILES} file mỗi lần.")
         if self.files and not self.out_dir.get():
             self.out_dir.set(os.path.join(os.path.dirname(self.files[0]), "Excel_output"))
-        self._refresh_list()
+        if added or hit_limit:
+            self._rebuild_list()
 
-    def remove_selected(self):
-        for i in reversed(self.listbox.curselection()):
-            del self.files[i]
-        self._refresh_list()
+    def add_files(self):
+        if self.running:
+            return
+        paths = filedialog.askopenfilenames(
+            title="Chọn file PDF báo cáo tài chính",
+            filetypes=[("File PDF", "*.pdf")])
+        self._add_paths(list(paths))
+
+    def add_folder(self):
+        if self.running:
+            return
+        d = filedialog.askdirectory(title="Chọn thư mục chứa file PDF")
+        if not d:
+            return
+        found = []
+        for root, _dirs, names in os.walk(d):
+            for n in sorted(names):
+                if n.lower().endswith(".pdf"):
+                    found.append(os.path.join(root, n))
+        if not found:
+            messagebox.showinfo("Trống", "Không tìm thấy file .pdf trong thư mục này.")
+            return
+        self._add_paths(sorted(found))
 
     def clear_files(self):
-        self.files.clear(); self._refresh_list()
+        if self.running:
+            return
+        self.files.clear()
+        self._rebuild_list()
 
-    def _refresh_list(self):
-        self.listbox.delete(0, "end")
-        for p in self.files:
-            self.listbox.insert("end", "  " + os.path.basename(p))
-        self.count_lbl.config(text=f"{len(self.files)} file")
+    def _rebuild_list(self):
+        for r in self.rows:
+            r.destroy()
+        self.rows.clear()
+        if not self.files:
+            self.placeholder.pack(fill="both", expand=True, pady=40)
+        else:
+            self.placeholder.pack_forget()
+            for i, p in enumerate(self.files):
+                bg = C["list_bg"] if i % 2 == 0 else C["row_alt"]
+                row = FileRow(self.inner, os.path.basename(p), bg)
+                row.pack(fill="x")
+                self.rows.append(row)
+        self.count_lbl.config(text=f"{len(self.files)} / {MAX_FILES} file")
+        self.canvas.yview_moveto(0)
 
     def pick_out(self):
         d = filedialog.askdirectory(title="Chọn thư mục lưu Excel")
         if d:
             self.out_dir.set(d)
 
-    # --------------------------------------------------------------- convert
-    def start(self):
+    # --------------------------------------------------------------- chuyển đổi
+    def start(self, indices=None):
         if self.running:
             return
         if not self.files:
@@ -188,24 +813,145 @@ class App(tk.Tk):
         if not out:
             messagebox.showinfo("Thiếu thư mục", "Hãy chọn thư mục lưu Excel.")
             return
+
+        if indices is None:               # chạy mới toàn bộ -> xoá danh sách lỗi cũ
+            indices = list(range(len(self.files)))
+            self.failed = set()
+        if not indices:
+            return
+        self._run_map = list(indices)
+        files_subset = [self.files[k] for k in indices]
+
         self.running = True
-        self.convert_btn.config(state="disabled")
-        self.progress.config(value=0, maximum=len(self.files))
-        self.status_lbl.config(text="Đang xử lý…")
-        self._logln("─" * 48, "muted")
-        t = threading.Thread(target=self._worker, args=(list(self.files), out), daemon=True)
+        self._cancel.clear()
+        self._resume.set()
+        self.paused = False
+        self.paused_total = 0.0
+        self._pause_t = None
+
+        self.convert_btn.set_enabled(False)
+        self.convert_btn.set_text("ĐANG XỬ LÝ…")
+        self.btn_add.set_enabled(False)
+        self.btn_folder.set_enabled(False)
+        self.btn_clear.set_enabled(False)
+        self.btn_theme.set_enabled(False)
+        self.btn_refresh.set_enabled(False)
+        self.btn_retry.set_enabled(False)
+        self.btn_pause.set_enabled(True)
+        self.btn_pause.set_text(LBL_PAUSE)
+        self.btn_stop.set_enabled(True)
+        self.overall.set_frac(0)
+        self.status_lbl.config(text="Đang xử lý…", fg=C["text"])
+        self.header.set_caption(CAP_TIME)
+        self.header.capy_start()          # capybara chạy qua lại lúc convert
+
+        self.t0 = time.time()
+        self.file_t0.clear()
+        self.file_elapsed.clear()
+        self.active_index = None
+        for k in indices:
+            self.rows[k].set_pending()
+
+        self._logln("─" * 52, "muted")
+        t = threading.Thread(target=self._worker, args=(files_subset, out), daemon=True)
         t.start()
 
+    def retry_failed(self):
+        if self.running or not self.failed:
+            return
+        self._logln(f"↻ Thử lại {len(self.failed)} file bị lỗi…", "warn")
+        self.start(indices=sorted(self.failed))
+
+    def toggle_pause(self):
+        if not self.running:
+            return
+        if not self.paused:
+            self.paused = True
+            self._pause_t = time.time()
+            self._resume.clear()
+            self.btn_pause.set_text("▶  Tiếp tục")
+            self.status_lbl.config(text="Đã tạm dừng (dừng trước file kế tiếp)…",
+                                   fg=C["warn"])
+            self.header.set_caption("TẠM DỪNG")
+            self.header.capy_pause(True)        # capybara đứng yên khi tạm dừng
+        else:
+            self.paused = False
+            if self._pause_t:
+                self.paused_total += time.time() - self._pause_t
+                self._pause_t = None
+            self._resume.set()
+            self.btn_pause.set_text(LBL_PAUSE)
+            self.status_lbl.config(text="Đang xử lý…", fg=C["text"])
+            self.header.set_caption(CAP_TIME)
+            self.header.capy_pause(False)       # capybara đi tiếp
+
+    def stop(self):
+        if not self.running:
+            return
+        self._cancel.set()
+        if self.paused:                 # mở khoá để luồng thoát khỏi tạm dừng
+            self.paused = False
+            if self._pause_t:
+                self.paused_total += time.time() - self._pause_t
+                self._pause_t = None
+        self._resume.set()
+        self.btn_pause.set_enabled(False)
+        self.btn_stop.set_enabled(False)
+        self.status_lbl.config(text="Đang dừng…", fg=C["err"])
+
+    def reset_tool(self):
+        """Làm mới: đưa công cụ về trạng thái sẵn sàng."""
+        if self.running:
+            return
+        self.files.clear()
+        self.failed = set()
+        self.btn_retry.set_enabled(False)
+        self.btn_retry.set_text(LBL_RETRY)
+        self._rebuild_list()
+        self.overall.set_frac(0)
+        self.t0 = None
+        self.file_t0.clear()
+        self.file_elapsed.clear()
+        self.active_index = None
+        self.header.set_timer("00:00")
+        self.header.set_caption(CAP_TIME)
+        self.status_lbl.config(text="Sẵn sàng", fg=C["sub"])
+        self.log.configure(state="normal")
+        self.log.delete("1.0", "end")
+        self.log.configure(state="disabled")
+        self._check_tesseract()
+
     def _worker(self, files, out_dir):
-        def log(m): self.msg_q.put(("log", m))
-        def prog(done, total): self.msg_q.put(("prog", (done, total)))
+        def log(m):
+            self.msg_q.put(("log", m))
+
+        def prog(done, total):
+            self.msg_q.put(("prog", (done, total)))
+
+        def on_file(i, ev, data):
+            self.msg_q.put(("file", (i, ev, data)))
+
         try:
             dpis = (180, 220, 290) if self.hi_quality.get() else (180, 235)
-            results = engine.convert_many(files, out_dir, lang="vie", dpis=dpis,
-                                          log=log, progress=prog)
+            results = engine.convert_many(
+                files, out_dir, lang="vie", dpis=dpis, log=log, progress=prog,
+                on_file=on_file,
+                cancel=self._cancel.is_set,
+                pause_wait=self._resume.wait)
             self.msg_q.put(("done", results))
         except Exception as e:
             self.msg_q.put(("fatal", f"{e}\n{traceback.format_exc()}"))
+
+    # --------------------------------------------------------------- vòng lặp UI
+    def _tick(self):
+        if self.running and self.t0 is not None and not self.paused:
+            el_total = time.time() - self.t0 - self.paused_total
+            self.header.set_timer(_fmt_time(el_total))
+            i = self.active_index
+            if i is not None and i < len(self.rows) and i in self.file_t0:
+                el = time.time() - self.file_t0[i]
+                self.rows[i].set_processing(self.rows[i].get_frac(), el)
+        self.after(120, self._tick)
 
     def _drain_queue(self):
         try:
@@ -215,8 +961,10 @@ class App(tk.Tk):
                     self._logln(payload)
                 elif kind == "prog":
                     done, total = payload
-                    self.progress.config(value=done, maximum=total)
-                    self.status_lbl.config(text=f"{done}/{total} file")
+                    self.overall.set_frac(done / max(1, total))
+                    self.status_lbl.config(text=f"{done}/{total} file đã xong")
+                elif kind == "file":
+                    self._on_file_event(*payload)
                 elif kind == "done":
                     self._finish(payload)
                 elif kind == "fatal":
@@ -226,9 +974,42 @@ class App(tk.Tk):
             pass
         self.after(80, self._drain_queue)
 
+    def _on_file_event(self, i, ev, data):
+        # i là chỉ số trong lượt chạy -> ánh xạ về chỉ số dòng/file thực tế
+        idx = self._run_map[i] if i < len(self._run_map) else i
+        if idx >= len(self.rows):
+            return
+        row = self.rows[idx]
+        if ev == "start":
+            self.active_index = idx
+            self.file_t0[idx] = time.time()
+            row.set_processing(0.0, 0.0)
+        elif ev == "progress":
+            el = time.time() - self.file_t0.get(idx, time.time())
+            row.set_processing(float(data), el)
+        elif ev == "cancelled":
+            for k in self._run_map[i:]:
+                self.rows[k].set_stopped()
+            self.active_index = None
+        elif ev in ("done", "error"):
+            el = time.time() - self.file_t0.get(idx, time.time())
+            self.file_elapsed[idx] = el
+            if self.active_index == idx:
+                self.active_index = None
+            if ev == "error":
+                self.failed.add(idx)
+                row.set_error(el)
+            else:
+                self.failed.discard(idx)
+                warn = bool(data.get("warnings") or data.get("conflicts")
+                            or any(not k for _d, k, _ in (data.get("checks") or [])))
+                row.set_done(el, warn=warn)
+
     def _finish(self, results):
         ok = sum(1 for r in results if r.get("out_path"))
-        self._logln("─" * 48, "muted")
+        cancelled = self._cancel.is_set()
+        total_t = (time.time() - self.t0 - self.paused_total) if self.t0 else 0
+        self._logln("─" * 52, "muted")
         for r in results:
             if not r.get("out_path"):
                 self._logln(f"✖ {r['name']}: {r.get('error','lỗi')}", "err")
@@ -246,17 +1027,30 @@ class App(tk.Tk):
                             f"(hai lần đọc lệch nhau).", "warn")
             if not warns and not bad and not conflicts:
                 self._logln(f"✓ {r['name']}: OK (đã kiểm tra cân đối)", "ok")
-        self._logln(f"Hoàn tất: {ok}/{len(results)} file. Lưu tại: {self.out_dir.get()}", "ok")
-        self.status_lbl.config(text=f"Xong {ok}/{len(results)}")
-        try:
-            self._open_folder(self.out_dir.get())
-        except Exception:
-            pass
+
+        if cancelled:
+            self._logln(f"⏹ Đã dừng. Hoàn tất {ok}/{len(self.files)} file "
+                        f"trong {_fmt_time(total_t)}. Lưu tại: {self.out_dir.get()}", "warn")
+            self.status_lbl.config(text=f"Đã dừng · {ok}/{len(self.files)} · "
+                                   f"{_fmt_time(total_t)}", fg=C["warn"])
+            self.header.set_caption("ĐÃ DỪNG")
+        else:
+            self._logln(f"Hoàn tất {ok}/{len(results)} file trong {_fmt_time(total_t)} "
+                        f"(tổng {total_t:.1f}s). Lưu tại: {self.out_dir.get()}", "ok")
+            self.status_lbl.config(text=f"Xong {ok}/{len(results)} · {_fmt_time(total_t)}",
+                                   fg=C["ok"])
+            self.header.set_caption("HOÀN TẤT")
+        if ok > 0:
+            try:
+                self._open_folder(self.out_dir.get())
+            except Exception:
+                pass
         self._reset()
 
     @staticmethod
     def _open_folder(path):
-        import subprocess, platform
+        import subprocess
+        import platform
         if platform.system() == "Windows":
             os.startfile(path)          # noqa
         elif platform.system() == "Darwin":
@@ -266,7 +1060,22 @@ class App(tk.Tk):
 
     def _reset(self):
         self.running = False
-        self.convert_btn.config(state="normal")
+        self.paused = False
+        self._resume.set()
+        self.header.capy_stop()             # dừng & ẩn capybara khi xong/huỷ
+        self.convert_btn.set_enabled(True)
+        self.convert_btn.set_text("CHUYỂN ĐỔI  ▶")
+        self.btn_add.set_enabled(True)
+        self.btn_folder.set_enabled(True)
+        self.btn_clear.set_enabled(True)
+        self.btn_theme.set_enabled(True)
+        self.btn_refresh.set_enabled(True)
+        self.btn_pause.set_enabled(False)
+        self.btn_pause.set_text(LBL_PAUSE)
+        self.btn_stop.set_enabled(False)
+        self.btn_retry.set_enabled(bool(self.failed))
+        self.btn_retry.set_text(f"{LBL_RETRY} ({len(self.failed)})"
+                                if self.failed else LBL_RETRY)
 
 
 def main():

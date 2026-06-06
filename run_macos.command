@@ -5,7 +5,14 @@ cd "$(dirname "$0")"
 
 echo "==> Tìm Python có giao diện (Tk) hoạt động..."
 WORKS=""
-for PY in /usr/bin/python3 python3 /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+# Ưu tiên Python từ Homebrew / python.org (Tk mới, chạy ổn trên macOS hiện tại).
+# Bản /usr/bin/python3 của Apple dùng Tk 8.5 cũ -> thường crash khi mở Tk, để cuối cùng.
+for PY in \
+  /opt/homebrew/bin/python3.13 /opt/homebrew/bin/python3.12 /opt/homebrew/bin/python3.11 \
+  /opt/homebrew/bin/python3 \
+  /usr/local/bin/python3.13 /usr/local/bin/python3.12 /usr/local/bin/python3.11 /usr/local/bin/python3 \
+  /Library/Frameworks/Python.framework/Versions/Current/bin/python3 \
+  python3 /usr/bin/python3; do
   command -v "$PY" >/dev/null 2>&1 || [ -x "$PY" ] || continue
   if "$PY" -c "import tkinter; r=tkinter.Tk(); r.destroy()" >/dev/null 2>&1; then
     WORKS="$PY"; break

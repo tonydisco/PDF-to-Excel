@@ -9,7 +9,9 @@ env/
 # PyInstaller build output
 build/
 dist/
+dmg_root/
 *.manifest
+*.dmg
 
 # OS
 .DS_Store

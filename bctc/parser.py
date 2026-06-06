@@ -365,7 +365,7 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None):
 
 
 def extract_consensus(doc, lang="vie", dpis=(185, 240), page_range=None,
-                      log=lambda *_: None):
+                      log=lambda *_: None, on_pass=lambda done, total: None):
     """
     Chạy bóc tách ở NHIỀU độ phân giải rồi hợp nhất để giảm lỗi OCR:
       - DPI đầu tiên là CHÍNH (thực nghiệm cho kết quả tốt & ổn định nhất);
@@ -396,4 +396,5 @@ def extract_consensus(doc, lang="vie", dpis=(185, 240), page_range=None,
                     conflicts.append((key, code, "đầu năm/năm trước", eprior, prior))
                 merged[key][code] = (ecur if ecur is not None else cur,
                                      eprior if eprior is not None else prior)
+        on_pass(idx + 1, len(dpis))
     return merged, base_warnings, base_meta, conflicts
