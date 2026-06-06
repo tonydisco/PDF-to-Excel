@@ -25,7 +25,7 @@ BG = (135, 30, 81)          # màu nền của sprite-sheet gốc
 WALK_Y = (86, 113)          # dải hàng "WALK" trên sheet gốc
 WALK_X_START = 37           # bỏ cột nhãn chữ bên trái
 COL_GAP = 2                 # khoảng trống tối thiểu giữa 2 khung
-SCALE = 2                   # phóng to (nearest) cho nét pixel
+TARGET_H = 30               # chiều cao khung đầu ra (gọn cho header thấp)
 PAD_X = 2                   # đệm ngang mỗi ô
 
 
@@ -76,13 +76,13 @@ def main():
     # ô chuẩn: rộng = max + đệm; cao = max; căn ĐÁY (chân chạm đất), giữa ngang
     cw = max(im.width for im in crops) + 2 * PAD_X
     ch = max(im.height for im in crops)
+    scale = TARGET_H / ch
+    fw, fh = max(1, round(cw * scale)), TARGET_H
     cells = []
     for im in crops:
         cell = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
         cell.paste(im, ((cw - im.width) // 2, ch - im.height), im)
-        cells.append(cell.resize((cw * SCALE, ch * SCALE), Image.NEAREST))
-
-    fw, fh = cw * SCALE, ch * SCALE
+        cells.append(cell.resize((fw, fh), Image.NEAREST))
     rights = [c.transpose(Image.FLIP_LEFT_RIGHT) for c in cells]  # gốc quay trái -> lật = phải
     lefts = cells
     n = len(cells)

@@ -258,16 +258,17 @@ class RoundProgress(tk.Canvas):
 # ======================================================================
 class Header(tk.Canvas):
     # Sprite capybara (by Rainloaf — rainloaf.itch.io/capybara-sprite-sheet):
-    #   sheet assets/capybara.png = 5 cột x 2 hàng (56x42 mỗi khung)
+    #   sheet assets/capybara.png = 5 cột x 2 hàng (40x30 mỗi khung)
     #   hàng 0 = đi PHẢI · hàng 1 = đi TRÁI
-    CAPY_W, CAPY_H, CAPY_COLS = 56, 42, 5
+    CAPY_W, CAPY_H, CAPY_COLS = 40, 30, 5
     CAPY_SPEED = 4          # px mỗi bước
     CAPY_INTERVAL = 80      # ms mỗi bước
-    CAPY_MARGIN = 24        # lề ngang khi đi qua lại
-    CAPY_BOTTOM = 6         # khoảng cách tới mép dưới header
+    CAPY_MARGIN = 22        # lề ngang khi đi qua lại
+    CAPY_BOTTOM = 4         # khoảng cách tới mép dưới header
+    HEIGHT = 86             # chiều cao header (gọn cho màn hình thấp)
 
     def __init__(self, parent, title, subtitle):
-        super().__init__(parent, height=132, highlightthickness=0, bd=0)
+        super().__init__(parent, height=self.HEIGHT, highlightthickness=0, bd=0)
         self._title = title
         self._subtitle = subtitle
         self._timer = "00:00"
@@ -385,14 +386,14 @@ class Header(tk.Canvas):
         w, h = e.width, e.height
         self.configure(bg=C["header_bg"])
         self.create_rectangle(0, 0, w, h, fill=C["header_bg"], outline="")
-        self.create_text(28, 30, text=self._title, anchor="w",
-                         fill="#FFFFFF", font=_font(20, "bold"))
-        self.create_text(28, 56, text=self._subtitle, anchor="w",
-                         fill="#F4F1DE", font=_font(11))
-        self._id_cap = self.create_text(w - 28, 26, text=self._caption,
-                                        anchor="e", fill="#F2CC8F", font=_font(10, "bold"))
-        self._id_timer = self.create_text(w - 28, 58, text=self._timer,
-                                          anchor="e", fill="#FFFFFF", font=_font(30, "bold"))
+        self.create_text(22, 18, text=self._title, anchor="w",
+                         fill="#FFFFFF", font=_font(16, "bold"))
+        self.create_text(22, 40, text=self._subtitle, anchor="w",
+                         fill="#F4F1DE", font=_font(9))
+        self._id_cap = self.create_text(w - 22, 15, text=self._caption,
+                                        anchor="e", fill="#F2CC8F", font=_font(9, "bold"))
+        self._id_timer = self.create_text(w - 22, 40, text=self._timer,
+                                          anchor="e", fill="#FFFFFF", font=_font(20, "bold"))
 
         # ---- capybara: tạo lại item ảnh ở dải dưới header ----
         self._capy_item = None
@@ -546,8 +547,8 @@ class App(tk.Tk):
         self._flog.info("Khởi động BCTC PDF → Excel v%s", APP_VERSION)
 
         self.title(APP_TITLE)
-        self.geometry("960x740")
-        self.minsize(820, 620)
+        self.geometry("940x636")
+        self.minsize(800, 520)
         self._set_icon()
 
         self.theme_name = "light"
@@ -667,30 +668,30 @@ class App(tk.Tk):
 
         # thanh tiến độ tổng (bo tròn, Sage) + dòng trạng thái
         topbar = tk.Frame(self, bg=C["bg"])
-        topbar.pack(fill="x", padx=22, pady=(14, 0))
+        topbar.pack(fill="x", padx=18, pady=(8, 0))
         self.overall = RoundProgress(topbar, app_bg=C["bg"], trough=C["trough"],
-                                     fill=C["ok"], height=9, radius=4)
+                                     fill=C["ok"], height=8, radius=4)
         self.overall.pack(fill="x")
         self.status_lbl = tk.Label(topbar, text="Sẵn sàng", bg=C["bg"], fg=C["sub"],
                                    font=_font(10), anchor="w")
-        self.status_lbl.pack(anchor="w", pady=(6, 0))
+        self.status_lbl.pack(anchor="w", pady=(4, 0))
 
         # ---- thanh công cụ (nhấn Sage) ----
         tool = tk.Frame(self, bg=C["bg"])
-        tool.pack(fill="x", padx=22, pady=(8, 0))
+        tool.pack(fill="x", padx=18, pady=(6, 0))
         self.btn_add = self._outline_btn(tool, "＋  Thêm file", self.add_files,
-                                         C["ok"], 150)
+                                         C["ok"], 144, height=36)
         self.btn_add.pack(side="left")
         self.btn_folder = self._outline_btn(tool, "📁  Thêm thư mục", self.add_folder,
-                                            C["ok"], 170)
+                                            C["ok"], 162, height=36)
         self.btn_folder.pack(side="left", padx=8)
         self.btn_clear = self._outline_btn(tool, "🗑  Xoá hết", self.clear_files,
-                                           C["sub"], 120)
+                                           C["sub"], 112, height=36)
         self.btn_clear.pack(side="left")
 
         theme_txt = "🌙  Tối" if self.theme_name == "light" else "☀️  Sáng"
         self.btn_theme = self._outline_btn(tool, theme_txt, self.toggle_theme,
-                                           C["sub"], 110)
+                                           C["sub"], 104, height=36)
         self.btn_theme.pack(side="right")
         self.count_lbl = tk.Label(tool, text="%d / %d file" % (len(self.files), MAX_FILES),
                                   bg=C["bg"], fg=C["text"], font=_font(11, "bold"))
@@ -700,8 +701,8 @@ class App(tk.Tk):
 
         # ---- danh sách file (thẻ bo tròn, cuộn được) ----
         listcard = RoundCard(self, app_bg=C["bg"], fill=C["list_bg"],
-                             border=C["border"], radius=18, pad=8)
-        listcard.pack(fill="both", expand=True, padx=22, pady=12)
+                             border=C["border"], radius=16, pad=6)
+        listcard.pack(fill="both", expand=True, padx=18, pady=8)
         self.canvas = tk.Canvas(listcard.body, bg=C["list_bg"], highlightthickness=0, bd=0)
         vsb = ttk.Scrollbar(listcard.body, orient="vertical", command=self.canvas.yview)
         self.canvas.configure(yscrollcommand=vsb.set)
@@ -726,15 +727,15 @@ class App(tk.Tk):
 
         # ---- hàng dưới: thư mục lưu + chất lượng ----
         bottom = tk.Frame(self, bg=C["bg"])
-        bottom.pack(fill="x", padx=22, pady=(0, 8))
+        bottom.pack(fill="x", padx=18, pady=(0, 6))
 
         opt = tk.Frame(bottom, bg=C["bg"])
         opt.pack(fill="x")
         tk.Label(opt, text="Lưu Excel tại:", bg=C["bg"], fg=C["text"],
                  font=_font(10, "bold")).pack(side="left")
         entrycard = RoundCard(opt, app_bg=C["bg"], fill=C["entry_bg"],
-                              border=C["border"], radius=12, pad=3)
-        entrycard.configure(height=38)
+                              border=C["border"], radius=10, pad=3)
+        entrycard.configure(height=34)
         entrycard.pack(side="left", fill="x", expand=True, padx=10)
         self.out_entry = tk.Entry(entrycard.body, textvariable=self.out_dir,
                                   bg=C["entry_bg"], fg=C["text"], relief="flat",
@@ -748,40 +749,40 @@ class App(tk.Tk):
 
         # ---- hàng nút: Chuyển đổi · Làm mới · Tạm dừng · Dừng hẳn ----
         runrow = tk.Frame(bottom, bg=C["bg"])
-        runrow.pack(fill="x", pady=(12, 0))
+        runrow.pack(fill="x", pady=(8, 0))
         self.convert_btn = self._solid_btn(runrow, "CHUYỂN ĐỔI  ▶", self.start,
-                                           C["accent"], 230, height=50,
-                                           font=_font(13, "bold"))
+                                           C["accent"], 220, height=42,
+                                           font=_font(12, "bold"))
         self.convert_btn.pack(side="left")
         self.btn_retry = self._outline_btn(runrow, LBL_RETRY, self.retry_failed,
-                                           C["warn"], 140, height=50,
-                                           font=_font(12, "bold"))
+                                           C["warn"], 132, height=42,
+                                           font=_font(11, "bold"))
         self.btn_retry.pack(side="left", padx=(8, 0))
         self.btn_refresh = self._outline_btn(runrow, "🔄  Làm mới", self.reset_tool,
-                                             C["ok"], 120, height=50,
-                                             font=_font(12, "bold"))
+                                             C["ok"], 116, height=42,
+                                             font=_font(11, "bold"))
         self.btn_refresh.pack(side="left", padx=(8, 0))
         self.btn_stop = self._outline_btn(runrow, "⏹  Dừng", self.stop,
-                                          C["err"], 110, height=50,
-                                          font=_font(12, "bold"))
+                                          C["err"], 104, height=42,
+                                          font=_font(11, "bold"))
         self.btn_stop.pack(side="right")
         self.btn_pause = self._outline_btn(runrow, LBL_PAUSE, self.toggle_pause,
-                                           C["sub"], 140, height=50,
-                                           font=_font(12, "bold"))
+                                           C["sub"], 132, height=42,
+                                           font=_font(11, "bold"))
         self.btn_pause.pack(side="right", padx=(0, 8))
         self.btn_stop.set_enabled(False)
         self.btn_pause.set_enabled(False)
         self.btn_retry.set_enabled(False)
 
-        # ---- nhật ký (thẻ bo tròn) ----
+        # ---- lịch sử (thẻ bo tròn) ----
         logcard = RoundCard(self, app_bg=C["bg"], fill=C["card"],
-                            border=C["border"], radius=16, pad=10, fit=True)
-        logcard.pack(fill="x", padx=22, pady=(0, 16))
-        tk.Label(logcard.body, text="Nhật ký", bg=C["card"], fg=C["text"],
+                            border=C["border"], radius=14, pad=8, fit=True)
+        logcard.pack(fill="x", padx=18, pady=(0, 10))
+        tk.Label(logcard.body, text="Lịch sử", bg=C["card"], fg=C["text"],
                  font=_font(10, "bold")).pack(anchor="w")
         logf = tk.Frame(logcard.body, bg=C["card"])
-        logf.pack(fill="x", pady=(4, 0))
-        self.log = tk.Text(logf, height=6, bg=C["log_bg"], fg=C["text"], bd=0,
+        logf.pack(fill="x", pady=(3, 0))
+        self.log = tk.Text(logf, height=4, bg=C["log_bg"], fg=C["text"], bd=0,
                            font=("Menlo", 9), wrap="word", state="disabled",
                            highlightthickness=0, insertbackground=C["text"])
         self.log.pack(side="left", fill="both", expand=True)
@@ -794,8 +795,9 @@ class App(tk.Tk):
 
         self._rebuild_list()
         self._logln(f"BCTC PDF → Excel · phiên bản v{APP_VERSION}", "muted")
-        self._logln("📄 Nhật ký chi tiết: " + self.log_path, "muted")
+        self._logln("📄 Lịch sử chi tiết: " + self.log_path, "muted")
         self._check_tesseract()
+        self._sync_convert_btn()
 
     # ---------- cuộn bằng con lăn chuột (theo vùng con trỏ) ----------
     def _wheel_target(self, e):
@@ -914,6 +916,13 @@ class App(tk.Tk):
                 self.rows.append(row)
         self.count_lbl.config(text=f"{len(self.files)} / {MAX_FILES} file")
         self.canvas.yview_moveto(0)
+        self._sync_convert_btn()
+
+    def _sync_convert_btn(self):
+        """Nút Chuyển đổi chỉ sáng khi có file (và không đang chạy)."""
+        if not hasattr(self, "convert_btn") or self.running:
+            return
+        self.convert_btn.set_enabled(bool(self.files))
 
     def pick_out(self):
         d = filedialog.askdirectory(title="Chọn thư mục lưu Excel")
@@ -1219,8 +1228,8 @@ class App(tk.Tk):
         self.paused = False
         self._resume.set()
         self.header.capy_stop()             # dừng & ẩn capybara khi xong/huỷ
-        self.convert_btn.set_enabled(True)
         self.convert_btn.set_text("CHUYỂN ĐỔI  ▶")
+        self._sync_convert_btn()            # chỉ sáng nếu còn file
         self.btn_add.set_enabled(True)
         self.btn_folder.set_enabled(True)
         self.btn_clear.set_enabled(True)
