@@ -473,10 +473,11 @@ class FileRow(tk.Frame):
         self._on_select = on_select
         self.selected = False
         self._deletable = True
-        pad = tk.Frame(self, bg=bg)
-        pad.pack(fill="x", padx=14, pady=7)
+        self._pad = tk.Frame(self, bg=bg)
+        self._pad.pack(fill="x", padx=14, pady=7)
 
-        top = tk.Frame(pad, bg=bg)
+        top = tk.Frame(self._pad, bg=bg)
+        self._top = top
         top.pack(fill="x")
         # ô chọn (cho xoá nhiều file)
         self.chk = tk.Label(top, text="☐", bg=bg, fg=C["sub"],
@@ -499,9 +500,19 @@ class FileRow(tk.Frame):
                                  font=_font(10), anchor="e")
         self.meta_lbl.pack(side="right")
 
-        self.bar = RoundProgress(pad, app_bg=bg, trough=C["trough"],
+        self.bar = RoundProgress(self._pad, app_bg=bg, trough=C["trough"],
                                  fill=C["ok"], height=8, radius=4)
         self.bar.pack(fill="x", pady=(6, 0))
+
+    def set_bg(self, bg):
+        """Đổi màu nền (tô lại xen kẽ sau khi xoá) — mượt, không dựng lại."""
+        self._bg = bg
+        for w in (self, self._pad, self._top, self.chk, self.dot,
+                  self.name_lbl, self.del_btn, self.meta_lbl, self.bar):
+            try:
+                w.config(bg=bg)
+            except Exception:
+                pass
 
     def _toggle(self):
         if not self._deletable:
@@ -1032,7 +1043,8 @@ class App(tk.Tk):
         self._on_row_select()
 
     def _remove_files(self, idxs):
-        """Xoá các file theo chỉ số (chỉ khi KHÔNG đang chuyển đổi)."""
+        """Xoá các file theo chỉ số — mượt: chỉ huỷ đúng dòng bị xoá, tô lại
+        màu xen kẽ, giữ nguyên vị trí cuộn (không dựng lại cả danh sách)."""
         if self.running:
             messagebox.showinfo("Đang chuyển đổi",
                                 "Không thể xoá khi đang chạy. Hãy Dừng rồi xoá.")
@@ -1040,12 +1052,20 @@ class App(tk.Tk):
         idxs = sorted((i for i in idxs if 0 <= i < len(self.files)), reverse=True)
         if not idxs:
             return
-        for i in idxs:
+        for i in idxs:                      # xoá từ cuối -> đầu để chỉ số không lệch
             del self.files[i]
+            self.rows.pop(i).destroy()
         self.failed = set()                 # chỉ số đã đổi -> bỏ hàng đợi thử lại
         self.btn_retry.set_enabled(False)
         self.btn_retry.set_text(LBL_RETRY)
-        self._rebuild_list()
+        if not self.rows:
+            self.placeholder.pack(fill="both", expand=True, pady=40)
+        else:                               # tô lại màu xen kẽ (không dựng lại)
+            for i, row in enumerate(self.rows):
+                row.set_bg(C["list_bg"] if i % 2 == 0 else C["row_alt"])
+        self.count_lbl.config(text=f"{len(self.files)} / {MAX_FILES} file")
+        self._sync_convert_btn()
+        self._on_row_select()
 
     def _delete_row(self, row):
         if row in self.rows:

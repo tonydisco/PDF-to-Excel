@@ -4,4 +4,4 @@
 Tăng phiên bản bằng:  python bump_version.py [patch|minor|major]
 (đừng sửa tay nếu không cần — script sẽ tự cập nhật dòng dưới)
 """
-__version__ = "1.4.0"
+__version__ = "1.4.1"
