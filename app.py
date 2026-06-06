@@ -466,14 +466,23 @@ class RoundButton(tk.Canvas):
 # Một dòng file: chấm trạng thái + tên + thời gian + thanh tiến độ bo tròn
 # ======================================================================
 class FileRow(tk.Frame):
-    def __init__(self, parent, name, bg):
+    def __init__(self, parent, name, bg, *, on_delete=None, on_select=None):
         super().__init__(parent, bg=bg)
         self._bg = bg
+        self._on_delete = on_delete
+        self._on_select = on_select
+        self.selected = False
+        self._deletable = True
         pad = tk.Frame(self, bg=bg)
-        pad.pack(fill="x", padx=16, pady=10)
+        pad.pack(fill="x", padx=14, pady=7)
 
         top = tk.Frame(pad, bg=bg)
         top.pack(fill="x")
+        # ô chọn (cho xoá nhiều file)
+        self.chk = tk.Label(top, text="☐", bg=bg, fg=C["sub"],
+                            font=_font(13), cursor="hand2")
+        self.chk.pack(side="left", padx=(0, 8))
+        self.chk.bind("<Button-1>", lambda e: self._toggle())
         self.dot = tk.Canvas(top, width=12, height=12, bg=bg,
                              highlightthickness=0, bd=0)
         self._dot_id = self.dot.create_oval(2, 2, 11, 11, fill=C["dot"], outline="")
@@ -481,13 +490,42 @@ class FileRow(tk.Frame):
         self.name_lbl = tk.Label(top, text=_middle_ellipsis(name), bg=bg, fg=C["text"],
                                  font=_font(11, "bold"), anchor="w")
         self.name_lbl.pack(side="left")
+        # nút xoá 1 file
+        self.del_btn = tk.Label(top, text="✕", bg=bg, fg=C["sub"],
+                                font=_font(12, "bold"), cursor="hand2")
+        self.del_btn.pack(side="right", padx=(8, 0))
+        self.del_btn.bind("<Button-1>", lambda e: self._delete())
         self.meta_lbl = tk.Label(top, text="Chờ", bg=bg, fg=C["sub"],
                                  font=_font(10), anchor="e")
         self.meta_lbl.pack(side="right")
 
         self.bar = RoundProgress(pad, app_bg=bg, trough=C["trough"],
-                                 fill=C["ok"], height=9, radius=4)
-        self.bar.pack(fill="x", pady=(7, 0))
+                                 fill=C["ok"], height=8, radius=4)
+        self.bar.pack(fill="x", pady=(6, 0))
+
+    def _toggle(self):
+        if not self._deletable:
+            return
+        self.set_selected(not self.selected)
+        if self._on_select:
+            self._on_select()
+
+    def set_selected(self, v):
+        self.selected = bool(v)
+        self.chk.config(text="☑" if self.selected else "☐",
+                        fg=C["ok"] if self.selected else C["sub"])
+
+    def _delete(self):
+        if self._deletable and self._on_delete:
+            self._on_delete(self)
+
+    def set_deletable(self, on):
+        """Khoá/Mở thao tác chọn & xoá (khoá khi đang chuyển đổi)."""
+        self._deletable = on
+        cur = "hand2" if on else ""
+        self.chk.config(cursor=cur, fg=(C["ok"] if self.selected else C["sub"])
+                        if on else C["disabled_fg"])
+        self.del_btn.config(cursor=cur, fg=C["err"] if on else C["disabled_fg"])
 
     def _set_dot(self, color):
         self.dot.itemconfig(self._dot_id, fill=color)
@@ -551,7 +589,7 @@ class App(tk.Tk):
         self.minsize(800, 520)
         self._set_icon()
 
-        self.theme_name = "light"
+        self.theme_name = "dark"
         apply_theme(self.theme_name)
         self.configure(bg=C["bg"])
 
@@ -698,6 +736,20 @@ class App(tk.Tk):
         self.count_lbl.pack(side="right", padx=(0, 14))
         tk.Label(tool, text="v" + APP_VERSION, bg=C["bg"], fg=C["sub"],
                  font=_font(9)).pack(side="right", padx=(0, 12))
+
+        # ---- thanh chọn nhiều file để xoá ----
+        selbar = tk.Frame(self, bg=C["bg"])
+        selbar.pack(fill="x", padx=18, pady=(6, 0))
+        self.sel_all = tk.Label(selbar, text="☐  Chọn tất cả", bg=C["bg"], fg=C["sub"],
+                                font=_font(10), cursor="hand2")
+        self.sel_all.pack(side="left")
+        self.sel_all.bind("<Button-1>", lambda e: self._toggle_select_all())
+        self.sel_info = tk.Label(selbar, text="", bg=C["bg"], fg=C["sub"], font=_font(10))
+        self.sel_info.pack(side="left", padx=(10, 0))
+        self.btn_del_sel = self._outline_btn(selbar, "🗑  Xoá đã chọn", self._delete_selected,
+                                             C["err"], 150, height=30, font=_font(10, "bold"))
+        self.btn_del_sel.pack(side="right")
+        self.btn_del_sel.set_enabled(False)
 
         # ---- danh sách file (thẻ bo tròn, cuộn được) ----
         listcard = RoundCard(self, app_bg=C["bg"], fill=C["list_bg"],
@@ -911,18 +963,66 @@ class App(tk.Tk):
             self.placeholder.pack_forget()
             for i, p in enumerate(self.files):
                 bg = C["list_bg"] if i % 2 == 0 else C["row_alt"]
-                row = FileRow(self.inner, os.path.basename(p), bg)
+                row = FileRow(self.inner, os.path.basename(p), bg,
+                              on_delete=self._delete_row,
+                              on_select=self._on_row_select)
                 row.pack(fill="x")
                 self.rows.append(row)
         self.count_lbl.config(text=f"{len(self.files)} / {MAX_FILES} file")
         self.canvas.yview_moveto(0)
         self._sync_convert_btn()
+        self._on_row_select()
 
     def _sync_convert_btn(self):
         """Nút Chuyển đổi chỉ sáng khi có file (và không đang chạy)."""
         if not hasattr(self, "convert_btn") or self.running:
             return
         self.convert_btn.set_enabled(bool(self.files))
+
+    # ---------------------------------------------------- chọn & xoá file
+    def _on_row_select(self):
+        """Cập nhật số đã chọn + nút Xoá đã chọn + ô Chọn tất cả."""
+        if not hasattr(self, "btn_del_sel"):
+            return
+        n = sum(1 for r in self.rows if r.selected)
+        self.sel_info.config(text=(f"· Đã chọn {n}" if n else ""))
+        self.btn_del_sel.set_enabled(n > 0 and not self.running)
+        total = len(self.rows)
+        allsel = total > 0 and n == total
+        self.sel_all.config(text=("☑  Bỏ chọn tất cả" if allsel else "☐  Chọn tất cả"),
+                            fg=C["ok"] if allsel else C["sub"])
+
+    def _toggle_select_all(self):
+        if self.running or not self.rows:
+            return
+        target = not all(r.selected for r in self.rows)
+        for r in self.rows:
+            r.set_selected(target)
+        self._on_row_select()
+
+    def _remove_files(self, idxs):
+        """Xoá các file theo chỉ số (chỉ khi KHÔNG đang chuyển đổi)."""
+        if self.running:
+            messagebox.showinfo("Đang chuyển đổi",
+                                "Không thể xoá khi đang chạy. Hãy Dừng rồi xoá.")
+            return
+        idxs = sorted((i for i in idxs if 0 <= i < len(self.files)), reverse=True)
+        if not idxs:
+            return
+        for i in idxs:
+            del self.files[i]
+        self.failed = set()                 # chỉ số đã đổi -> bỏ hàng đợi thử lại
+        self.btn_retry.set_enabled(False)
+        self.btn_retry.set_text(LBL_RETRY)
+        self._rebuild_list()
+
+    def _delete_row(self, row):
+        if row in self.rows:
+            self._remove_files({self.rows.index(row)})
+
+    def _delete_selected(self):
+        idxs = {i for i, r in enumerate(self.rows) if r.selected}
+        self._remove_files(idxs)
 
     def pick_out(self):
         d = filedialog.askdirectory(title="Chọn thư mục lưu Excel")
@@ -967,6 +1067,9 @@ class App(tk.Tk):
         self.btn_pause.set_enabled(True)
         self.btn_pause.set_text(LBL_PAUSE)
         self.btn_stop.set_enabled(True)
+        self.btn_del_sel.set_enabled(False)        # khoá xoá khi đang chạy
+        for r in self.rows:
+            r.set_deletable(False)
         self.overall.set_frac(0)
         self.status_lbl.config(text="Đang xử lý…", fg=C["text"])
         self.header.set_caption(CAP_TIME)
@@ -1241,6 +1344,9 @@ class App(tk.Tk):
         self.btn_retry.set_enabled(bool(self.failed))
         self.btn_retry.set_text(f"{LBL_RETRY} ({len(self.failed)})"
                                 if self.failed else LBL_RETRY)
+        for r in self.rows:                 # mở lại thao tác xoá
+            r.set_deletable(True)
+        self._on_row_select()
 
 
 def main():
