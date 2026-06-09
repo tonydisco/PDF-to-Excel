@@ -39,7 +39,17 @@ TITLES = {
     "KQHDKD": ["ket qua hoat dong kinh doanh", "ket qua kinh doanh"],
     "LCTT":   ["luu chuyen tien te"],
 }
+# B-A4: tiêu đề báo cáo TIẾNG ANH (mẫu B01/B02/B03-DN bản (en), cùng cấu trúc T200).
+# Các cụm này dễ xuất hiện trong văn xuôi thuyết minh ("the income statement when...",
+# "OFF BALANCE SHEET ITEMS") và mục lục -> chỉ nhận khi đứng ĐẦU dòng + dòng NGẮN.
+EN_TITLES = {
+    "CDKT":   ["balance sheet", "statement of financial position"],
+    "KQHDKD": ["income statement", "statement of income",
+               "statement of profit or loss", "profit and loss statement"],
+    "LCTT":   ["cash flow statement", "statement of cash flows"],
+}
 MAX_HEADING_WORDS = 11   # tiêu đề là dòng NGẮN, không phải câu văn xuôi
+MAX_EN_HEADING_WORDS = 5  # tiêu đề tiếng Anh còn ngắn hơn ("BALANCE SHEET")
 
 
 def detect_title(text_norm):
@@ -53,9 +63,18 @@ def line_title(line_text):
     """Trả về mã báo cáo nếu DÒNG này là một TIÊU ĐỀ ngắn (không phải prose)."""
     nl = norm(line_text)
     wc = len(nl.split())
-    if wc == 0 or wc > MAX_HEADING_WORDS:
+    if wc == 0:
         return None
-    return detect_title(nl)
+    if wc <= MAX_HEADING_WORDS:
+        k = detect_title(nl)
+        if k:
+            return k
+    # tiếng Anh: yêu cầu khớp ở ĐẦU dòng + dòng ngắn (loại prose/mục lục/"off balance sheet")
+    if wc <= MAX_EN_HEADING_WORDS:
+        for key, pats in EN_TITLES.items():
+            if any(nl.startswith(p) for p in pats):
+                return key
+    return None
 
 
 def heading_in_lines(line_texts):
@@ -79,7 +98,9 @@ def heading_in_lines(line_texts):
 # ----------------------------------------------------------------------
 # Phân tích con số kiểu Việt Nam:  1.234.567  (1.234)  -   =>  int / None
 # ----------------------------------------------------------------------
-_NUM_RE = re.compile(r"^\(?\-?[\d.\s]+\)?$")
+# Chấp nhận cả dấu CHẤM (Việt: 1.234.567) lẫn dấu PHẨY (Anh: 1,234,567) phân cách nghìn.
+# parse_number xoá hết ký tự không-số nên giá trị nguyên (đồng) ra đúng dù dùng dấu nào.
+_NUM_RE = re.compile(r"^\(?\-?[\d.,\s]+\)?$")
 
 
 def parse_number(tok):
@@ -102,8 +123,8 @@ def looks_like_value(tok):
     if not _NUM_RE.match(t):
         return False
     digits = re.sub(r"\D", "", t)
-    # giá trị tài chính thường >= 3 chữ số hoặc có dấu chấm phân tách
-    return len(digits) >= 3 or "." in t
+    # giá trị tài chính thường >= 3 chữ số hoặc có dấu phân tách (chấm/phẩy)
+    return len(digits) >= 3 or "." in t or "," in t
 
 
 # ----------------------------------------------------------------------
@@ -113,6 +134,9 @@ _CODE_RE = re.compile(r"^(\d{1,3}[abc]?)$")
 
 
 def _token_code(wd, valid_codes):
+    # GIỮ NGUYÊN strict: benchmark cho thấy nới lỏng (strip ngoặc) làm lệch
+    # detect_code_column -> MẤT mã tổng ở file đang tốt (05/28 HN). Dòng tổng
+    # dính ngoặc ("[270") được forced_total_code bắt qua từ khoá thay vì ở đây.
     t = wd["text"].strip().rstrip(".")
     m = _CODE_RE.match(t)
     if m and m.group(1) in valid_codes:
@@ -140,7 +164,7 @@ def detect_code_column(section_lines, valid_codes, order_index):
     """
     from collections import defaultdict
     bins = defaultdict(list)
-    for ln, _ in section_lines:
+    for ln, *_ in section_lines:
         for wd in ln:
             code = _token_code(wd, valid_codes)
             if code:
@@ -196,10 +220,18 @@ def forced_total_code(words, key):
     """
     nline = norm(" ".join(wd["text"] for wd in words))
     if key == "CDKT":
-        # 'cong tai san' / 'cong nguon von' chỉ xuất hiện ở dòng TỔNG CỘNG
-        if "cong tai san" in nline:
+        # 'cong tai san' / 'cong nguon von' chỉ xuất hiện ở dòng TỔNG CỘNG.
+        # OCR hay DÍNH CHỮ ("TỔNGCỘNGTÀSẢN") -> kiểm thêm bản bỏ hết dấu cách.
+        ns = nline.replace(" ", "")
+        if "cong tai san" in nline or "congtaisan" in ns or "congtasan" in ns:
             return "270"
-        if "cong nguon von" in nline:
+        if "cong nguon von" in nline or "congnguonvon" in ns:
+            return "440"
+        # B-A4: dòng tổng bản TIẾNG ANH (B01-DN en) khi mã không đọc được
+        if "total assets" in nline:
+            return "270"
+        if ("total resources" in nline or "total liabilities and owner" in nline
+                or "total liabilities and equity" in nline):
             return "440"
     return None
 
@@ -210,9 +242,10 @@ def split_values(words, split_frac):
     for wd in words:
         if wd["cx"] < 0.60:          # bỏ qua cột chỉ tiêu / mã số / thuyết minh
             continue
-        if not looks_like_value(wd["text"]):
+        tok = wd["text"].strip().strip("[]{}|")   # bỏ ngoặc vuông/pipe nhiễu OCR ("...966]")
+        if not looks_like_value(tok):
             continue
-        v = parse_number(wd["text"])
+        v = parse_number(tok)
         if v is None:
             continue
         if wd["right"] <= split_frac:
@@ -234,6 +267,42 @@ def estimate_split(all_words):
         if 0.72 <= a <= 0.92 and (b - a) > best_gap:
             best_gap, best_mid = b - a, (a + b) / 2
     return best_mid if best_gap > 0.03 else 0.84
+
+
+# ----------------------------------------------------------------------
+# B-A1: PASS CHỈ-CHỮ-SỐ cho cột số
+# ----------------------------------------------------------------------
+# Giới hạn Tesseract chỉ đọc ký tự số ở vùng cột số -> giảm nhầm 0/O, 1/l, 8/B,
+# mất dấu chấm nghìn. Gán token số (theo toạ độ y) về đúng DÒNG của pass chữ.
+DIGIT_WHITELIST = "0123456789.,()-"
+DIGIT_VALUE_XMIN = 0.50        # chỉ lấy token ở nửa phải trang (vùng cột số)
+DIGIT_BAND_TOL = 0.012         # dung sai gán token vào dòng theo tâm y (phân số)
+
+
+def _line_cy(ln):
+    return sum(wd["cy"] for wd in ln) / len(ln) if ln else 0.0
+
+
+def assign_value_tokens(lines, digit_tokens, tol=DIGIT_BAND_TOL):
+    """
+    Gán mỗi token số (pass whitelist) về DÒNG gần nhất theo tâm y. Trả về list
+    cùng thứ tự với `lines`, mỗi phần tử là danh sách token số của dòng đó.
+    """
+    per_line = [[] for _ in lines]
+    if not lines or not digit_tokens:
+        return per_line
+    cys = [_line_cy(ln) for ln in lines]
+    for dt in digit_tokens:
+        if dt["cx"] < DIGIT_VALUE_XMIN or not looks_like_value(dt["text"]):
+            continue
+        best, bd = None, tol
+        for li, lcy in enumerate(cys):
+            d = abs(dt["cy"] - lcy)
+            if d < bd:
+                best, bd = li, d
+        if best is not None:
+            per_line[best].append(dt)
+    return per_line
 
 
 # ----------------------------------------------------------------------
@@ -284,13 +353,23 @@ def fitz_rect(page, top_frac=0.34):
 # ----------------------------------------------------------------------
 # Trích xuất đầy đủ 3 báo cáo
 # ----------------------------------------------------------------------
-def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None):
+def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
+            scope=None, digit_pass=False):
     """
     Trả về:
         results : {stmt_key: {code: (cur, prior)}}
         warnings: [str]
+
+    scope: kết quả định vị trang (list (trang, nhãn báo cáo)). Nếu None thì tự
+    chạy locate_pages; truyền sẵn để TÁI DÙNG qua nhiều DPI (locate độc lập DPI render).
+    digit_pass: pass CHỈ-CHỮ-SỐ (B-A1, thí nghiệm). MẶC ĐỊNH TẮT: benchmark cho thấy
+    nó làm TỆ HƠN (model 'vie' vốn đọc cụm số tốt; whitelist toàn-trang thỉnh thoảng
+    thêm lỗi + sinh rác cột mã -> conflicts tăng, balance giảm). Xem
+    plans/260609-accuracy-and-performance/results.md. Hạ tầng giữ lại cho B-A3
+    (re-OCR whitelist trên CROP ô nghi ngờ — cách dùng đúng hơn).
     """
-    scope = locate_pages(doc, lang=lang, page_range=page_range, log=log)
+    if scope is None:
+        scope = locate_pages(doc, lang=lang, page_range=page_range, log=log)
     results = {k: {} for k in T.STATEMENTS}
     warnings = []
     if not scope:
@@ -326,6 +405,17 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None):
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
         page_lines = dict(ex.map(_ocr, rendered))
 
+    # PASS CHỈ-CHỮ-SỐ (B-A1): OCR lại trang với whitelist số -> token số sạch hơn.
+    page_digits = {p: [] for p in pages}
+    if digit_pass:
+        def _ocr_digits(item):
+            p, img = item
+            _, _, dlines = ocr.ocr_lines(ocr.preprocess(img), lang=lang, psm=6,
+                                         min_conf=0, whitelist=DIGIT_WHITELIST)
+            return p, [wd for ln in dlines for wd in ln]
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
+            page_digits = dict(ex.map(_ocr_digits, rendered))
+
     # ---- Lượt 1: gán mỗi dòng vào đúng báo cáo ----
     # Mỗi trang đã được locate gán 1 báo cáo (đáng tin); dùng làm mốc đầu trang,
     # rồi cho phép chuyển nếu trong trang gặp tiêu đề báo cáo khác (trang chuyển tiếp).
@@ -335,27 +425,31 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None):
         lines = page_lines[p]
         split = estimate_split([wd for ln in lines for wd in ln])
         page_meta[p] = {"split": split, "nlines": len(lines)}
+        # token số (pass whitelist) gán về đúng dòng theo tâm y
+        line_vtoks = assign_value_tokens(lines, page_digits.get(p, []))
         current = page_title.get(p, current)
-        for ln in lines:
+        for li, ln in enumerate(lines):
             t = line_title(" ".join(wd["text"] for wd in ln))
             if t:
                 current = t
                 continue
             if current is not None:
-                section_lines[current].append((ln, split))
+                section_lines[current].append((ln, split, line_vtoks[li]))
 
     # ---- Lượt 2: dò cột Mã số cho từng báo cáo rồi bóc số ----
     cols = {}
     for key in T.STATEMENTS:
         col = detect_code_column(section_lines[key], valid[key], ORDER[key])
         cols[key] = col
-        for ln, split in section_lines[key]:
+        for ln, split, vtoks in section_lines[key]:
             code = find_code_at(ln, valid[key], col)
             if not code:
                 code = forced_total_code(ln, key)   # dòng "TỔNG CỘNG ... (270=...)"
             if not code:
                 continue
-            cur, prior = split_values(ln, split)
+            # ưu tiên token pass-số; không có thì fallback về pass chữ (không thụt lùi)
+            value_words = vtoks if (digit_pass and vtoks) else ln
+            cur, prior = split_values(value_words, split)
             if cur is None and prior is None:
                 results[key].setdefault(code, (None, None))
             else:
@@ -365,7 +459,8 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None):
 
 
 def extract_consensus(doc, lang="vie", dpis=(185, 240), page_range=None,
-                      log=lambda *_: None, on_pass=lambda done, total: None):
+                      log=lambda *_: None, on_pass=lambda done, total: None,
+                      digit_pass=False):
     """
     Chạy bóc tách ở NHIỀU độ phân giải rồi hợp nhất để giảm lỗi OCR:
       - DPI đầu tiên là CHÍNH (thực nghiệm cho kết quả tốt & ổn định nhất);
@@ -377,11 +472,15 @@ def extract_consensus(doc, lang="vie", dpis=(185, 240), page_range=None,
     merged = {k: {} for k in T.STATEMENTS}
     conflicts = []
     base_warnings, base_meta = [], {}
+    # Định vị trang MỘT LẦN rồi tái dùng cho mọi DPI: locate_pages quét dải đầu ở
+    # scan_dpi cố định (135), không phụ thuộc DPI render -> chạy lại mỗi DPI là thừa.
+    scope = locate_pages(doc, lang=lang, page_range=page_range, log=log)
     for idx, dpi in enumerate(dpis):
         primary = (idx == 0)
         res, warns, meta = extract(
             doc, lang=lang, dpi=dpi, page_range=page_range,
-            log=(log if primary else (lambda *_: None)))
+            log=(log if primary else (lambda *_: None)), scope=scope,
+            digit_pass=digit_pass)
         if primary:
             base_warnings, base_meta = warns, meta
         for key in res:

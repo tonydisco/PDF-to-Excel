@@ -135,15 +135,20 @@ def preprocess(img):
 # ----------------------------------------------------------------------
 # 3. OCR một trang -> danh sách dòng kèm toạ độ
 # ----------------------------------------------------------------------
-def ocr_lines(img, lang="vie", psm=6, min_conf=25):
+def ocr_lines(img, lang="vie", psm=6, min_conf=25, whitelist=None):
     """
     Trả về:
         width, height, lines
     lines: list các dòng; mỗi dòng là list dict
-           {text, left, top, width, height, conf, cx, cy, right}
+           {text, left, top, width, height, conf, cx, cy, right, nh}
     Toạ độ chuẩn hoá theo chiều rộng ảnh để bộ parser dùng phân số (0..1).
+
+    whitelist: nếu truyền (vd "0123456789.,()-"), giới hạn ký tự Tesseract đọc ->
+    dùng cho PASS CHỈ-CHỮ-SỐ ở cột số (giảm nhầm 0/O, 1/l, mất dấu chấm nghìn).
     """
     config = f"--psm {psm}"
+    if whitelist:
+        config += f" -c tessedit_char_whitelist={whitelist}"
     data = pytesseract.image_to_data(
         img, lang=lang, config=config,
         output_type=pytesseract.Output.DICT,
@@ -164,7 +169,7 @@ def ocr_lines(img, lang="vie", psm=6, min_conf=25):
         word = {
             "text": txt, "left": l, "top": t, "width": w, "height": h,
             "conf": conf, "cx": (l + w / 2) / W, "cy": (t + h / 2) / H,
-            "right": (l + w) / W, "lx": l / W,
+            "right": (l + w) / W, "lx": l / W, "nh": h / H,
         }
         lines.setdefault(key, []).append(word)
 

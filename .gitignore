@@ -29,3 +29,14 @@ Thumbs.db
 # Demo cục bộ (đường dẫn máy cá nhân)
 chay_thu_CLI.command
 Demo_output/
+
+# Benchmark: dữ liệu thật & đáp án (số tài chính nhạy cảm) — KHÔNG commit
+bench/pdfs/
+bench/truth/*.json
+# Bảng benchmark thô có tên đầy đủ file client — tái tạo được, không commit
+bench/results-*.md
+# Thư mục dữ liệu mẫu của người dùng (PDF + danh sách công ty) — KHÔNG commit
+sample data/
+# Cache OCR/benchmark cục bộ
+work/
+bench/out/
