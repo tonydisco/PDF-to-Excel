@@ -1,41 +1,38 @@
-// Nền "water flow ma mị": 2 lớp conic xoáy NGƯỢC CHIỀU (blue ↔ teal ↔ sage)
-// hòa vào nhau bằng mix-blend screen -> 2 màu cuộn vào nhau như nước.
-// Thêm blob blue/coral cho chiều sâu, vignette gom sáng, noise mịn. Không bắt chuột.
+// Nền tối SẠCH, chỉ điểm xuyết "water flow" trong VÙNG NHỎ (không full màn hình):
+// 2 màu xanh lá + xanh blue THẪM cuộn vào nhau bằng mix-blend screen, bọc trong
+// orb có mask mờ viền ở góc trên-trái (gần brand) + 1 orb mờ nhỏ góc dưới-phải.
+const SOFT_MASK =
+  "radial-gradient(circle at 50% 50%, #000 24%, transparent 70%)"
+
+function WaterOrb({ className, intensity = 1 }: { className: string; intensity?: number }) {
+  return (
+    <div
+      className={"absolute " + className}
+      style={{ maskImage: SOFT_MASK, WebkitMaskImage: SOFT_MASK, opacity: intensity }}
+    >
+      <div
+        className="water-swirl absolute -inset-1/4 blur-[60px]"
+        style={{
+          background:
+            "conic-gradient(from 0deg at 50% 50%, oklch(0.62 0.13 165 / 85%), oklch(0.40 0.13 256 / 90%), oklch(0.62 0.13 165 / 80%), oklch(0.36 0.12 258 / 90%), oklch(0.62 0.13 165 / 85%))",
+        }}
+      />
+      <div
+        className="water-swirl-rev absolute -inset-1/4 blur-[70px]"
+        style={{
+          background:
+            "conic-gradient(from 140deg at 50% 50%, oklch(0.38 0.13 256 / 85%), oklch(0.64 0.12 168 / 75%), oklch(0.34 0.12 258 / 88%), oklch(0.6 0.13 162 / 75%), oklch(0.38 0.13 256 / 85%))",
+        }}
+      />
+    </div>
+  )
+}
+
 export function Ambient() {
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[oklch(0.13_0.006_262)]">
-      {/* Lớp nước 1 — xoáy thuận */}
-      <div
-        className="water-swirl absolute -inset-[35%] blur-[90px]"
-        style={{
-          background:
-            "conic-gradient(from 0deg at 50% 50%, oklch(0.58 0.17 250 / 88%), oklch(0.66 0.13 205 / 82%), oklch(0.72 0.11 165 / 85%), oklch(0.62 0.15 215 / 82%), oklch(0.58 0.17 250 / 88%))",
-        }}
-      />
-      {/* Lớp nước 2 — xoáy ngược, lệch pha màu -> chỗ chồng nhau blend thành cyan */}
-      <div
-        className="water-swirl-rev absolute -inset-[35%] blur-[105px]"
-        style={{
-          background:
-            "conic-gradient(from 150deg at 50% 50%, oklch(0.72 0.11 165 / 72%), oklch(0.56 0.17 255 / 85%), oklch(0.66 0.13 200 / 72%), oklch(0.6 0.16 250 / 85%), oklch(0.72 0.11 165 / 72%))",
-        }}
-      />
-
-      {/* blob nhấn cho hồn aurora */}
-      <div
-        className="aurora-blob absolute -top-[18%] left-[8%] size-[46vw] rounded-full blur-[120px]"
-        style={{ background: "radial-gradient(circle, oklch(0.6 0.17 250 / 75%), transparent 62%)", mixBlendMode: "screen" }}
-      />
-      <div
-        className="aurora-blob-3 absolute bottom-[-22%] right-[6%] size-[40vw] rounded-full blur-[120px]"
-        style={{ background: "radial-gradient(circle, oklch(0.66 0.16 38 / 55%), transparent 64%)", mixBlendMode: "screen" }}
-      />
-
-      {/* vignette gom sáng vào giữa, tối dần ra mép */}
-      <div
-        className="absolute inset-0"
-        style={{ background: "radial-gradient(120% 115% at 50% 34%, transparent 42%, oklch(0.09 0.012 262 / 86%) 100%)" }}
-      />
+    <div aria-hidden className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[oklch(0.15_0.005_262)]">
+      <WaterOrb className="-top-[16%] -left-[8%] size-[42vw]" intensity={0.9} />
+      <WaterOrb className="-bottom-[18%] right-[-6%] size-[30vw]" intensity={0.5} />
       <div className="noise-overlay absolute inset-0" />
     </div>
   )
