@@ -1,7 +1,7 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   ArrowLeft, CaretLeft, CaretRight, MagnifyingGlassPlus, MagnifyingGlassMinus,
-  CheckCircle, WarningCircle, ArrowsClockwise, PencilSimple, FileXls, FilePdf,
+  CheckCircle, WarningCircle, ArrowsClockwise, PencilSimple, FileXls, FilePdf, CircleNotch,
 } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
@@ -9,11 +9,25 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { fmtVN } from "@/lib/format"
-import { MOCK_STATEMENTS, MOCK_BALANCE, type Row, type Statement } from "@/lib/mock"
+import { MOCK_STATEMENTS, MOCK_BALANCE, MOCK_FILES, type Row, type Statement, type BalanceCheck } from "@/lib/mock"
+import { convert, exportXlsx, type ConvertResult } from "@/lib/api"
 
 export function Review({ fileId, onBack }: { fileId: string; onBack: () => void }) {
-  const statements = MOCK_STATEMENTS[fileId] ?? MOCK_STATEMENTS.f03
-  const balanceOk = MOCK_BALANCE.every((b) => b.ok)
+  const file = MOCK_FILES.find((f) => f.id === fileId) ?? MOCK_FILES[0]
+  const [state, setState] = useState<{ loading: boolean; data?: ConvertResult; err?: string }>({ loading: true })
+
+  useEffect(() => {
+    let cancelled = false
+    setState({ loading: true })
+    convert(file.path)
+      .then((d) => !cancelled && setState({ loading: false, data: d }))
+      .catch((e) => !cancelled && setState({ loading: false, err: String(e?.message || e) }))
+    return () => { cancelled = true }
+  }, [file.path])
+
+  const statements: Statement[] = state.data?.statements ?? MOCK_STATEMENTS[fileId] ?? MOCK_STATEMENTS.f03
+  const balance: BalanceCheck[] = state.data?.balance ?? MOCK_BALANCE
+  const balanceOk = state.data ? state.data.balanceOk : balance.every((b) => b.ok)
 
   return (
     <>
@@ -24,34 +38,39 @@ export function Review({ fileId, onBack }: { fileId: string; onBack: () => void 
           </button>
           <div className="flex items-center gap-2">
             <FilePdf weight="fill" className="size-4 text-primary" />
-            <span className="text-sm font-medium">03_CTCP DV Bến Thành 2025.pdf</span>
+            <span className="text-sm font-medium">{file.name}</span>
+            {state.loading && <CircleNotch className="size-4 animate-spin text-primary" />}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="rounded-md bg-muted px-2 py-1 font-mono text-[11px] text-muted-foreground">Năm 2025</span>
-          <Button size="sm" className="cursor-pointer">
+          {state.err && <span className="text-xs text-warn">Sidecar offline · đang xem dữ liệu mẫu</span>}
+          <Button
+            size="sm"
+            className="cursor-pointer"
+            onClick={() => exportXlsx(file.path).then((r) => toast.success("Đã xuất Excel", { description: r.out_path })).catch(() => toast.error("Xuất Excel lỗi"))}
+          >
             <FileXls className="size-4" /> Xuất Excel
           </Button>
         </div>
       </header>
 
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(440px,560px)]">
-        <PdfPane />
-        <DataPane statements={statements} balanceOk={balanceOk} />
+        <PdfPane name={file.name} pages={file.pages} />
+        <DataPane statements={statements} balance={balance} balanceOk={balanceOk} loading={state.loading} />
       </div>
     </>
   )
 }
 
-function PdfPane() {
-  const [page, setPage] = useState(8)
+function PdfPane({ name, pages }: { name: string; pages: number }) {
+  const [page, setPage] = useState(7)
   return (
     <div className="flex min-w-0 flex-col border-r border-border bg-[oklch(0.13_0.004_260)]">
       <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <div className="flex items-center gap-1">
           <IconBtn onClick={() => setPage((p) => Math.max(1, p - 1))}><CaretLeft className="size-4" /></IconBtn>
-          <span className="px-1 font-mono text-xs text-muted-foreground">Trang {page} / 41</span>
-          <IconBtn onClick={() => setPage((p) => Math.min(41, p + 1))}><CaretRight className="size-4" /></IconBtn>
+          <span className="px-1 font-mono text-xs text-muted-foreground">Trang {page} / {pages}</span>
+          <IconBtn onClick={() => setPage((p) => Math.min(pages, p + 1))}><CaretRight className="size-4" /></IconBtn>
         </div>
         <div className="flex items-center gap-1">
           <IconBtn><MagnifyingGlassMinus className="size-4" /></IconBtn>
@@ -61,15 +80,12 @@ function PdfPane() {
       </div>
       <ScrollArea className="flex-1">
         <div className="grid place-items-center p-6">
-          {/* Khung trang PDF — pdf.js sẽ render trang thật vào đây */}
           <div className="aspect-[1/1.414] w-full max-w-[460px] rounded-sm border border-border bg-[oklch(0.94_0.004_90)] shadow-2xl shadow-black/40">
             <div className="grid h-full place-items-center p-6 text-center">
               <div className="text-[oklch(0.45_0.02_260)]">
                 <FilePdf weight="thin" className="mx-auto size-12 opacity-40" />
                 <p className="mt-3 text-sm font-medium">Khung xem PDF (pdf.js)</p>
-                <p className="mt-1 text-xs opacity-70">
-                  Trang {page} sẽ render ở đây. Bấm vào một ô số bên phải để nhảy tới vùng tương ứng trên trang.
-                </p>
+                <p className="mt-1 text-xs opacity-70">{name} · trang {page} sẽ render ở đây ở bước kế.</p>
               </div>
             </div>
           </div>
@@ -79,11 +95,17 @@ function PdfPane() {
   )
 }
 
-function DataPane({ statements, balanceOk }: { statements: Statement[]; balanceOk: boolean }) {
-  const [tab, setTab] = useState(statements[0].key)
+function DataPane({
+  statements, balance, balanceOk, loading,
+}: { statements: Statement[]; balance: BalanceCheck[]; balanceOk: boolean | null; loading: boolean }) {
+  const [tab, setTab] = useState<Statement["key"]>(statements[0]?.key ?? "CDKT")
+  useEffect(() => { if (statements[0]) setTab(statements[0].key) }, [statements])
+
+  if (loading) return <LoadingPane />
+
   return (
     <div className="flex min-h-0 flex-col bg-card/30">
-      <BalancePanel ok={balanceOk} />
+      <BalancePanel balance={balance} ok={balanceOk} />
       <Tabs value={tab} onValueChange={(v) => setTab(v as Statement["key"])} className="flex min-h-0 flex-1 flex-col">
         <div className="px-4 pt-3">
           <TabsList className="w-full">
@@ -104,11 +126,27 @@ function DataPane({ statements, balanceOk }: { statements: Statement[]; balanceO
   )
 }
 
-function BalancePanel({ ok }: { ok: boolean }) {
+function LoadingPane() {
+  return (
+    <div className="flex min-h-0 flex-col items-center justify-center gap-3 bg-card/30 text-center">
+      <CircleNotch className="size-7 animate-spin text-primary" />
+      <div>
+        <p className="text-sm font-medium">Đang đọc OCR trên máy…</p>
+        <p className="mt-1 text-xs text-muted-foreground">Định vị báo cáo · bóc số · kiểm cân đối</p>
+      </div>
+    </div>
+  )
+}
+
+function BalancePanel({ balance, ok }: { balance: BalanceCheck[]; ok: boolean | null }) {
   return (
     <div className="border-b border-border px-4 py-3">
       <div className="mb-2 flex items-center gap-2">
-        {ok ? (
+        {ok === null ? (
+          <span className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+            <WarningCircle className="size-4" /> Chưa đủ chỉ tiêu để kiểm
+          </span>
+        ) : ok ? (
           <span className="inline-flex items-center gap-1.5 text-sm font-medium text-primary">
             <CheckCircle weight="fill" className="size-4" /> Cân đối khớp
           </span>
@@ -117,18 +155,18 @@ function BalancePanel({ ok }: { ok: boolean }) {
             <WarningCircle weight="fill" className="size-4" /> Lệch cân đối
           </span>
         )}
-        <span className="text-xs text-muted-foreground">· 3 phép kiểm</span>
+        {balance.length > 0 && <span className="text-xs text-muted-foreground">· {balance.length} phép kiểm</span>}
       </div>
       <div className="space-y-1">
-        {MOCK_BALANCE.map((b) => (
-          <div key={b.label} className="flex items-center gap-2 text-xs">
+        {balance.map((b, i) => (
+          <div key={i} className="flex items-center gap-2 text-xs">
             {b.ok ? (
               <CheckCircle weight="fill" className="size-3.5 shrink-0 text-primary" />
             ) : (
               <WarningCircle weight="fill" className="size-3.5 shrink-0 text-warn" />
             )}
-            <span className="text-muted-foreground">{b.label}</span>
-            <span className="ml-auto font-mono text-[11px] tabular-nums text-muted-foreground/70">{b.detail}</span>
+            <span className="truncate text-muted-foreground">{b.label}</span>
+            <span className="ml-auto shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground/70">{b.detail}</span>
           </div>
         ))}
       </div>
@@ -177,8 +215,9 @@ function ValueCell({
 }: { value: number | null; flag?: boolean; code: string | null; col: string; skey: string; bold?: boolean }) {
   const [editing, setEditing] = useState(false)
   const [val, setVal] = useState(value)
+  useEffect(() => setVal(value), [value])
 
-  if (value === null && !flag)
+  if (val === null && !flag)
     return <td className="px-3 py-1.5 text-right font-mono text-xs text-muted-foreground/40">·</td>
 
   if (editing)

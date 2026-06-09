@@ -5,6 +5,7 @@ export type FileStatus = "queued" | "processing" | "done" | "error"
 export interface QueueFile {
   id: string
   name: string
+  path: string // đường dẫn file thật (sidecar đọc)
   sizeMB: number
   pages: number
   status: FileStatus
@@ -14,14 +15,15 @@ export interface QueueFile {
   balanceOk: boolean | null // null = chưa kiểm/không đủ chỉ tiêu
 }
 
+const SD = "sample data/"
 export const MOCK_FILES: QueueFile[] = [
-  { id: "f03", name: "03_CTCP DV Bến Thành 2025.pdf", sizeMB: 26.8, pages: 41, status: "done", progress: 1, found: 3, conflicts: 2, balanceOk: true },
-  { id: "f12vi", name: "12_LD KS Plaza 2025 (vi).pdf", sizeMB: 10.2, pages: 35, status: "done", progress: 1, found: 3, conflicts: 8, balanceOk: true },
-  { id: "f12en", name: "12_LD KS Plaza 2025 (en).pdf", sizeMB: 9.8, pages: 35, status: "done", progress: 1, found: 3, conflicts: 3, balanceOk: false },
-  { id: "f23", name: "23_Căn hộ & VP Sài Gòn 2025.pdf", sizeMB: 1.2, pages: 18, status: "done", progress: 1, found: 2, conflicts: 8, balanceOk: null },
-  { id: "f06", name: "06_TM Phú Nhuận 2025 - Mẹ.pdf", sizeMB: 18.4, pages: 47, status: "processing", progress: 0.46, found: 0, conflicts: 0, balanceOk: null },
-  { id: "f35", name: "35_NH Phương Đông 2025 (riêng).pdf", sizeMB: 7.5, pages: 62, status: "error", progress: 0, found: 0, conflicts: 0, balanceOk: null },
-  { id: "f31", name: "31_Nhôm Sapa Bến Thành 2025.pdf", sizeMB: 6.3, pages: 29, status: "queued", progress: 0, found: 0, conflicts: 0, balanceOk: null },
+  { id: "f03", name: "03_CTCP DV Bến Thành 2025.pdf", path: SD + "03_CTCP DV Ben Thanh 2025.pdf", sizeMB: 26.8, pages: 41, status: "done", progress: 1, found: 3, conflicts: 2, balanceOk: true },
+  { id: "f12vi", name: "12_LD KS Plaza 2025 (vi).pdf", path: SD + "12_Cty LD KS  PLAZA 2025 (vi).pdf", sizeMB: 10.2, pages: 35, status: "done", progress: 1, found: 3, conflicts: 8, balanceOk: true },
+  { id: "f12en", name: "12_LD KS Plaza 2025 (en).pdf", path: SD + "12_Cty LD KS  PLAZA 2025 (en).pdf", sizeMB: 9.8, pages: 35, status: "done", progress: 1, found: 3, conflicts: 3, balanceOk: false },
+  { id: "f23", name: "23_Căn hộ & VP Sài Gòn 2025.pdf", path: SD + "23_Cty LD Can ho & Van phong Sai Gon 2025.pdf", sizeMB: 1.2, pages: 18, status: "done", progress: 1, found: 2, conflicts: 8, balanceOk: null },
+  { id: "f06", name: "06_TM Phú Nhuận 2025 - Mẹ.pdf", path: SD + "06_CTCP TM Phu Nhuan 2025 - Mẹ.pdf", sizeMB: 18.4, pages: 47, status: "processing", progress: 0.46, found: 0, conflicts: 0, balanceOk: null },
+  { id: "f35", name: "35_NH Phương Đông 2025 (riêng).pdf", path: SD + "35_NH TMCP Phuong Dong 2025 (riêng).pdf", sizeMB: 7.5, pages: 62, status: "error", progress: 0, found: 0, conflicts: 0, balanceOk: null },
+  { id: "f31", name: "31_Nhôm Sapa Bến Thành 2025.pdf", path: SD + "31_Cty TNHH Nhom dinh hinh Sapa Ben Thanh 2025.pdf", sizeMB: 6.3, pages: 29, status: "queued", progress: 0, found: 0, conflicts: 0, balanceOk: null },
 ]
 
 export interface Row {
