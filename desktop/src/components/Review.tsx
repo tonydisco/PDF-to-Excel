@@ -54,7 +54,7 @@ export function Review({ fileId, onBack }: { fileId: string; onBack: () => void 
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(440px,560px)]">
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(440px,560px)] grid-rows-[minmax(0,1fr)]">
         <PdfPane
           path={file.path}
           pageCount={state.data?.pageCount ?? file.pages}
@@ -140,7 +140,7 @@ function PdfPane({
   const chips = (["CDKT", "KQHDKD", "LCTT"] as const).filter((k) => located[k])
 
   return (
-    <div className="flex min-w-0 flex-col border-r border-border bg-[oklch(0.12_0.004_260)]">
+    <div className="flex min-h-0 min-w-0 flex-col border-r border-border bg-[oklch(0.12_0.004_260)]">
       <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
         <div className="flex items-center gap-1">
           <IconBtn onClick={() => jumpTo(current - 1)}><CaretLeft className="size-4" /></IconBtn>
