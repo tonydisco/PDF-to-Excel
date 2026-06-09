@@ -29,4 +29,14 @@ mkdir -p "$HERE/src-tauri/binaries"
 cp "$BIN" "$HERE/src-tauri/binaries/bctc-sidecar-$TRIPLE"
 chmod +x "$HERE/src-tauri/binaries/bctc-sidecar-$TRIPLE"
 echo "==> OK: src-tauri/binaries/bctc-sidecar-$TRIPLE ($ARCH)"
+
+# Để `tauri dev` qua được validate externalBin trên máy có HOST triple khác arch
+# sidecar (vd Python x86_64 trên Apple Silicon): đặt thêm 1 bản theo host triple.
+# Dev KHÔNG dùng binary này (lib.rs dev spawn .venv), chỉ cần file tồn tại.
+HOST_TRIPLE="$(rustc -vV 2>/dev/null | sed -n 's/^host: //p')"
+if [ -n "$HOST_TRIPLE" ] && [ "$HOST_TRIPLE" != "$TRIPLE" ]; then
+  cp "$BIN" "$HERE/src-tauri/binaries/bctc-sidecar-$HOST_TRIPLE"
+  chmod +x "$HERE/src-tauri/binaries/bctc-sidecar-$HOST_TRIPLE"
+  echo "==> (dev) copy thêm cho host triple: bctc-sidecar-$HOST_TRIPLE"
+fi
 echo "TRIPLE=$TRIPLE"
