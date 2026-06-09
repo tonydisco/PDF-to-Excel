@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { AnimatePresence, motion } from "motion/react"
 import {
   ArrowLeft, CaretLeft, CaretRight, MagnifyingGlassPlus, MagnifyingGlassMinus,
   CheckCircle, WarningCircle, ArrowsClockwise, PencilSimple, FileXls, FilePdf, CircleNotch,
@@ -69,20 +70,52 @@ export function Review({ fileId, onBack }: { fileId: string; onBack: () => void 
 
 const ZOOMS = [70, 85, 100, 125, 150]
 
+const pageVariants = {
+  enter: (d: number) => ({ y: d >= 0 ? "28%" : "-28%", opacity: 0, scale: 0.985 }),
+  center: { y: "0%", opacity: 1, scale: 1 },
+  exit: (d: number) => ({ y: d >= 0 ? "-28%" : "28%", opacity: 0, scale: 0.985 }),
+}
+
+function PageImage({ src }: { src: string }) {
+  const [loaded, setLoaded] = useState(false)
+  return (
+    <>
+      {!loaded && (
+        <div className="absolute inset-0 grid place-items-center">
+          <CircleNotch className="size-6 animate-spin text-[oklch(0.5_0.02_260)]" />
+        </div>
+      )}
+      <img
+        src={src}
+        alt=""
+        draggable={false}
+        onLoad={() => setLoaded(true)}
+        className={cn("h-full w-full object-contain transition-opacity duration-150", loaded ? "opacity-100" : "opacity-0")}
+      />
+    </>
+  )
+}
+
 function PdfPane({ path, pageCount, initialPage, available }: { path: string; pageCount: number; initialPage: number; available: boolean }) {
   const [page, setPage] = useState(initialPage)
+  const [dir, setDir] = useState(0)
   const [zoom, setZoom] = useState(2) // index vào ZOOMS
-  const [loaded, setLoaded] = useState(false)
-  useEffect(() => setPage(initialPage), [initialPage])
-  useEffect(() => setLoaded(false), [page, path])
+  useEffect(() => { setPage(initialPage); setDir(0) }, [initialPage])
+
+  const go = (delta: number) =>
+    setPage((p) => {
+      const next = Math.max(1, Math.min(pageCount, p + delta))
+      if (next !== p) setDir(delta)
+      return next
+    })
 
   return (
     <div className="flex min-w-0 flex-col border-r border-border bg-[oklch(0.12_0.004_260)]">
       <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <div className="flex items-center gap-1">
-          <IconBtn onClick={() => setPage((p) => Math.max(1, p - 1))}><CaretLeft className="size-4" /></IconBtn>
+          <IconBtn onClick={() => go(-1)}><CaretLeft className="size-4" /></IconBtn>
           <span className="px-1 font-mono text-xs text-muted-foreground">Trang {page} / {pageCount}</span>
-          <IconBtn onClick={() => setPage((p) => Math.min(pageCount, p + 1))}><CaretRight className="size-4" /></IconBtn>
+          <IconBtn onClick={() => go(1)}><CaretRight className="size-4" /></IconBtn>
         </div>
         <div className="flex items-center gap-1">
           <IconBtn onClick={() => setZoom((z) => Math.max(0, z - 1))}><MagnifyingGlassMinus className="size-4" /></IconBtn>
@@ -93,26 +126,26 @@ function PdfPane({ path, pageCount, initialPage, available }: { path: string; pa
       <ScrollArea className="flex-1">
         <div className="grid place-items-center p-6">
           <div
-            className="relative overflow-hidden rounded-sm border border-border bg-[oklch(0.96_0.004_90)] shadow-2xl shadow-black/50"
-            style={{ width: `${(360 * ZOOMS[zoom]) / 100}px`, minHeight: 200 }}
+            className="relative aspect-[1/1.414] overflow-hidden rounded-sm border border-border bg-[oklch(0.96_0.004_90)] shadow-2xl shadow-black/50"
+            style={{ width: `${(360 * ZOOMS[zoom]) / 100}px` }}
           >
             {available ? (
-              <>
-                {!loaded && (
-                  <div className="absolute inset-0 grid place-items-center">
-                    <CircleNotch className="size-6 animate-spin text-[oklch(0.5_0.02_260)]" />
-                  </div>
-                )}
-                <img
-                  key={`${path}-${page}`}
-                  src={pageUrl(path, page)}
-                  alt={`Trang ${page}`}
-                  onLoad={() => setLoaded(true)}
-                  className={cn("block w-full transition-opacity duration-200", loaded ? "opacity-100" : "opacity-0")}
-                />
-              </>
+              <AnimatePresence custom={dir} initial={false}>
+                <motion.div
+                  key={page}
+                  custom={dir}
+                  variants={pageVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={{ duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
+                  className="absolute inset-0"
+                >
+                  <PageImage src={pageUrl(path, page)} />
+                </motion.div>
+              </AnimatePresence>
             ) : (
-              <div className="grid aspect-[1/1.414] place-items-center p-6 text-center text-[oklch(0.45_0.02_260)]">
+              <div className="grid h-full place-items-center p-6 text-center text-[oklch(0.45_0.02_260)]">
                 <div>
                   <FilePdf weight="thin" className="mx-auto size-12 opacity-40" />
                   <p className="mt-3 text-sm font-medium">Đang chờ OCR…</p>
