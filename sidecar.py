@@ -15,6 +15,7 @@ import os
 import sys
 import json
 import argparse
+from urllib.parse import urlparse, parse_qs
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -56,11 +57,26 @@ def _statement_rows(key, values, flags):
     return rows
 
 
+def render_page_png(pdf_path, page, dpi=110):
+    """Render 1 trang PDF -> PNG bytes (1-based page). Dùng cho khung xem ở UI."""
+    doc = fitz.open(pdf_path)
+    idx = max(0, min(doc.page_count - 1, int(page) - 1))
+    pix = doc[idx].get_pixmap(dpi=int(dpi))
+    data = pix.tobytes("png")
+    doc.close()
+    return data
+
+
 def convert(pdf_path, hq=False):
     dpis = (180, 220, 290) if hq else (180, 235)
     doc = fitz.open(pdf_path)
     results, warnings, meta, conflicts = parser.extract_consensus(doc, dpis=dpis)
+    scope = parser.locate_pages(doc)               # [(page0, key)] để jump tới trang báo cáo
+    page_count = doc.page_count
     doc.close()
+    located = {}
+    for p0, key in scope:
+        located.setdefault(key, p0 + 1)            # 1-based, trang đầu mỗi báo cáo
 
     flags_by_key = excel_writer._flags_by_key(conflicts)
     statements = []
@@ -86,6 +102,8 @@ def convert(pdf_path, hq=False):
         "statements": statements,
         "balance": balance,
         "warnings": warnings,
+        "pageCount": page_count,
+        "pages": located,                          # {CDKT: 7, KQHDKD: 9, ...}
     }
 
 
@@ -114,9 +132,28 @@ class Handler(BaseHTTPRequestHandler):
         self._send(204, {})
 
     def do_GET(self):
-        if self.path.startswith("/health"):
-            tess, td = ocr.locate_tesseract()
+        parsed = urlparse(self.path)
+        if parsed.path == "/health":
+            tess, _ = ocr.locate_tesseract()
             self._send(200, {"ok": True, "tesseract": tess, "has_vie": ocr.has_vietnamese()})
+        elif parsed.path == "/page":
+            q = parse_qs(parsed.query)
+            path = (q.get("path") or [None])[0]
+            page = (q.get("page") or ["1"])[0]
+            dpi = (q.get("dpi") or ["110"])[0]
+            if not path or not os.path.exists(path):
+                return self._send(400, {"error": "thiếu/không thấy file"})
+            try:
+                data = render_page_png(path, page, dpi)
+            except Exception as e:
+                return self._send(500, {"error": f"{type(e).__name__}: {e}"})
+            self.send_response(200)
+            self.send_header("Content-Type", "image/png")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Cache-Control", "max-age=600")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
         else:
             self._send(404, {"error": "not found"})
 

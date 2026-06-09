@@ -11,6 +11,13 @@ export interface ConvertResult {
   statements: Statement[]
   balance: BalanceCheck[]
   warnings: string[]
+  pageCount: number
+  pages: Record<string, number> // {CDKT: 7, ...} trang đầu mỗi báo cáo (1-based)
+}
+
+// URL ảnh PNG của 1 trang PDF do sidecar render (PyMuPDF).
+export function pageUrl(path: string, page: number, dpi = 120): string {
+  return `${BASE}/page?path=${encodeURIComponent(path)}&page=${page}&dpi=${dpi}`
 }
 
 export async function health(): Promise<{ ok: boolean; has_vie: boolean; tesseract: string | null }> {

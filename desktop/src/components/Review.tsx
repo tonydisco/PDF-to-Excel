@@ -10,7 +10,7 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { fmtVN } from "@/lib/format"
 import { MOCK_STATEMENTS, MOCK_BALANCE, MOCK_FILES, type Row, type Statement, type BalanceCheck } from "@/lib/mock"
-import { convert, exportXlsx, type ConvertResult } from "@/lib/api"
+import { convert, exportXlsx, pageUrl, type ConvertResult } from "@/lib/api"
 
 export function Review({ fileId, onBack }: { fileId: string; onBack: () => void }) {
   const file = MOCK_FILES.find((f) => f.id === fileId) ?? MOCK_FILES[0]
@@ -55,39 +55,70 @@ export function Review({ fileId, onBack }: { fileId: string; onBack: () => void 
       </header>
 
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(440px,560px)]">
-        <PdfPane name={file.name} pages={file.pages} />
+        <PdfPane
+          path={file.path}
+          pageCount={state.data?.pageCount ?? file.pages}
+          initialPage={state.data?.pages?.[statements[0]?.key] ?? state.data?.pages?.CDKT ?? 1}
+          available={!!state.data}
+        />
         <DataPane statements={statements} balance={balance} balanceOk={balanceOk} loading={state.loading} />
       </div>
     </>
   )
 }
 
-function PdfPane({ name, pages }: { name: string; pages: number }) {
-  const [page, setPage] = useState(7)
+const ZOOMS = [70, 85, 100, 125, 150]
+
+function PdfPane({ path, pageCount, initialPage, available }: { path: string; pageCount: number; initialPage: number; available: boolean }) {
+  const [page, setPage] = useState(initialPage)
+  const [zoom, setZoom] = useState(2) // index vào ZOOMS
+  const [loaded, setLoaded] = useState(false)
+  useEffect(() => setPage(initialPage), [initialPage])
+  useEffect(() => setLoaded(false), [page, path])
+
   return (
-    <div className="flex min-w-0 flex-col border-r border-border bg-[oklch(0.13_0.004_260)]">
+    <div className="flex min-w-0 flex-col border-r border-border bg-[oklch(0.12_0.004_260)]">
       <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <div className="flex items-center gap-1">
           <IconBtn onClick={() => setPage((p) => Math.max(1, p - 1))}><CaretLeft className="size-4" /></IconBtn>
-          <span className="px-1 font-mono text-xs text-muted-foreground">Trang {page} / {pages}</span>
-          <IconBtn onClick={() => setPage((p) => Math.min(pages, p + 1))}><CaretRight className="size-4" /></IconBtn>
+          <span className="px-1 font-mono text-xs text-muted-foreground">Trang {page} / {pageCount}</span>
+          <IconBtn onClick={() => setPage((p) => Math.min(pageCount, p + 1))}><CaretRight className="size-4" /></IconBtn>
         </div>
         <div className="flex items-center gap-1">
-          <IconBtn><MagnifyingGlassMinus className="size-4" /></IconBtn>
-          <span className="px-1 font-mono text-xs text-muted-foreground">100%</span>
-          <IconBtn><MagnifyingGlassPlus className="size-4" /></IconBtn>
+          <IconBtn onClick={() => setZoom((z) => Math.max(0, z - 1))}><MagnifyingGlassMinus className="size-4" /></IconBtn>
+          <span className="w-10 px-1 text-center font-mono text-xs text-muted-foreground">{ZOOMS[zoom]}%</span>
+          <IconBtn onClick={() => setZoom((z) => Math.min(ZOOMS.length - 1, z + 1))}><MagnifyingGlassPlus className="size-4" /></IconBtn>
         </div>
       </div>
       <ScrollArea className="flex-1">
         <div className="grid place-items-center p-6">
-          <div className="aspect-[1/1.414] w-full max-w-[460px] rounded-sm border border-border bg-[oklch(0.94_0.004_90)] shadow-2xl shadow-black/40">
-            <div className="grid h-full place-items-center p-6 text-center">
-              <div className="text-[oklch(0.45_0.02_260)]">
-                <FilePdf weight="thin" className="mx-auto size-12 opacity-40" />
-                <p className="mt-3 text-sm font-medium">Khung xem PDF (pdf.js)</p>
-                <p className="mt-1 text-xs opacity-70">{name} · trang {page} sẽ render ở đây ở bước kế.</p>
+          <div
+            className="relative overflow-hidden rounded-sm border border-border bg-[oklch(0.96_0.004_90)] shadow-2xl shadow-black/50"
+            style={{ width: `${(360 * ZOOMS[zoom]) / 100}px`, minHeight: 200 }}
+          >
+            {available ? (
+              <>
+                {!loaded && (
+                  <div className="absolute inset-0 grid place-items-center">
+                    <CircleNotch className="size-6 animate-spin text-[oklch(0.5_0.02_260)]" />
+                  </div>
+                )}
+                <img
+                  key={`${path}-${page}`}
+                  src={pageUrl(path, page)}
+                  alt={`Trang ${page}`}
+                  onLoad={() => setLoaded(true)}
+                  className={cn("block w-full transition-opacity duration-200", loaded ? "opacity-100" : "opacity-0")}
+                />
+              </>
+            ) : (
+              <div className="grid aspect-[1/1.414] place-items-center p-6 text-center text-[oklch(0.45_0.02_260)]">
+                <div>
+                  <FilePdf weight="thin" className="mx-auto size-12 opacity-40" />
+                  <p className="mt-3 text-sm font-medium">Đang chờ OCR…</p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </ScrollArea>
