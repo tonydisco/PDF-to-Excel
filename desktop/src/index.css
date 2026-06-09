@@ -1,9 +1,59 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/ibm-plex-sans";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/600.css";
 
-/* Tokens cơ bản (shadcn init sẽ mở rộng ở phiên build UI).
-   Bảng màu kế thừa app hiện tại (Coolors). Mặc định dark. */
+@custom-variant dark (&:is(.dark *));
+
+/* App tài chính: dark-first, nền zinc lạnh, accent SAGE (#81b29a = cân đối OK),
+   coral (#e07a5f) cho ô nghi ngờ. Bảng màu kế thừa Coolors của app cũ. */
 :root {
   color-scheme: dark;
+  --radius: 0.5rem;
+
+  --background: oklch(0.16 0.004 260);
+  --foreground: oklch(0.96 0.003 260);
+  --card: oklch(0.196 0.005 260);
+  --card-foreground: oklch(0.96 0.003 260);
+  --popover: oklch(0.2 0.005 260);
+  --popover-foreground: oklch(0.96 0.003 260);
+  --primary: oklch(0.74 0.066 162);            /* sage */
+  --primary-foreground: oklch(0.2 0.02 162);
+  --secondary: oklch(0.26 0.006 260);
+  --secondary-foreground: oklch(0.96 0.003 260);
+  --muted: oklch(0.24 0.005 260);
+  --muted-foreground: oklch(0.68 0.008 260);
+  --accent: oklch(0.27 0.006 260);
+  --accent-foreground: oklch(0.96 0.003 260);
+  --destructive: oklch(0.62 0.2 25);
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.74 0.066 162);
+
+  /* semantic tài chính */
+  --ok: oklch(0.74 0.066 162);                 /* sage  - cân đối khớp */
+  --ok-foreground: oklch(0.2 0.02 162);
+  --flag: oklch(0.72 0.13 47);                 /* coral - ô nghi ngờ / cần soát */
+  --flag-foreground: oklch(0.22 0.03 47);
+  --warn: oklch(0.83 0.1 85);                  /* sand  - cảnh báo nhẹ */
+
+  --sidebar: oklch(0.18 0.004 260);
+  --sidebar-foreground: oklch(0.9 0.004 260);
+  --sidebar-primary: oklch(0.74 0.066 162);
+  --sidebar-primary-foreground: oklch(0.2 0.02 162);
+  --sidebar-accent: oklch(0.26 0.006 260);
+  --sidebar-accent-foreground: oklch(0.96 0.003 260);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.74 0.066 162);
+
+  --chart-1: oklch(0.74 0.066 162);
+  --chart-2: oklch(0.72 0.13 47);
+  --chart-3: oklch(0.83 0.1 85);
+  --chart-4: oklch(0.6 0.08 260);
+  --chart-5: oklch(0.68 0.008 260);
 }
 
 html,
@@ -11,4 +61,69 @@ body,
 #root {
   height: 100%;
   margin: 0;
+}
+
+@theme inline {
+  --font-sans: 'IBM Plex Sans Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-heading: var(--font-sans);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ok: var(--ok);
+  --color-ok-foreground: var(--ok-foreground);
+  --color-flag: var(--flag);
+  --color-flag-foreground: var(--flag-foreground);
+  --color-warn: var(--warn);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "tnum" 1; /* số dạng tabular cho bảng tài chính */
+  }
+  html {
+    @apply font-sans;
+  }
+  /* thanh cuộn mảnh hợp tông tối */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: oklch(1 0 0 / 12%); border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover { background: oklch(1 0 0 / 20%); }
 }
