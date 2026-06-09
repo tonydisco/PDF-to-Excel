@@ -1,12 +1,13 @@
 import { Stack, Eye, ChartLineUp, Gear, FilePdf } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils"
+import { Ambient } from "@/components/Ambient"
 
 export type View = "queue" | "review" | "analysis"
 
-const NAV: { id: View; label: string; icon: typeof Stack; hint: string }[] = [
-  { id: "queue", label: "Hàng đợi", icon: Stack, hint: "Thêm & chuyển đổi PDF" },
-  { id: "review", label: "Review", icon: Eye, hint: "Soát từng báo cáo" },
-  { id: "analysis", label: "Phân tích", icon: ChartLineUp, hint: "Chỉ số & rủi ro" },
+const NAV: { id: View; label: string; icon: typeof Stack }[] = [
+  { id: "queue", label: "Hàng đợi", icon: Stack },
+  { id: "review", label: "Review", icon: Eye },
+  { id: "analysis", label: "Phân tích", icon: ChartLineUp },
 ]
 
 export function AppShell({
@@ -19,11 +20,13 @@ export function AppShell({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
-      {/* Sidebar */}
-      <aside className="flex w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
+    <div className="relative flex h-screen w-screen overflow-hidden bg-background text-foreground">
+      <Ambient />
+
+      {/* Sidebar (kính mờ) */}
+      <aside className="relative z-10 flex w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar/70 backdrop-blur-xl">
         <div className="flex items-center gap-2.5 px-4 py-4">
-          <div className="grid size-9 place-items-center rounded-lg bg-primary text-primary-foreground">
+          <div className="relative grid size-9 place-items-center rounded-lg bg-gradient-to-br from-primary to-[oklch(0.72_0.13_47)] text-primary-foreground shadow-lg shadow-primary/20">
             <FilePdf weight="fill" className="size-5" />
           </div>
           <div className="leading-tight">
@@ -41,13 +44,14 @@ export function AppShell({
                 key={item.id}
                 onClick={() => onNavigate(item.id)}
                 className={cn(
-                  "group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-200 cursor-pointer",
+                  "group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-all duration-200 cursor-pointer",
                   active
                     ? "bg-sidebar-accent text-foreground"
                     : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
                 )}
               >
-                <Icon weight={active ? "fill" : "regular"} className={cn("size-[18px]", active && "text-primary")} />
+                {active && <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary" />}
+                <Icon weight={active ? "fill" : "regular"} className={cn("size-[18px] transition-colors", active && "text-primary")} />
                 <span className="font-medium">{item.label}</span>
               </button>
             )
@@ -60,15 +64,15 @@ export function AppShell({
           </button>
           <div className="flex items-center justify-between">
             <span>v2.0 · Tauri</span>
-            <span className="inline-flex items-center gap-1">
-              <span className="size-1.5 rounded-full bg-primary" /> Local OCR
+            <span className="inline-flex items-center gap-1.5">
+              <span className="pulse-dot size-1.5 rounded-full bg-primary" /> Local OCR
             </span>
           </div>
         </div>
       </aside>
 
       {/* Main */}
-      <main className="flex min-w-0 flex-1 flex-col">{children}</main>
+      <main className="relative z-10 flex min-w-0 flex-1 flex-col">{children}</main>
     </div>
   )
 }

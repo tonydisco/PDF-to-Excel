@@ -1,8 +1,9 @@
 import { useState } from "react"
 import {
   FilePlus, FolderPlus, Play, FilePdf, Eye, Trash, CheckCircle,
-  WarningCircle, CircleNotch, Clock, UploadSimple,
+  WarningCircle, CircleNotch, Clock, UploadSimple, Sparkle,
 } from "@phosphor-icons/react"
+import { motion } from "motion/react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -52,7 +53,7 @@ function FoundBadge({ found }: { found: number }) {
   )
 }
 
-export function Dashboard({ onOpenReview }: { onOpenReview: (id: string) => void }) {
+export function Dashboard({ onOpenReview, onAskAI }: { onOpenReview: (id: string) => void; onAskAI: () => void }) {
   const [files] = useState<QueueFile[]>(MOCK_FILES)
   const done = files.filter((f) => f.status === "done").length
   const processing = files.filter((f) => f.status === "processing").length
@@ -67,22 +68,33 @@ export function Dashboard({ onOpenReview }: { onOpenReview: (id: string) => void
 
   return (
     <>
-      {/* Topbar */}
-      <header className="flex items-center justify-between gap-4 border-b border-border px-6 py-3.5">
-        <div>
+      {/* Topbar (kính mờ) */}
+      <header className="flex items-center justify-between gap-4 border-b border-border bg-background/55 px-6 py-3 backdrop-blur-xl">
+        <div className="shrink-0">
           <h1 className="text-[15px] font-semibold tracking-tight">Hàng đợi chuyển đổi</h1>
           <p className="text-xs text-muted-foreground">
-            {files.length} file · tối đa 150/lần · dữ liệu xử lý ngay trên máy
+            {files.length} file · tối đa 150/lần · xử lý ngay trên máy
           </p>
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* Thanh hỏi AI — tín hiệu "AI product" */}
+        <button
+          onClick={onAskAI}
+          className="group hidden min-w-0 max-w-md flex-1 items-center gap-2.5 rounded-lg border border-border bg-card/60 px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground md:flex cursor-pointer"
+        >
+          <Sparkle weight="fill" className="size-4 text-primary" />
+          <span className="truncate">Hỏi AI về sức khỏe tài chính, rủi ro doanh nghiệp…</span>
+          <kbd className="ml-auto rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">⌘K</kbd>
+        </button>
+
+        <div className="flex shrink-0 items-center gap-2">
           <Button variant="outline" size="sm" className="cursor-pointer">
             <FilePlus className="size-4" /> Thêm file
           </Button>
           <Button variant="outline" size="sm" className="cursor-pointer">
             <FolderPlus className="size-4" /> Thêm thư mục
           </Button>
-          <Button size="sm" className="cursor-pointer font-medium">
+          <Button size="sm" className="sheen cursor-pointer font-medium shadow-lg shadow-primary/25">
             <Play weight="fill" className="size-4" /> Chuyển đổi
           </Button>
         </div>
@@ -91,11 +103,17 @@ export function Dashboard({ onOpenReview }: { onOpenReview: (id: string) => void
       <div className="flex min-h-0 flex-1 flex-col gap-4 p-6">
         {/* Stats */}
         <div className="grid grid-cols-4 gap-3">
-          {stats.map((s) => (
-            <div key={s.label} className="rounded-lg border border-border bg-card px-4 py-3">
+          {stats.map((s, i) => (
+            <motion.div
+              key={s.label}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05, duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="rounded-lg border border-border bg-card/60 px-4 py-3 backdrop-blur-sm"
+            >
               <div className="text-xs text-muted-foreground">{s.label}</div>
               <div className={cn("mt-1 font-mono text-2xl font-semibold tabular-nums", s.tone)}>{s.value}</div>
-            </div>
+            </motion.div>
           ))}
         </div>
 

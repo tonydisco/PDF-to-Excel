@@ -17,7 +17,7 @@ export function Review({ fileId, onBack }: { fileId: string; onBack: () => void 
 
   return (
     <>
-      <header className="flex items-center justify-between gap-4 border-b border-border px-5 py-3">
+      <header className="flex items-center justify-between gap-4 border-b border-border bg-background/55 px-5 py-3 backdrop-blur-xl">
         <div className="flex items-center gap-3">
           <button onClick={onBack} className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer">
             <ArrowLeft className="size-4" />
