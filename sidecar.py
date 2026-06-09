@@ -20,8 +20,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fitz
-from bctc import ocr, parser, engine, excel_writer
+from bctc import ocr, parser, engine, excel_writer, ratio_engine
 from bctc import templates as T
+
+# Cache kết quả OCR theo (path, hq) -> để /ratios & /convert lặp không OCR lại.
+_CACHE = {}
 
 KEYS = ["CDKT", "KQHDKD", "LCTT"]
 SHEET_TITLES = {
@@ -67,16 +70,32 @@ def render_page_png(pdf_path, page, dpi=110):
     return data
 
 
-def convert(pdf_path, hq=False):
+def _extract(pdf_path, hq=False):
+    """OCR + định vị (có cache). Trả (results, warnings, conflicts, located, page_count)."""
+    key = (os.path.abspath(pdf_path), bool(hq))
+    if key in _CACHE:
+        return _CACHE[key]
     dpis = (180, 220, 290) if hq else (180, 235)
     doc = fitz.open(pdf_path)
     results, warnings, meta, conflicts = parser.extract_consensus(doc, dpis=dpis)
-    scope = parser.locate_pages(doc)               # [(page0, key)] để jump tới trang báo cáo
+    scope = parser.locate_pages(doc)
     page_count = doc.page_count
     doc.close()
     located = {}
-    for p0, key in scope:
-        located.setdefault(key, p0 + 1)            # 1-based, trang đầu mỗi báo cáo
+    for p0, k in scope:
+        located.setdefault(k, p0 + 1)              # 1-based, trang đầu mỗi báo cáo
+    out = (results, warnings, conflicts, located, page_count)
+    _CACHE[key] = out
+    return out
+
+
+def ratios(pdf_path, hq=False):
+    results, *_ = _extract(pdf_path, hq)
+    return ratio_engine.compute(results)
+
+
+def convert(pdf_path, hq=False):
+    results, warnings, conflicts, located, page_count = _extract(pdf_path, hq)
 
     flags_by_key = excel_writer._flags_by_key(conflicts)
     statements = []
@@ -165,6 +184,11 @@ class Handler(BaseHTTPRequestHandler):
                 if not path or not os.path.exists(path):
                     return self._send(400, {"error": "thiếu/không thấy file 'path'"})
                 self._send(200, convert(path, hq=bool(data.get("hq"))))
+            elif self.path.startswith("/ratios"):
+                path = data.get("path")
+                if not path or not os.path.exists(path):
+                    return self._send(400, {"error": "thiếu/không thấy file 'path'"})
+                self._send(200, ratios(path, hq=bool(data.get("hq"))))
             elif self.path.startswith("/export"):
                 path = data.get("path")
                 out_dir = data.get("out_dir") or os.path.join(os.path.dirname(path), "Excel_output")

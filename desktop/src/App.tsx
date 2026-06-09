@@ -30,7 +30,7 @@ function App() {
             />
           )}
           {view === "review" && <Review fileId={reviewFileId} onBack={() => setView("queue")} />}
-          {view === "analysis" && <Analysis />}
+          {view === "analysis" && <Analysis fileId={reviewFileId} />}
         </motion.div>
       </AnimatePresence>
     </AppShell>
