@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react"
-import { AnimatePresence, motion } from "motion/react"
+import { useEffect, useRef, useState } from "react"
 import {
   ArrowLeft, CaretLeft, CaretRight, MagnifyingGlassPlus, MagnifyingGlassMinus,
   CheckCircle, WarningCircle, ArrowsClockwise, PencilSimple, FileXls, FilePdf, CircleNotch,
@@ -60,6 +59,7 @@ export function Review({ fileId, onBack }: { fileId: string; onBack: () => void 
           path={file.path}
           pageCount={state.data?.pageCount ?? file.pages}
           initialPage={state.data?.pages?.[statements[0]?.key] ?? state.data?.pages?.CDKT ?? 1}
+          located={state.data?.pages ?? {}}
           available={!!state.data}
         />
         <DataPane statements={statements} balance={balance} balanceOk={balanceOk} loading={state.loading} />
@@ -68,13 +68,8 @@ export function Review({ fileId, onBack }: { fileId: string; onBack: () => void 
   )
 }
 
-const ZOOMS = [70, 85, 100, 125, 150]
-
-const pageVariants = {
-  enter: (d: number) => ({ y: d >= 0 ? "28%" : "-28%", opacity: 0, scale: 0.985 }),
-  center: { y: "0%", opacity: 1, scale: 1 },
-  exit: (d: number) => ({ y: d >= 0 ? "-28%" : "28%", opacity: 0, scale: 0.985 }),
-}
+const ZOOM_STEPS = [60, 75, 90, 100, 120, 145, 175]
+const STMT_LABEL: Record<string, string> = { CDKT: "Cân đối KT", KQHDKD: "Kết quả KD", LCTT: "Lưu chuyển TT" }
 
 function PageImage({ src }: { src: string }) {
   const [loaded, setLoaded] = useState(false)
@@ -96,65 +91,127 @@ function PageImage({ src }: { src: string }) {
   )
 }
 
-function PdfPane({ path, pageCount, initialPage, available }: { path: string; pageCount: number; initialPage: number; available: boolean }) {
-  const [page, setPage] = useState(initialPage)
-  const [dir, setDir] = useState(0)
-  const [zoom, setZoom] = useState(2) // index vào ZOOMS
-  useEffect(() => { setPage(initialPage); setDir(0) }, [initialPage])
+function PdfPane({
+  path, pageCount, initialPage, located, available,
+}: { path: string; pageCount: number; initialPage: number; located: Record<string, number>; available: boolean }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const pageEls = useRef<Map<number, HTMLDivElement>>(new Map())
+  const [current, setCurrent] = useState(initialPage)
+  const [visible, setVisible] = useState<Set<number>>(new Set())
+  const [zi, setZi] = useState(3) // ZOOM_STEPS index = 100%
+  const [pageInput, setPageInput] = useState(String(initialPage))
+  useEffect(() => setPageInput(String(current)), [current])
 
-  const go = (delta: number) =>
-    setPage((p) => {
-      const next = Math.max(1, Math.min(pageCount, p + delta))
-      if (next !== p) setDir(delta)
-      return next
-    })
+  const jumpTo = (n: number) => {
+    const p = Math.max(1, Math.min(pageCount, Math.round(n) || 1))
+    pageEls.current.get(p)?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
+  // Lazy-load (chỉ render ảnh trang gần viewport) + theo dõi trang hiện tại
+  useEffect(() => {
+    if (!available) return
+    const root = scrollRef.current
+    if (!root) return
+    const lazy = new IntersectionObserver((ents) => {
+      setVisible((prev) => {
+        let changed = false
+        const next = new Set(prev)
+        for (const e of ents) if (e.isIntersecting) {
+          const p = Number((e.target as HTMLElement).dataset.page)
+          if (!next.has(p)) { next.add(p); changed = true }
+        }
+        return changed ? next : prev
+      })
+    }, { root, rootMargin: "900px 0px" })
+    const center = new IntersectionObserver((ents) => {
+      for (const e of ents) if (e.isIntersecting) setCurrent(Number((e.target as HTMLElement).dataset.page))
+    }, { root, rootMargin: "-48% 0px -48% 0px" })
+    pageEls.current.forEach((el) => { lazy.observe(el); center.observe(el) })
+    return () => { lazy.disconnect(); center.disconnect() }
+  }, [available, pageCount])
+
+  // Mở đúng trang báo cáo lần đầu
+  useEffect(() => {
+    if (!available) return
+    const t = setTimeout(() => pageEls.current.get(initialPage)?.scrollIntoView({ block: "start" }), 80)
+    return () => clearTimeout(t)
+  }, [available, initialPage])
+
+  const chips = (["CDKT", "KQHDKD", "LCTT"] as const).filter((k) => located[k])
 
   return (
     <div className="flex min-w-0 flex-col border-r border-border bg-[oklch(0.12_0.004_260)]">
-      <div className="flex items-center justify-between border-b border-border px-4 py-2">
+      <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
         <div className="flex items-center gap-1">
-          <IconBtn onClick={() => go(-1)}><CaretLeft className="size-4" /></IconBtn>
-          <span className="px-1 font-mono text-xs text-muted-foreground">Trang {page} / {pageCount}</span>
-          <IconBtn onClick={() => go(1)}><CaretRight className="size-4" /></IconBtn>
+          <IconBtn onClick={() => jumpTo(current - 1)}><CaretLeft className="size-4" /></IconBtn>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <input
+              value={pageInput}
+              onChange={(e) => setPageInput(e.target.value.replace(/\D/g, ""))}
+              onKeyDown={(e) => e.key === "Enter" && jumpTo(Number(pageInput))}
+              onBlur={() => jumpTo(Number(pageInput))}
+              title="Nhập số trang rồi Enter để nhảy tới"
+              className="w-9 rounded border border-border bg-muted px-1 py-0.5 text-center font-mono text-xs outline-none focus:border-primary"
+            />
+            <span className="font-mono">/ {pageCount}</span>
+          </div>
+          <IconBtn onClick={() => jumpTo(current + 1)}><CaretRight className="size-4" /></IconBtn>
         </div>
+
+        {chips.length > 0 && (
+          <div className="hidden items-center gap-1 xl:flex">
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Nhảy tới</span>
+            {chips.map((k) => (
+              <button
+                key={k}
+                onClick={() => jumpTo(located[k])}
+                className="rounded-md border border-border bg-card/60 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground cursor-pointer"
+              >
+                {STMT_LABEL[k]}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="flex items-center gap-1">
-          <IconBtn onClick={() => setZoom((z) => Math.max(0, z - 1))}><MagnifyingGlassMinus className="size-4" /></IconBtn>
-          <span className="w-10 px-1 text-center font-mono text-xs text-muted-foreground">{ZOOMS[zoom]}%</span>
-          <IconBtn onClick={() => setZoom((z) => Math.min(ZOOMS.length - 1, z + 1))}><MagnifyingGlassPlus className="size-4" /></IconBtn>
+          <IconBtn onClick={() => setZi((z) => Math.max(0, z - 1))}><MagnifyingGlassMinus className="size-4" /></IconBtn>
+          <span className="w-10 px-1 text-center font-mono text-xs text-muted-foreground">{ZOOM_STEPS[zi]}%</span>
+          <IconBtn onClick={() => setZi((z) => Math.min(ZOOM_STEPS.length - 1, z + 1))}><MagnifyingGlassPlus className="size-4" /></IconBtn>
         </div>
       </div>
-      <ScrollArea className="flex-1">
-        <div className="grid place-items-center p-6">
+
+      <div ref={scrollRef} className="relative flex-1 overflow-auto">
+        {available ? (
           <div
-            className="relative aspect-[1/1.414] overflow-hidden rounded-sm border border-border bg-[oklch(0.96_0.004_90)] shadow-2xl shadow-black/50"
-            style={{ width: `${(360 * ZOOMS[zoom]) / 100}px` }}
+            className="mx-auto flex flex-col items-center gap-4 px-4 py-5"
+            style={{ width: `${ZOOM_STEPS[zi]}%`, maxWidth: ZOOM_STEPS[zi] <= 100 ? 800 : undefined }}
           >
-            {available ? (
-              <AnimatePresence custom={dir} initial={false}>
-                <motion.div
-                  key={page}
-                  custom={dir}
-                  variants={pageVariants}
-                  initial="enter"
-                  animate="center"
-                  exit="exit"
-                  transition={{ duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
-                  className="absolute inset-0"
-                >
-                  <PageImage src={pageUrl(path, page)} />
-                </motion.div>
-              </AnimatePresence>
-            ) : (
-              <div className="grid h-full place-items-center p-6 text-center text-[oklch(0.45_0.02_260)]">
-                <div>
-                  <FilePdf weight="thin" className="mx-auto size-12 opacity-40" />
-                  <p className="mt-3 text-sm font-medium">Đang chờ OCR…</p>
-                </div>
+            {Array.from({ length: pageCount }, (_, i) => i + 1).map((p) => (
+              <div
+                key={p}
+                data-page={p}
+                ref={(el) => { if (el) pageEls.current.set(p, el); else pageEls.current.delete(p) }}
+                className="relative aspect-[1/1.414] w-full scroll-mt-3 overflow-hidden rounded-sm border border-border bg-[oklch(0.96_0.004_90)] shadow-xl shadow-black/40"
+              >
+                {visible.has(p) ? (
+                  <PageImage src={pageUrl(path, p, 140)} />
+                ) : (
+                  <div className="absolute inset-0 grid place-items-center">
+                    <span className="font-mono text-xs text-[oklch(0.55_0.02_260)] opacity-60">Trang {p}</span>
+                  </div>
+                )}
               </div>
-            )}
+            ))}
           </div>
-        </div>
-      </ScrollArea>
+        ) : (
+          <div className="grid h-full place-items-center p-6 text-center text-[oklch(0.55_0.02_260)]">
+            <div>
+              <FilePdf weight="thin" className="mx-auto size-12 opacity-40" />
+              <p className="mt-3 text-sm font-medium">Đang chờ OCR…</p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
