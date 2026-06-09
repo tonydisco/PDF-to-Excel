@@ -6,25 +6,30 @@ use tauri::Manager;
 struct Sidecar(Mutex<Option<Child>>);
 
 fn spawn_sidecar() -> Option<Child> {
-  // Dev: cwd của cargo run là desktop/src-tauri -> repo root = ../.. ; dùng venv.
-  // Prod (đóng gói): sẽ thay bằng sidecar bundle (PyInstaller) ở bước sau.
-  if cfg!(debug_assertions) {
+  let result = if cfg!(debug_assertions) {
+    // Dev: cwd của cargo run là desktop/src-tauri -> repo root = ../.. ; dùng venv.
     let cwd = std::env::current_dir().ok()?;
     let root = cwd.parent()?.parent()?.to_path_buf();
     let py = root.join(".venv/bin/python");
     let script = root.join("sidecar.py");
-    match Command::new(&py).arg(&script).current_dir(&root).spawn() {
-      Ok(child) => {
-        println!("[sidecar] spawned: {} {}", py.display(), script.display());
-        Some(child)
-      }
-      Err(e) => {
-        eprintln!("[sidecar] spawn failed: {e}");
-        None
-      }
-    }
+    Command::new(&py).arg(&script).current_dir(&root).spawn()
   } else {
-    None
+    // Prod (đóng gói): binary sidecar (PyInstaller) đặt cạnh app exe qua externalBin.
+    let exe = std::env::current_exe().ok()?;
+    let dir = exe.parent()?;
+    let name = if cfg!(target_os = "windows") { "bctc-sidecar.exe" } else { "bctc-sidecar" };
+    let sidecar = dir.join(name);
+    Command::new(&sidecar).spawn()
+  };
+  match result {
+    Ok(child) => {
+      println!("[sidecar] spawned");
+      Some(child)
+    }
+    Err(e) => {
+      eprintln!("[sidecar] spawn failed: {e}");
+      None
+    }
   }
 }
 

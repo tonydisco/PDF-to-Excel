@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "BCTC PDF to Excel",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "com.bctc.pdf2excel",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
@@ -13,8 +13,10 @@
     "windows": [
       {
         "title": "BCTC PDF to Excel",
-        "width": 800,
-        "height": 600,
+        "width": 1280,
+        "height": 832,
+        "minWidth": 980,
+        "minHeight": 640,
         "resizable": true,
         "fullscreen": false
       }
@@ -26,6 +28,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "externalBin": ["binaries/bctc-sidecar"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

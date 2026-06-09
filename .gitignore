@@ -40,3 +40,8 @@ sample data/
 # Cache OCR/benchmark cục bộ
 work/
 bench/out/
+
+# Đóng gói sidecar (PyInstaller) — binary nặng, KHÔNG commit
+dist_sidecar/
+build_sidecar/
+desktop/src-tauri/binaries/
