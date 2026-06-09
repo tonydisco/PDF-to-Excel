@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+/* Tokens cơ bản (shadcn init sẽ mở rộng ở phiên build UI).
+   Bảng màu kế thừa app hiện tại (Coolors). Mặc định dark. */
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
