@@ -122,10 +122,22 @@ def build_workbook(company_name, results, conflicts=None):
     flags = _flags_by_key(conflicts)
     wb = Workbook()
     wb.remove(wb.active)
+    created = 0
+    # Chỉ tạo sheet cho báo cáo CÓ bóc được chỉ tiêu; báo cáo trống thì BỎ QUA.
     for key in ("CDKT", "KQHDKD", "LCTT"):
+        if not results.get(key):
+            continue
         ws = wb.create_sheet(title=SHEET_NAMES[key])
-        _write_sheet(ws, key, T.STATEMENTS[key][0], results.get(key, {}),
+        _write_sheet(ws, key, T.STATEMENTS[key][0], results[key],
                      flags.get(key, frozenset()))
+        created += 1
+    if created == 0:
+        # openpyxl cần tối thiểu 1 sheet -> ghi sheet thông báo thay vì file rỗng.
+        ws = wb.create_sheet(title="Không có dữ liệu")
+        ws["A1"] = ("Không nhận diện được báo cáo nào theo mẫu Thông tư 200 "
+                    "(file có thể theo mẫu khác, ví dụ ngân hàng/TCTD).")
+        ws["A1"].font = Font(bold=True, color="C00000")
+        ws.column_dimensions["A"].width = 90
     return wb
 
 
