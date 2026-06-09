@@ -4,10 +4,11 @@ import { AppShell, type View } from "@/components/AppShell"
 import { Dashboard } from "@/components/Dashboard"
 import { Review } from "@/components/Review"
 import { Analysis } from "@/components/Analysis"
+import { useStore } from "@/lib/store"
 
 function App() {
   const [view, setView] = useState<View>("queue")
-  const [reviewFileId, setReviewFileId] = useState<string>("f03")
+  const [reviewFileId, setReviewFileId] = useState<string>(() => useStore.getState().files[0]?.id ?? "")
 
   return (
     <AppShell view={view} onNavigate={setView}>

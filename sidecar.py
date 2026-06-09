@@ -113,8 +113,13 @@ def convert(pdf_path, hq=False):
     balance = [{"label": d, "ok": ok, "detail": detail} for d, ok, detail in checks]
     balance_ok = (len(checks) > 0 and all(ok for _, ok, _ in checks)) if checks else None
 
+    try:
+        size_mb = round(os.path.getsize(pdf_path) / 1048576, 1)
+    except OSError:
+        size_mb = None
     return {
         "name": os.path.splitext(os.path.basename(pdf_path))[0],
+        "sizeMB": size_mb,
         "found": sum(1 for k in KEYS if results.get(k)),
         "conflicts": len(conflicts),
         "balanceOk": balance_ok,
@@ -155,6 +160,19 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/health":
             tess, _ = ocr.locate_tesseract()
             self._send(200, {"ok": True, "tesseract": tess, "has_vie": ocr.has_vietnamese()})
+        elif parsed.path == "/listdir":
+            q = parse_qs(parsed.query)
+            d = (q.get("dir") or [None])[0]
+            if not d or not os.path.isdir(d):
+                return self._send(400, {"error": "thiếu/không thấy thư mục"})
+            try:
+                files = sorted(
+                    os.path.join(d, f) for f in os.listdir(d)
+                    if f.lower().endswith(".pdf") and not f.startswith(".")
+                )
+            except OSError as e:
+                return self._send(500, {"error": str(e)})
+            self._send(200, {"files": files})
         elif parsed.path == "/page":
             q = parse_qs(parsed.query)
             path = (q.get("path") or [None])[0]

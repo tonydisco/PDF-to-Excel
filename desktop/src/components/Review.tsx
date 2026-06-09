@@ -9,25 +9,40 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { fmtVN } from "@/lib/format"
-import { MOCK_STATEMENTS, MOCK_BALANCE, MOCK_FILES, type Row, type Statement, type BalanceCheck } from "@/lib/mock"
+import { type Row, type Statement, type BalanceCheck } from "@/lib/mock"
 import { convert, exportXlsx, pageUrl, type ConvertResult } from "@/lib/api"
+import { useStore } from "@/lib/store"
 
 export function Review({ fileId, onBack }: { fileId: string; onBack: () => void }) {
-  const file = MOCK_FILES.find((f) => f.id === fileId) ?? MOCK_FILES[0]
-  const [state, setState] = useState<{ loading: boolean; data?: ConvertResult; err?: string }>({ loading: true })
+  const file = useStore((s) => s.files.find((f) => f.id === fileId))
+  const cached = useStore((s) => s.results[fileId])
+  const [state, setState] = useState<{ loading: boolean; data?: ConvertResult; err?: string }>({ loading: !cached })
 
   useEffect(() => {
+    if (!file) return
+    if (cached) { setState({ loading: false, data: cached }); return }
     let cancelled = false
     setState({ loading: true })
     convert(file.path)
       .then((d) => !cancelled && setState({ loading: false, data: d }))
       .catch((e) => !cancelled && setState({ loading: false, err: String(e?.message || e) }))
     return () => { cancelled = true }
-  }, [file.path])
+  }, [file?.path, cached])
 
-  const statements: Statement[] = state.data?.statements ?? MOCK_STATEMENTS[fileId] ?? MOCK_STATEMENTS.f03
-  const balance: BalanceCheck[] = state.data?.balance ?? MOCK_BALANCE
-  const balanceOk = state.data ? state.data.balanceOk : balance.every((b) => b.ok)
+  if (!file) {
+    return (
+      <div className="grid h-full place-items-center text-center text-sm text-muted-foreground">
+        <div>
+          <p>Chưa chọn file để soát.</p>
+          <button onClick={onBack} className="mt-2 text-primary hover:underline cursor-pointer">← Về Hàng đợi</button>
+        </div>
+      </div>
+    )
+  }
+
+  const statements: Statement[] = state.data?.statements ?? []
+  const balance: BalanceCheck[] = state.data?.balance ?? []
+  const balanceOk = state.data ? state.data.balanceOk : null
 
   return (
     <>
@@ -43,7 +58,7 @@ export function Review({ fileId, onBack }: { fileId: string; onBack: () => void 
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {state.err && <span className="text-xs text-warn">Sidecar offline · đang xem dữ liệu mẫu</span>}
+          {state.err && <span className="max-w-[220px] truncate text-xs text-warn" title={state.err}>Lỗi: {state.err}</span>}
           <Button
             size="sm"
             className="cursor-pointer"
@@ -57,7 +72,7 @@ export function Review({ fileId, onBack }: { fileId: string; onBack: () => void 
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(440px,560px)] grid-rows-[minmax(0,1fr)]">
         <PdfPane
           path={file.path}
-          pageCount={state.data?.pageCount ?? file.pages}
+          pageCount={state.data?.pageCount ?? file.pages ?? 1}
           initialPage={state.data?.pages?.[statements[0]?.key] ?? state.data?.pages?.CDKT ?? 1}
           located={state.data?.pages ?? {}}
           available={!!state.data}
@@ -223,6 +238,17 @@ function DataPane({
   useEffect(() => { if (statements[0]) setTab(statements[0].key) }, [statements])
 
   if (loading) return <LoadingPane />
+
+  if (statements.length === 0)
+    return (
+      <div className="grid min-h-0 flex-1 place-items-center bg-card/30 p-6 text-center text-sm text-muted-foreground">
+        <div>
+          <WarningCircle className="mx-auto size-7 text-warn" />
+          <p className="mt-2">Không bóc được báo cáo nào theo mẫu Thông tư 200.</p>
+          <p className="mt-1 text-xs">File có thể theo mẫu khác (ngân hàng/TCTD) hoặc sidecar chưa sẵn sàng.</p>
+        </div>
+      </div>
+    )
 
   return (
     <div className="flex min-h-0 flex-col bg-card/30">

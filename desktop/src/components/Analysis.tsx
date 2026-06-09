@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { ratios, type RatiosResult, type RatioItem } from "@/lib/api"
-import { MOCK_FILES } from "@/lib/mock"
+import { useStore } from "@/lib/store"
 
 const GROUP_ICON: Record<string, typeof Coins> = {
   thanh_khoan: Coins,
@@ -30,17 +30,26 @@ const TONE: Record<string, string> = {
 }
 
 export function Analysis({ fileId }: { fileId: string }) {
-  const file = MOCK_FILES.find((f) => f.id === fileId) ?? MOCK_FILES[0]
-  const [state, setState] = useState<{ loading: boolean; data?: RatiosResult; err?: string }>({ loading: true })
+  const file = useStore((s) => s.files.find((f) => f.id === fileId))
+  const isDone = file?.status === "done"
+  const [state, setState] = useState<{ loading: boolean; data?: RatiosResult; err?: string }>({ loading: false })
 
   useEffect(() => {
+    if (!file || !isDone) { setState({ loading: false }); return }
     let cancelled = false
     setState({ loading: true })
     ratios(file.path)
       .then((d) => !cancelled && setState({ loading: false, data: d }))
       .catch((e) => !cancelled && setState({ loading: false, err: String(e?.message || e) }))
     return () => { cancelled = true }
-  }, [file.path])
+  }, [file?.path, isDone])
+
+  if (!file)
+    return (
+      <div className="grid h-full place-items-center text-center text-sm text-muted-foreground">
+        Chưa chọn file. Vào Hàng đợi → soát 1 file đã chuyển đổi, rồi mở Phân tích.
+      </div>
+    )
 
   return (
     <>
@@ -69,6 +78,12 @@ export function Analysis({ fileId }: { fileId: string }) {
             </p>
           </div>
         </div>
+
+        {!isDone && (
+          <div className="rounded-lg border border-border bg-card/50 px-4 py-6 text-sm text-muted-foreground">
+            File <span className="text-foreground">{file.name}</span> chưa được chuyển đổi. Vào Hàng đợi bấm "Chuyển đổi", rồi quay lại đây để xem tỉ số.
+          </div>
+        )}
 
         {state.loading && (
           <div className="flex items-center gap-3 rounded-lg border border-border bg-card/50 px-4 py-6 text-sm text-muted-foreground">

@@ -5,6 +5,7 @@ const BASE = "http://127.0.0.1:8756"
 
 export interface ConvertResult {
   name: string
+  sizeMB: number | null
   found: number
   conflicts: number
   balanceOk: boolean | null
@@ -13,6 +14,13 @@ export interface ConvertResult {
   warnings: string[]
   pageCount: number
   pages: Record<string, number> // {CDKT: 7, ...} trang đầu mỗi báo cáo (1-based)
+}
+
+export async function listDir(dir: string): Promise<string[]> {
+  const r = await fetch(`${BASE}/listdir?dir=${encodeURIComponent(dir)}`)
+  if (!r.ok) return []
+  const d = await r.json()
+  return d.files ?? []
 }
 
 // URL ảnh PNG của 1 trang PDF do sidecar render (PyMuPDF).
