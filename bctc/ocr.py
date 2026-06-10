@@ -101,6 +101,13 @@ def configure_tesseract():
             "- macOS:   chạy 'brew install tesseract tesseract-lang'\n"
             "rồi mở lại ứng dụng."
         )
+    # Bản Tesseract NHÚNG kèm app (PyInstaller --add-data) có thể mất cờ thực thi
+    # khi giải nén -> cấp lại để chạy được (bỏ qua nếu là bản hệ thống read-only).
+    try:
+        if not os.access(tess, os.X_OK):
+            os.chmod(tess, 0o755)
+    except OSError:
+        pass
     pytesseract.pytesseract.tesseract_cmd = tess
     if tessdata:
         os.environ["TESSDATA_PREFIX"] = tessdata

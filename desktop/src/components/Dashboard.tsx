@@ -1,8 +1,16 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
-  FilePlus, FolderPlus, Play, FilePdf, Eye, Trash, CheckCircle,
-  WarningCircle, CircleNotch, Clock, UploadSimple, Sparkle,
+  FilePlus, FolderPlus, FolderOpen, Play, Pause, StopCircle, FilePdf, Eye, Trash, FileXls, CheckCircle,
+  WarningCircle, CircleNotch, Clock, UploadSimple, Sparkle, CheckSquare, Square, X, ChartLineUp,
+  CaretUp, CaretDown, ArrowsDownUp,
 } from "@phosphor-icons/react"
+
+const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPod|iPad/i.test(navigator.userAgent)
+const HOTKEY = IS_MAC ? "⌘K" : "Ctrl K"
+
+type SortKey = "name" | "size" | "status" | "found" | "balance"
+type SortState = { key: SortKey; dir: "asc" | "desc" } | null
+const STATUS_RANK: Record<string, number> = { error: 0, queued: 1, processing: 2, done: 3 }
 import { motion } from "motion/react"
 import { open } from "@tauri-apps/plugin-dialog"
 import { getCurrentWebview } from "@tauri-apps/api/webview"
@@ -12,7 +20,7 @@ import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { fmtSize } from "@/lib/format"
-import { listDir } from "@/lib/api"
+import { listDir, exportXlsx } from "@/lib/api"
 import { useStore, type QFile } from "@/lib/store"
 
 function StatusCell({ f }: { f: QFile }) {
@@ -53,14 +61,110 @@ function BalanceCell({ f }: { f: QFile }) {
   )
 }
 
-export function Dashboard({ onOpenReview, onAskAI }: { onOpenReview: (id: string) => void; onAskAI: () => void }) {
-  const { files, addPaths, convertAll, removeFile, converting } = useStore()
+function CheckBox({ on, onClick, title }: { on: boolean; onClick: (e: React.MouseEvent) => void; title?: string }) {
+  return (
+    <button onClick={onClick} title={title} className="grid size-5 place-items-center text-muted-foreground transition-colors hover:text-foreground cursor-pointer">
+      {on ? <CheckSquare weight="fill" className="size-[18px] text-primary" /> : <Square className="size-[18px]" />}
+    </button>
+  )
+}
+
+function SortHeader({ label, sortKey, sort, onSort, align }: {
+  label: string; sortKey: SortKey; sort: SortState; onSort: (k: SortKey) => void; align?: "right"
+}) {
+  const active = sort?.key === sortKey
+  return (
+    <button onClick={() => onSort(sortKey)} className={cn("inline-flex items-center gap-1 uppercase tracking-wide transition-colors hover:text-foreground cursor-pointer", active && "text-foreground", align === "right" && "justify-end")}>
+      {label}
+      {active ? (sort!.dir === "asc" ? <CaretUp weight="bold" className="size-3" /> : <CaretDown weight="bold" className="size-3" />) : <ArrowsDownUp className="size-3 opacity-30" />}
+    </button>
+  )
+}
+
+const COLS = "grid-cols-[32px_1fr_88px_140px_92px_110px_104px]"
+
+export function Dashboard({ onOpenReview, onAnalyze }: { onOpenReview: (id: string) => void; onAnalyze: () => void }) {
+  const {
+    files, addPaths, removeFile, converting, paused, selected, exportDir, setExportDir,
+    convertSelected, pauseQueue, resumeQueue, cancelQueue, cancelFile, toggleSelect, selectAll, selectNone, pushSelectedToAnalysis,
+  } = useStore()
   const [dragOver, setDragOver] = useState(false)
+  const [exportingId, setExportingId] = useState<string | null>(null)
+
+  const pickExportDir = async () => {
+    const dir = await open({ directory: true })
+    if (typeof dir === "string") {
+      setExportDir(dir)
+      toast.success("Đã đặt thư mục lưu Excel", { description: dir })
+    }
+  }
+  const exportRow = async (id: string, path: string) => {
+    setExportingId(id)
+    try {
+      const r = await exportXlsx(path, useStore.getState().exportDir, useStore.getState().fileEdits(id))
+      toast.success("Đã xuất Excel", { description: r.out_path })
+    } catch (e) {
+      toast.error("Xuất Excel lỗi", { description: e instanceof Error ? e.message : String(e) })
+    } finally {
+      setExportingId(null)
+    }
+  }
 
   const done = files.filter((f) => f.status === "done").length
   const processing = files.filter((f) => f.status === "processing").length
   const totalConflicts = files.reduce((s, f) => s + (f.status === "done" ? f.conflicts : 0), 0)
-  const queued = files.filter((f) => f.status === "queued" || f.status === "error").length
+  const pending = files.filter((f) => f.status === "queued" || f.status === "error")
+  const selectedPending = pending.filter((f) => selected.has(f.id)).length
+  const selectedDone = files.filter((f) => f.status === "done" && selected.has(f.id)).length
+  const allSelected = files.length > 0 && selected.size === files.length
+
+  const goAnalyze = () => {
+    if (selectedDone > 0) {
+      pushSelectedToAnalysis()
+      onAnalyze()
+    } else {
+      toast.info("Chọn (tick) file đã chuyển đổi để phân tích", { description: "Hoặc vào tab Phân tích để tải Excel lên." })
+      onAnalyze()
+    }
+  }
+
+  // Hotkey ⌘K (macOS) / Ctrl+K (Windows/Linux) -> Phân tích
+  const goRef = useRef(goAnalyze)
+  goRef.current = goAnalyze
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((IS_MAC ? e.metaKey : e.ctrlKey) && (e.key === "k" || e.key === "K")) {
+        e.preventDefault()
+        goRef.current()
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
+
+  // Sắp xếp: mặc định file mới trên đầu; bấm header để sort theo cột.
+  const [sort, setSort] = useState<SortState>(null)
+  const onSort = (k: SortKey) =>
+    setSort((s) => (!s || s.key !== k ? { key: k, dir: "asc" } : s.dir === "asc" ? { key: k, dir: "desc" } : null))
+
+  const displayFiles = useMemo(() => {
+    if (!sort) return files
+    const dir = sort.dir === "asc" ? 1 : -1
+    const val = (f: QFile): string | number => {
+      switch (sort.key) {
+        case "name": return f.name.toLowerCase()
+        case "size": return f.sizeMB ?? -1
+        case "status": return STATUS_RANK[f.status] ?? -1
+        case "found": return f.status === "done" ? f.found : -1
+        case "balance": return f.balanceOk === true ? 2 : f.balanceOk === false ? 1 : 0
+      }
+    }
+    return [...files].sort((a, b) => {
+      const va = val(a), vb = val(b)
+      if (typeof va === "string" && typeof vb === "string") return va.localeCompare(vb, "vi") * dir
+      return ((va as number) - (vb as number)) * dir
+    })
+  }, [files, sort])
 
   const pickFiles = async () => {
     const sel = await open({ multiple: true, filters: [{ name: "PDF", extensions: ["pdf"] }] })
@@ -104,21 +208,38 @@ export function Dashboard({ onOpenReview, onAskAI }: { onOpenReview: (id: string
     <>
       <header className="flex items-center justify-between gap-4 border-b border-border bg-background/55 px-6 py-3 backdrop-blur-xl">
         <div className="shrink-0">
-          <h1 className="text-[15px] font-semibold tracking-tight">Hàng đợi chuyển đổi</h1>
-          <p className="text-xs text-muted-foreground">{files.length} file · tối đa 150/lần · xử lý ngay trên máy</p>
+          <h1 className="text-[15px] font-semibold tracking-tight">Dashboard</h1>
+          <p className="text-xs text-muted-foreground">{files.length} file · {selected.size > 0 ? `đã chọn ${selected.size}` : "tối đa 150/lần"} · xử lý ngay trên máy</p>
         </div>
-        <button onClick={onAskAI} className="group hidden min-w-0 max-w-md flex-1 items-center gap-2.5 rounded-lg border border-border bg-card/60 px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground md:flex cursor-pointer">
+        <button onClick={goAnalyze} className="group hidden min-w-0 max-w-md flex-1 items-center gap-2.5 rounded-lg border border-border bg-card/60 px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground md:flex cursor-pointer">
           <Sparkle weight="fill" className="size-4 text-primary" />
-          <span className="truncate">Hỏi AI về sức khỏe tài chính, rủi ro doanh nghiệp…</span>
-          <kbd className="ml-auto rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">⌘K</kbd>
+          <span className="truncate">Phân tích tài chính</span>
+          <kbd className="ml-auto rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">{HOTKEY}</kbd>
         </button>
         <div className="flex shrink-0 items-center gap-2">
           <Button variant="outline" size="sm" className="cursor-pointer" onClick={pickFiles}><FilePlus className="size-4" /> Thêm file</Button>
           <Button variant="outline" size="sm" className="cursor-pointer" onClick={pickFolder}><FolderPlus className="size-4" /> Thêm thư mục</Button>
-          <Button size="sm" disabled={converting || queued === 0} onClick={() => convertAll()} className="sheen cursor-pointer font-medium shadow-lg shadow-primary/25 disabled:opacity-50">
-            {converting ? <CircleNotch className="size-4 animate-spin" /> : <Play weight="fill" className="size-4" />}
-            {converting ? "Đang chuyển…" : "Chuyển đổi"}
-          </Button>
+          <button onClick={pickExportDir} title={exportDir ? `Lưu Excel vào: ${exportDir}` : "Mặc định: cạnh PDF (Excel_output). Bấm để đổi thư mục lưu."} className="inline-flex max-w-[150px] items-center gap-1.5 rounded-md border border-border bg-card/60 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground cursor-pointer">
+            <FolderOpen className="size-3.5 shrink-0" /><span className="truncate">{exportDir ? exportDir.split(/[/\\]/).pop() : "cạnh PDF"}</span>
+          </button>
+
+          {!converting && selectedDone > 0 && (
+            <Button size="sm" variant="outline" className="cursor-pointer" onClick={goAnalyze}><ChartLineUp className="size-4" /> Phân tích ({selectedDone})</Button>
+          )}
+          {converting ? (
+            <>
+              {paused ? (
+                <Button size="sm" variant="outline" className="cursor-pointer" onClick={resumeQueue}><Play weight="fill" className="size-4" /> Tiếp tục</Button>
+              ) : (
+                <Button size="sm" variant="outline" className="cursor-pointer" onClick={pauseQueue}><Pause weight="fill" className="size-4" /> Tạm dừng</Button>
+              )}
+              <Button size="sm" variant="destructive" className="cursor-pointer" onClick={cancelQueue}><StopCircle weight="fill" className="size-4" /> Huỷ tất cả</Button>
+            </>
+          ) : (
+            <Button size="sm" disabled={selectedPending === 0} onClick={() => convertSelected()} className="sheen cursor-pointer font-medium shadow-lg shadow-primary/25 disabled:opacity-50">
+              <Play weight="fill" className="size-4" /> Chuyển đổi{selectedPending > 0 ? ` (${selectedPending})` : ""}
+            </Button>
+          )}
         </div>
       </header>
 
@@ -138,15 +259,22 @@ export function Dashboard({ onOpenReview, onAskAI }: { onOpenReview: (id: string
         </button>
 
         <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-border bg-card">
-          <div className="grid grid-cols-[1fr_88px_140px_92px_110px_72px] items-center gap-3 border-b border-border px-4 py-2.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            <span>Tên file</span><span>Dung lượng</span><span>Trạng thái</span><span>Báo cáo</span><span>Cân đối</span><span className="text-right">Thao tác</span>
+          <div className={cn("grid items-center gap-3 border-b border-border px-4 py-2.5 text-[11px] font-medium text-muted-foreground", COLS)}>
+            <CheckBox on={allSelected} onClick={() => (allSelected ? selectNone() : selectAll())} title={allSelected ? "Bỏ chọn tất cả" : "Chọn tất cả"} />
+            <SortHeader label="Tên file" sortKey="name" sort={sort} onSort={onSort} />
+            <SortHeader label="Dung lượng" sortKey="size" sort={sort} onSort={onSort} />
+            <SortHeader label="Trạng thái" sortKey="status" sort={sort} onSort={onSort} />
+            <SortHeader label="Báo cáo" sortKey="found" sort={sort} onSort={onSort} />
+            <SortHeader label="Cân đối" sortKey="balance" sort={sort} onSort={onSort} />
+            <span className="text-right uppercase tracking-wide">Thao tác</span>
           </div>
           <ScrollArea className="flex-1">
             {files.length === 0 ? (
               <div className="grid h-40 place-items-center text-sm text-muted-foreground">Chưa có file. Bấm "Thêm file" hoặc kéo-thả PDF vào.</div>
-            ) : files.map((f) => (
+            ) : displayFiles.map((f) => (
               <div key={f.id} onClick={() => f.status === "done" && onOpenReview(f.id)}
-                className={cn("grid grid-cols-[1fr_88px_140px_92px_110px_72px] items-center gap-3 border-b border-border/60 px-4 py-3 text-sm transition-colors", f.status === "done" ? "cursor-pointer hover:bg-accent/50" : "cursor-default")}>
+                className={cn("grid items-center gap-3 border-b border-border/60 px-4 py-3 text-sm transition-colors", COLS, f.status === "done" ? "cursor-pointer hover:bg-accent/50" : "cursor-default", selected.has(f.id) && "bg-primary/5")}>
+                <CheckBox on={selected.has(f.id)} onClick={(e) => { e.stopPropagation(); toggleSelect(f.id) }} title="Chọn file" />
                 <div className="flex min-w-0 items-center gap-2.5">
                   <FilePdf weight="fill" className={cn("size-4 shrink-0", f.status === "done" ? "text-primary" : "text-muted-foreground")} />
                   <span className="truncate">{f.name}</span>
@@ -156,10 +284,30 @@ export function Dashboard({ onOpenReview, onAskAI }: { onOpenReview: (id: string
                 <FoundBadge found={f.found} status={f.status} />
                 <BalanceCell f={f} />
                 <div className="flex items-center justify-end gap-1">
-                  {f.status === "done" && (
-                    <button title="Soát báo cáo" onClick={(e) => { e.stopPropagation(); onOpenReview(f.id) }} className="grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"><Eye className="size-4" /></button>
+                  {f.status === "processing" ? (
+                    <>
+                      {paused ? (
+                        <button title="Tiếp tục" onClick={(e) => { e.stopPropagation(); resumeQueue() }} className="grid size-7 place-items-center rounded-md text-primary transition-colors hover:bg-accent cursor-pointer"><Play weight="fill" className="size-4" /></button>
+                      ) : (
+                        <button title="Tạm dừng" onClick={(e) => { e.stopPropagation(); pauseQueue() }} className="grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"><Pause weight="fill" className="size-4" /></button>
+                      )}
+                      <button title="Huỷ file này" onClick={(e) => { e.stopPropagation(); cancelFile(f.id) }} className="grid size-7 place-items-center rounded-md text-warn transition-colors hover:bg-warn/15 cursor-pointer"><X className="size-4" /></button>
+                    </>
+                  ) : converting && f.status === "queued" && selected.has(f.id) ? (
+                    <button title="Bỏ khỏi lượt chạy" onClick={(e) => { e.stopPropagation(); cancelFile(f.id) }} className="grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"><X className="size-4" /></button>
+                  ) : (
+                    <>
+                      {f.status === "done" && (
+                        <>
+                          <button title="Xuất Excel" disabled={exportingId === f.id} onClick={(e) => { e.stopPropagation(); exportRow(f.id, f.path) }} className="grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer">
+                            {exportingId === f.id ? <CircleNotch className="size-4 animate-spin" /> : <FileXls className="size-4" />}
+                          </button>
+                          <button title="Soát báo cáo" onClick={(e) => { e.stopPropagation(); onOpenReview(f.id) }} className="grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"><Eye className="size-4" /></button>
+                        </>
+                      )}
+                      <button title="Xoá khỏi hàng đợi" onClick={(e) => { e.stopPropagation(); removeFile(f.id) }} className="grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive cursor-pointer"><Trash className="size-4" /></button>
+                    </>
                   )}
-                  <button title="Xoá khỏi hàng đợi" onClick={(e) => { e.stopPropagation(); removeFile(f.id) }} className="grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive cursor-pointer"><Trash className="size-4" /></button>
                 </div>
               </div>
             ))}

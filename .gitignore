@@ -45,3 +45,6 @@ bench/out/
 dist_sidecar/
 build_sidecar/
 desktop/src-tauri/binaries/
+
+# Tesseract bundle (build output, lớn)
+desktop/tessbundle/

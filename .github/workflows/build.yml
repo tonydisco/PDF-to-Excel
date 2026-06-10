@@ -1,14 +1,13 @@
 name: Build installers
 
-# Build bản cài đặt cho Windows (.exe) và macOS (.app + .dmg).
-# - Chạy tự động mỗi lần push, hoặc bấm tay (workflow_dispatch).
-# - Tải file build ở tab "Actions" → chọn run → mục "Artifacts".
-# - Nếu push 1 tag dạng v* (vd: git tag v1.0 && git push --tags) thì còn
-#   tự tạo Release đính kèm cả 2 file.
+# Build bản cài đặt app Tauri (UI mới) + sidecar Python, NHÚNG luôn Tesseract
+# -> người dùng cài 1 file, không cần cài Tesseract.
+#   • macOS:  .dmg  (Intel x64 + Apple Silicon arm64)
+#   • Windows: .msi + .exe (NSIS)
+# Tải ở tab Actions → run → Artifacts. Push tag v* thì tạo Release đính kèm.
 
 on:
   push:
-    branches: ["**"]
     tags: ["v*"]
   workflow_dispatch:
 
@@ -16,77 +15,88 @@ permissions:
   contents: write
 
 jobs:
-  # ---------------------------------------------------------------- Windows
-  windows:
-    runs-on: windows-latest
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-14, label: macos-arm64 }   # Apple Silicon
+          - { os: macos-13, label: macos-x64 }      # Intel
+          - { os: windows-latest, label: windows-x64 }
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Cài thư viện
+
+      - name: Python deps (engine + AI SDK + pyinstaller)
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt pyinstaller
-      - name: Gói kèm Tesseract-OCR (để .exe chạy độc lập)
+
+      # ---------------------------------------------------------- macOS
+      - name: Nhúng Tesseract (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install tesseract dylibbundler
+          bash desktop/bundle_tesseract.sh
+
+      - name: Build app (macOS)
+        if: runner.os == 'macOS'
+        env:
+          PYTHON: python
+        run: bash desktop/build_macos.sh
+
+      - name: Gom .dmg (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p out
+          find desktop/src-tauri/target -path '*/release/bundle/dmg/*.dmg' -exec cp {} "out/BCTC-Excel-${{ matrix.label }}.dmg" \;
+          ls -la out
+
+      # ---------------------------------------------------------- Windows
+      - name: Nhúng Tesseract (Windows)
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           choco install tesseract -y --no-progress
-          $src = "C:\Program Files\Tesseract-OCR"
-          if (-not (Test-Path $src)) { $src = "C:\Program Files (x86)\Tesseract-OCR" }
-          New-Item -ItemType Directory -Force -Path tesseract | Out-Null
-          Copy-Item "$src\*" -Destination tesseract -Recurse -Force
-          New-Item -ItemType Directory -Force -Path tesseract\tessdata | Out-Null
-          Copy-Item "tessdata\vie.traineddata" -Destination "tesseract\tessdata\vie.traineddata" -Force
-          Write-Host "Đã gom Tesseract:"
-          Get-ChildItem tesseract | Select-Object Name
-      - name: Đóng gói .exe
-        run: python -m PyInstaller --noconfirm --clean pdf2excel.spec
-      - name: Đổi tên & gom
-        run: |
-          mkdir out
-          copy "dist\BCTC_PDF_to_Excel.exe" "out\BCTC_PDF_to_Excel-windows.exe"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: BCTC_PDF_to_Excel-windows
-          path: out/BCTC_PDF_to_Excel-windows.exe
-      - name: Đính kèm Release (khi push tag v*)
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: out/BCTC_PDF_to_Excel-windows.exe
+          ./desktop/bundle_tesseract.ps1
 
-  # ------------------------------------------------------------------ macOS
-  macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Cài thư viện
+      - name: Build app (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          PYTHON: python
+        run: ./desktop/build_windows.ps1
+
+      - name: Gom .msi/.exe (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt pyinstaller
-      - name: Tạo icon .icns
-        run: |
-          python assets/make_icon.py || true
-          iconutil -c icns assets/icon.iconset -o assets/icon.icns || true
-      - name: Đóng gói .app
-        run: python -m PyInstaller --noconfirm --clean pdf2excel.spec
-      - name: Tạo .dmg
-        run: |
-          mkdir -p dmg_root
-          cp -R "dist/BCTC_PDF_to_Excel.app" dmg_root/
-          ln -s /Applications dmg_root/Applications
-          hdiutil create -volname "BCTC PDF to Excel" -srcfolder dmg_root \
-            -ov -format UDZO "dist/BCTC_PDF_to_Excel-macos.dmg"
+          New-Item -ItemType Directory -Force out | Out-Null
+          Get-ChildItem desktop/src-tauri/target/release/bundle -Recurse -Include *.msi,*.exe |
+            Where-Object { $_.FullName -match 'bundle[\\/](msi|nsis)[\\/]' } |
+            ForEach-Object { Copy-Item $_.FullName (Join-Path out ("BCTC-Excel-${{ matrix.label }}" + $_.Extension)) -Force }
+          Get-ChildItem out
+
+      # ---------------------------------------------------------- publish
       - uses: actions/upload-artifact@v4
         with:
-          name: BCTC_PDF_to_Excel-macos
-          path: dist/BCTC_PDF_to_Excel-macos.dmg
+          name: BCTC-Excel-${{ matrix.label }}
+          path: out/*
+          if-no-files-found: error
+
       - name: Đính kèm Release (khi push tag v*)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/BCTC_PDF_to_Excel-macos.dmg
+          files: out/*

@@ -11,9 +11,32 @@ PY="${PYTHON:-$ROOT/.venv/bin/python}"
 
 echo "==> PyInstaller build sidecar ($("$PY" --version 2>&1))"
 "$PY" -m pip show pyinstaller >/dev/null 2>&1 || "$PY" -m pip install pyinstaller
+# Tính năng AI (tuỳ chọn): bundle SDK Claude/Gemini + keyring + chứng chỉ TLS.
+# Để best-effort — nếu chưa cài, PyInstaller vẫn build (lõi OCR không phụ thuộc).
+AI_FLAGS=()
+for pkg in anthropic google.genai keyring certifi; do
+  if "$PY" -c "import importlib,sys; importlib.import_module('${pkg}')" >/dev/null 2>&1; then
+    AI_FLAGS+=(--collect-all "$pkg")
+  fi
+done
+# keyring tìm backend qua entry-point metadata -> cần copy metadata khi đóng băng.
+"$PY" -c "import keyring" >/dev/null 2>&1 && AI_FLAGS+=(--copy-metadata keyring)
+
+# Tesseract: nếu có tessbundle/ (chạy bundle_tesseract.sh) -> NHÚNG cả engine
+# (app không cần cài Tesseract). Nếu không -> chỉ nhúng vie, dùng Tesseract hệ thống.
+TESS_FLAGS=()
+if [ -d "$HERE/tessbundle/tesseract" ]; then
+  echo "==> Nhúng Tesseract relocatable (tessbundle/) -> app self-contained"
+  TESS_FLAGS+=(--add-data "$HERE/tessbundle/tesseract:tesseract")
+  TESS_FLAGS+=(--add-data "$HERE/tessbundle/tessdata:tessdata")
+else
+  echo "==> (dev) không thấy tessbundle -> dùng Tesseract hệ thống; chỉ nhúng vie"
+  TESS_FLAGS+=(--add-data "$ROOT/tessdata/vie.traineddata:tessdata")
+fi
+
 "$PY" -m PyInstaller --noconfirm --onefile --name bctc-sidecar \
-  --add-data "$ROOT/tessdata/vie.traineddata:tessdata" \
-  --collect-all fitz --paths "$ROOT" \
+  "${TESS_FLAGS[@]}" \
+  --collect-all fitz "${AI_FLAGS[@]}" --paths "$ROOT" \
   --distpath "$ROOT/dist_sidecar" --workpath "$ROOT/build_sidecar" --specpath "$ROOT/build_sidecar" \
   "$ROOT/sidecar.py"
 

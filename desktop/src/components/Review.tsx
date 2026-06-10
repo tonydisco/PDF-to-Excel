@@ -1,22 +1,47 @@
 import { useEffect, useRef, useState } from "react"
 import {
   ArrowLeft, CaretLeft, CaretRight, MagnifyingGlassPlus, MagnifyingGlassMinus,
-  CheckCircle, WarningCircle, ArrowsClockwise, PencilSimple, FileXls, FilePdf, CircleNotch,
+  CheckCircle, WarningCircle, ArrowsClockwise, PencilSimple, FileXls, FilePdf, CircleNotch, FolderOpen,
 } from "@phosphor-icons/react"
+import { open } from "@tauri-apps/plugin-dialog"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { fmtVN } from "@/lib/format"
-import { type Row, type Statement, type BalanceCheck } from "@/lib/mock"
-import { convert, exportXlsx, pageUrl, type ConvertResult } from "@/lib/api"
+import { type Row, type Statement, type BalanceCheck } from "@/lib/types"
+import { convert, exportXlsx, reocr, pageUrl, type ConvertResult } from "@/lib/api"
 import { useStore } from "@/lib/store"
 
 export function Review({ fileId, onBack }: { fileId: string; onBack: () => void }) {
   const file = useStore((s) => s.files.find((f) => f.id === fileId))
   const cached = useStore((s) => s.results[fileId])
+  const exportDir = useStore((s) => s.exportDir)
+  const setExportDir = useStore((s) => s.setExportDir)
+  const editCount = useStore((s) => Object.keys(s.editsByFile[fileId] ?? {}).length)
+  const [exporting, setExporting] = useState(false)
   const [state, setState] = useState<{ loading: boolean; data?: ConvertResult; err?: string }>({ loading: !cached })
+
+  const pickDir = async () => {
+    const dir = await open({ directory: true })
+    if (typeof dir === "string") {
+      setExportDir(dir)
+      toast.success("Đã đặt thư mục lưu", { description: dir })
+    }
+  }
+  const doExport = async () => {
+    if (!file) return
+    setExporting(true)
+    try {
+      const r = await exportXlsx(file.path, exportDir, useStore.getState().fileEdits(fileId))
+      toast.success(editCount ? `Đã xuất Excel (kèm ${editCount} ô đã sửa)` : "Đã xuất Excel", { description: r.out_path })
+    } catch (e) {
+      toast.error("Xuất Excel lỗi", { description: e instanceof Error ? e.message : String(e) })
+    } finally {
+      setExporting(false)
+    }
+  }
 
   useEffect(() => {
     if (!file) return
@@ -58,13 +83,22 @@ export function Review({ fileId, onBack }: { fileId: string; onBack: () => void 
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {state.err && <span className="max-w-[220px] truncate text-xs text-warn" title={state.err}>Lỗi: {state.err}</span>}
-          <Button
-            size="sm"
-            className="cursor-pointer"
-            onClick={() => exportXlsx(file.path).then((r) => toast.success("Đã xuất Excel", { description: r.out_path })).catch(() => toast.error("Xuất Excel lỗi"))}
+          {state.err && <span className="max-w-[180px] truncate text-xs text-warn" title={state.err}>Lỗi: {state.err}</span>}
+          {editCount > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-primary/12 px-2 py-0.5 text-[11px] font-medium text-primary" title="Số ô đã sửa sẽ ghi vào Excel">
+              <PencilSimple weight="fill" className="size-3" /> {editCount} ô đã sửa
+            </span>
+          )}
+          <button
+            onClick={pickDir}
+            title={exportDir ? `Lưu vào: ${exportDir}` : "Mặc định: cạnh PDF (Excel_output). Bấm để đổi thư mục."}
+            className="inline-flex max-w-[200px] items-center gap-1.5 rounded-md border border-border bg-card/60 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground cursor-pointer"
           >
-            <FileXls className="size-4" /> Xuất Excel
+            <FolderOpen className="size-3.5 shrink-0" />
+            <span className="truncate">{exportDir ? exportDir.split(/[/\\]/).pop() : "cạnh PDF"}</span>
+          </button>
+          <Button size="sm" className="cursor-pointer" disabled={exporting || state.loading} onClick={doExport}>
+            {exporting ? <CircleNotch className="size-4 animate-spin" /> : <FileXls className="size-4" />} Xuất Excel
           </Button>
         </div>
       </header>
@@ -77,7 +111,7 @@ export function Review({ fileId, onBack }: { fileId: string; onBack: () => void 
           located={state.data?.pages ?? {}}
           available={!!state.data}
         />
-        <DataPane statements={statements} balance={balance} balanceOk={balanceOk} loading={state.loading} />
+        <DataPane statements={statements} balance={balance} balanceOk={balanceOk} loading={state.loading} fileId={fileId} />
       </div>
     </>
   )
@@ -232,8 +266,8 @@ function PdfPane({
 }
 
 function DataPane({
-  statements, balance, balanceOk, loading,
-}: { statements: Statement[]; balance: BalanceCheck[]; balanceOk: boolean | null; loading: boolean }) {
+  statements, balance, balanceOk, loading, fileId,
+}: { statements: Statement[]; balance: BalanceCheck[]; balanceOk: boolean | null; loading: boolean; fileId: string }) {
   const [tab, setTab] = useState<Statement["key"]>(statements[0]?.key ?? "CDKT")
   useEffect(() => { if (statements[0]) setTab(statements[0].key) }, [statements])
 
@@ -265,7 +299,7 @@ function DataPane({
         </div>
         {statements.map((s) => (
           <TabsContent key={s.key} value={s.key} className="mt-0 min-h-0 flex-1">
-            <StatementTable statement={s} />
+            <StatementTable statement={s} fileId={fileId} />
           </TabsContent>
         ))}
       </Tabs>
@@ -321,7 +355,7 @@ function BalancePanel({ balance, ok }: { balance: BalanceCheck[]; ok: boolean | 
   )
 }
 
-function StatementTable({ statement }: { statement: Statement }) {
+function StatementTable({ statement, fileId }: { statement: Statement; fileId: string }) {
   return (
     <ScrollArea className="h-full">
       <table className="w-full text-sm">
@@ -335,7 +369,7 @@ function StatementTable({ statement }: { statement: Statement }) {
         </thead>
         <tbody>
           {statement.rows.map((r, i) => (
-            <RowLine key={i} r={r} skey={statement.key} />
+            <RowLine key={i} r={r} skey={statement.key} fileId={fileId} />
           ))}
         </tbody>
       </table>
@@ -343,7 +377,7 @@ function StatementTable({ statement }: { statement: Statement }) {
   )
 }
 
-function RowLine({ r, skey }: { r: Row; skey: string }) {
+function RowLine({ r, skey, fileId }: { r: Row; skey: string; fileId: string }) {
   const isGroup = r.kind === "header" || r.kind === "section" || r.kind === "total"
   return (
     <tr className={cn("border-b border-border/40", isGroup && "bg-muted/30")}>
@@ -351,20 +385,45 @@ function RowLine({ r, skey }: { r: Row; skey: string }) {
         {r.label}
       </td>
       <td className="py-1.5 text-center font-mono text-xs text-muted-foreground">{r.code ?? ""}</td>
-      <ValueCell value={r.cur} flag={r.flagCur} code={r.code} col="cuối năm" skey={skey} bold={isGroup} />
-      <ValueCell value={r.prior} flag={r.flagPrior} code={r.code} col="đầu năm" skey={skey} bold={isGroup} />
+      <ValueCell value={r.cur} flag={r.flagCur} code={r.code} col="cur" skey={skey} fileId={fileId} bold={isGroup} />
+      <ValueCell value={r.prior} flag={r.flagPrior} code={r.code} col="prior" skey={skey} fileId={fileId} bold={isGroup} />
     </tr>
   )
 }
 
 function ValueCell({
-  value, flag, code, col, skey, bold,
-}: { value: number | null; flag?: boolean; code: string | null; col: string; skey: string; bold?: boolean }) {
+  value, flag, code, col, skey, fileId, bold,
+}: { value: number | null; flag?: boolean; code: string | null; col: "cur" | "prior"; skey: string; fileId: string; bold?: boolean }) {
+  const edit = useStore((s) => (code ? s.editsByFile[fileId]?.[`${skey}|${code}|${col}`] : undefined))
+  const setEdit = useStore((s) => s.setEdit)
   const [editing, setEditing] = useState(false)
-  const [val, setVal] = useState(value)
-  useEffect(() => setVal(value), [value])
+  const [busy, setBusy] = useState(false)
 
-  if (val === null && !flag)
+  const edited = edit !== undefined
+  const shown = edited ? edit : value
+
+  const commit = (raw: string) => {
+    setEditing(false)
+    if (!code) return
+    const cleaned = raw.replace(/[^\d]/g, "")
+    setEdit(fileId, skey, code, col, cleaned === "" ? null : Number(cleaned))
+  }
+
+  const onReocr = async () => {
+    if (!code || busy) return
+    setBusy(true)
+    try {
+      const v = await reocr(fileId, skey, code, col) // fileId === path
+      setEdit(fileId, skey, code, col, v)
+      toast.success(`Đã đọc lại mã ${code}`, { description: `Giá trị: ${v === null ? "—" : v.toLocaleString("vi-VN")}` })
+    } catch (e) {
+      toast.error("Re-OCR lỗi", { description: e instanceof Error ? e.message : String(e) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (shown === null && !flag && !edited)
     return <td className="px-3 py-1.5 text-right font-mono text-xs text-muted-foreground/40">·</td>
 
   if (editing)
@@ -372,8 +431,8 @@ function ValueCell({
       <td className="px-2 py-1">
         <input
           autoFocus
-          defaultValue={val ?? ""}
-          onBlur={(e) => { setVal(Number(e.target.value.replace(/\D/g, "")) || null); setEditing(false) }}
+          defaultValue={shown ?? ""}
+          onBlur={(e) => commit(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
           className="w-full rounded border border-primary bg-background px-2 py-0.5 text-right font-mono text-xs tabular-nums outline-none"
         />
@@ -381,19 +440,22 @@ function ValueCell({
     )
 
   return (
-    <td className={cn("group/cell relative px-3 py-1.5 text-right font-mono text-xs tabular-nums", flag && "bg-flag/15", bold && "font-semibold")}>
-      <span className={cn(flag && "text-warn")}>{fmtVN(val)}</span>
+    <td className={cn("group/cell relative px-3 py-1.5 text-right font-mono text-xs tabular-nums", flag && !edited && "bg-flag/15", edited && "bg-primary/10", bold && "font-semibold")}>
+      <span className={cn(edited ? "text-primary" : flag && "text-warn")} title={edited ? "Đã sửa (sẽ ghi vào Excel)" : undefined}>
+        {busy ? "…" : fmtVN(shown)}
+      </span>
       <span className="absolute inset-y-0 right-1.5 hidden items-center gap-0.5 group-hover/cell:flex">
         <button title="Sửa giá trị" onClick={() => setEditing(true)} className="grid size-5 place-items-center rounded bg-background/80 text-muted-foreground hover:text-foreground cursor-pointer">
           <PencilSimple className="size-3" />
         </button>
-        {flag && (
+        {code && (
           <button
-            title="Đọc lại ô (re-OCR)"
-            onClick={() => toast.info(`Đọc lại ô ${skey} · mã ${code} · ${col}`, { description: "Re-OCR vùng ô ở DPI cao + whitelist số (B-A3)." })}
-            className="grid size-5 place-items-center rounded bg-background/80 text-warn hover:text-foreground cursor-pointer"
+            title="Đọc lại ô (re-OCR ở DPI cao)"
+            onClick={onReocr}
+            disabled={busy}
+            className={cn("grid size-5 place-items-center rounded bg-background/80 hover:text-foreground cursor-pointer", flag && !edited ? "text-warn" : "text-muted-foreground")}
           >
-            <ArrowsClockwise className="size-3" />
+            {busy ? <CircleNotch className="size-3 animate-spin" /> : <ArrowsClockwise className="size-3" />}
           </button>
         )}
       </span>

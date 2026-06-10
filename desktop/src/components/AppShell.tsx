@@ -1,12 +1,17 @@
-import { useState } from "react"
-import { Stack, Eye, ChartLineUp, Gear, FilePdf, SidebarSimple } from "@phosphor-icons/react"
+import { useEffect, useState } from "react"
+import { SquaresFour, Eye, ChartLineUp, Gear, FilePdf, SidebarSimple } from "@phosphor-icons/react"
+import { documentDir } from "@tauri-apps/api/path"
 import { cn } from "@/lib/utils"
 import { Ambient } from "@/components/Ambient"
+import { Settings } from "@/components/Settings"
+import { useLlm } from "@/lib/llm"
+import { useStore } from "@/lib/store"
+import { useTheme } from "@/lib/theme"
 
 export type View = "queue" | "review" | "analysis"
 
-const NAV: { id: View; label: string; icon: typeof Stack }[] = [
-  { id: "queue", label: "Hàng đợi", icon: Stack },
+const NAV: { id: View; label: string; icon: typeof Eye }[] = [
+  { id: "queue", label: "Dashboard", icon: SquaresFour },
   { id: "review", label: "Review", icon: Eye },
   { id: "analysis", label: "Phân tích", icon: ChartLineUp },
 ]
@@ -21,10 +26,23 @@ export function AppShell({
   children: React.ReactNode
 }) {
   const [collapsed, setCollapsed] = useState(false)
+  const openSettings = useLlm((s) => s.openSettings)
+  const refreshStatus = useLlm((s) => s.refreshStatus)
+  const initTheme = useTheme((s) => s.init)
+
+  useEffect(() => {
+    refreshStatus()
+    initTheme() // áp màu nhấn đã lưu
+    // Mặc định lưu Excel vào thư mục Documents (nếu người dùng chưa đặt)
+    if (!useStore.getState().exportDir) {
+      documentDir().then((d) => { if (d && !useStore.getState().exportDir) useStore.getState().setExportDir(d) }).catch(() => {})
+    }
+  }, [refreshStatus, initTheme])
 
   return (
     <div className="relative flex h-screen w-screen overflow-hidden bg-background text-foreground">
       <Ambient />
+      <Settings />
 
       {/* Sidebar (kính mờ, thu gọn được) */}
       <aside
@@ -68,37 +86,32 @@ export function AppShell({
           })}
         </nav>
 
-        <div className={cn("mt-auto py-3 text-[11px] text-muted-foreground", collapsed ? "px-2" : "px-4")}>
-          {!collapsed && (
-            <>
-              <button className="mb-2 flex w-full items-center gap-2 rounded-md px-1 py-1.5 transition-colors hover:text-foreground cursor-pointer">
-                <Gear className="size-4" /> Cài đặt
+        {/* Footer: thu gọn (trái) · cài đặt (phải), chỉ icon + tooltip */}
+        <div className={cn("mt-auto py-3", collapsed ? "px-2" : "px-3")}>
+          {collapsed ? (
+            <div className="flex flex-col items-center gap-1">
+              <button onClick={openSettings} title="Cài đặt" className="grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground cursor-pointer">
+                <Gear className="size-[18px]" />
               </button>
-              <div className="mb-2 flex items-center justify-between">
-                <span>v2.0 · Tauri</span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="pulse-dot size-1.5 rounded-full bg-primary" /> Local OCR
-                </span>
-              </div>
-            </>
+              <button onClick={() => setCollapsed(false)} title="Mở rộng" className="grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground cursor-pointer">
+                <SidebarSimple className="size-[18px] rotate-180" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <button onClick={() => setCollapsed(true)} title="Thu gọn" className="grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground cursor-pointer">
+                <SidebarSimple className="size-[18px]" />
+              </button>
+              <button onClick={openSettings} title="Cài đặt" className="grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground cursor-pointer">
+                <Gear className="size-[18px]" />
+              </button>
+            </div>
           )}
-          {/* Nút thu gọn / mở rộng */}
-          <button
-            onClick={() => setCollapsed((c) => !c)}
-            title={collapsed ? "Mở rộng" : "Thu gọn"}
-            className={cn(
-              "flex items-center rounded-md py-2 text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground cursor-pointer",
-              collapsed ? "w-full justify-center" : "w-full gap-2 px-1",
-            )}
-          >
-            <SidebarSimple className={cn("size-4 transition-transform duration-300", collapsed && "rotate-180")} />
-            {!collapsed && <span>Thu gọn</span>}
-          </button>
         </div>
       </aside>
 
       {/* Main */}
-      <main className="relative z-10 flex min-w-0 flex-1 flex-col">{children}</main>
+      <main className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col">{children}</main>
     </div>
   )
 }

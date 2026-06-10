@@ -27,11 +27,11 @@ function App() {
                 setReviewFileId(id)
                 setView("review")
               }}
-              onAskAI={() => setView("analysis")}
+              onAnalyze={() => setView("analysis")}
             />
           )}
           {view === "review" && <Review fileId={reviewFileId} onBack={() => setView("queue")} />}
-          {view === "analysis" && <Analysis fileId={reviewFileId} />}
+          {view === "analysis" && <Analysis />}
         </motion.div>
       </AnimatePresence>
     </AppShell>

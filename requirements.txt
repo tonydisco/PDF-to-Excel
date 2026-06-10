@@ -4,5 +4,10 @@ pytesseract>=0.3.10  # cầu nối tới Tesseract OCR
 Pillow>=10.0.0       # xử lý ảnh
 openpyxl>=3.1.0      # ghi file Excel (.xlsx)
 
+# Tính năng "Diễn giải bằng AI" (tuỳ chọn — app vẫn chạy OCR/tỉ số nếu thiếu):
+anthropic>=0.109     # SDK Claude (BYOK)
+google-genai>=2.8    # SDK Gemini (BYOK)
+keyring>=25.0        # lưu API key trong OS keychain (BYOK)
+
 # Chỉ cần khi ĐÓNG GÓI thành .exe / .app (không bắt buộc để chạy):
 # pyinstaller>=6.0
