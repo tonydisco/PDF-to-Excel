@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils"
 import { fmtSize } from "@/lib/format"
 import { listDir, exportXlsx } from "@/lib/api"
 import { useStore, type QFile } from "@/lib/store"
+import { Capybara } from "@/components/Capybara"
 
 function StatusCell({ f }: { f: QFile }) {
   if (f.status === "done")
@@ -257,6 +258,8 @@ export function Dashboard({ onOpenReview, onAnalyze }: { onOpenReview: (id: stri
           <UploadSimple className="size-5 transition-transform group-hover:-translate-y-0.5" />
           {dragOver ? "Thả để thêm vào hàng đợi" : "Kéo-thả PDF vào đây, hoặc bấm để chọn"}
         </button>
+
+        {converting && <Capybara label={paused ? "Đã tạm dừng…" : `Đang chuyển đổi${processing ? ` · ${processing} đang OCR` : ""}…`} />}
 
         <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-border bg-card">
           <div className={cn("grid items-center gap-3 border-b border-border px-4 py-2.5 text-[11px] font-medium text-muted-foreground", COLS)}>

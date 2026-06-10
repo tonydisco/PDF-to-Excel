@@ -191,6 +191,7 @@ export function Settings() {
               </div>
             </div>
             <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground/80">OCR và tính tỉ số 100% trên máy. Diễn giải bằng AI là tuỳ chọn (BYOK), chỉ gửi tỉ số tổng hợp khi bạn xác nhận.</p>
+            <p className="mt-1.5 text-[11px] text-muted-foreground/60">Capybara: "Capybara Sprite Sheet" by Rainloaf (rainloaf.itch.io).</p>
           </section>
         </div>
       </DialogContent>
