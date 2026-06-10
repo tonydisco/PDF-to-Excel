@@ -7,7 +7,11 @@ HERE="$(cd "$(dirname "$0")" && pwd)"          # desktop/
 ROOT="$(cd "$HERE/.." && pwd)"                 # repo root
 PY="${PYTHON:-$ROOT/.venv/bin/python}"
 
-[ -x "$PY" ] || { echo "Không thấy Python venv tại $PY (set PYTHON=... hoặc tạo .venv)"; exit 1; }
+# PY có thể là ĐƯỜNG DẪN file hoặc TÊN LỆNH trên PATH (CI đặt PYTHON=python).
+if [ ! -x "$PY" ]; then
+  if command -v "$PY" >/dev/null 2>&1; then PY="$(command -v "$PY")"
+  else echo "Không thấy Python tại '$PY' (set PYTHON=... hoặc tạo .venv)"; exit 1; fi
+fi
 
 echo "==> PyInstaller build sidecar ($("$PY" --version 2>&1))"
 "$PY" -m pip show pyinstaller >/dev/null 2>&1 || "$PY" -m pip install pyinstaller

@@ -8,7 +8,11 @@ $root = Split-Path -Parent $here
 
 $py = $env:PYTHON
 if (-not $py) { $py = Join-Path $root ".venv\Scripts\python.exe" }
-if (-not (Test-Path $py)) { throw "Khong thay Python venv: $py (set PYTHON=... hoac tao .venv)" }
+# $py co the la duong dan file HOAC ten lenh tren PATH (CI dat PYTHON=python).
+if (-not (Test-Path $py)) {
+  $cmd = Get-Command $py -ErrorAction SilentlyContinue
+  if ($cmd) { $py = $cmd.Source } else { throw "Khong thay Python: $py (set PYTHON=... hoac tao .venv)" }
+}
 
 Write-Host "==> [1/3] Dong goi sidecar"
 & $py -m pip show pyinstaller *> $null
