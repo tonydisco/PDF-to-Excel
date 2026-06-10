@@ -18,14 +18,16 @@ Write-Host "==> [1/3] Dong goi sidecar"
 & $py -m pip show pyinstaller *> $null
 if ($LASTEXITCODE -ne 0) { & $py -m pip install pyinstaller }
 
-$piArgs = @("--noconfirm", "--onefile", "--name", "bctc-sidecar", "--collect-all", "fitz", "--paths", "..")
+# Dung duong dan TUYET DOI cho --add-data/--paths (PyInstaller giai duong dan
+# tuong doi theo --specpath, khong phai cwd -> tuong doi se sai).
+$piArgs = @("--noconfirm", "--onefile", "--name", "bctc-sidecar", "--collect-all", "fitz", "--paths", $root)
 
-if (Test-Path "tessbundle\tesseract\tesseract.exe") {
+if (Test-Path "$here\tessbundle\tesseract\tesseract.exe") {
   Write-Host "==> Nhung Tesseract (tessbundle) -> app self-contained"
-  $piArgs += @("--add-data", "tessbundle\tesseract;tesseract", "--add-data", "tessbundle\tessdata;tessdata")
+  $piArgs += @("--add-data", "$here\tessbundle\tesseract;tesseract", "--add-data", "$here\tessbundle\tessdata;tessdata")
 } else {
   Write-Host "==> (dev) khong co tessbundle -> dung Tesseract he thong; chi nhung vie"
-  $piArgs += @("--add-data", "..\tessdata\vie.traineddata;tessdata")
+  $piArgs += @("--add-data", "$root\tessdata\vie.traineddata;tessdata")
 }
 
 foreach ($p in @("anthropic", "google.genai", "keyring", "certifi")) {
@@ -35,12 +37,12 @@ foreach ($p in @("anthropic", "google.genai", "keyring", "certifi")) {
 & $py -c "import keyring" *> $null
 if ($LASTEXITCODE -eq 0) { $piArgs += @("--copy-metadata", "keyring") }
 
-$piArgs += @("--distpath", "..\dist_sidecar", "--workpath", "..\build_sidecar", "--specpath", "..\build_sidecar", "..\sidecar.py")
+$piArgs += @("--distpath", "$root\dist_sidecar", "--workpath", "$root\build_sidecar", "--specpath", "$root\build_sidecar", "$root\sidecar.py")
 & $py -m PyInstaller @piArgs
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed" }
 
 New-Item -ItemType Directory -Force -Path "src-tauri\binaries" | Out-Null
-Copy-Item "..\dist_sidecar\bctc-sidecar.exe" "src-tauri\binaries\bctc-sidecar-x86_64-pc-windows-msvc.exe" -Force
+Copy-Item "$root\dist_sidecar\bctc-sidecar.exe" "src-tauri\binaries\bctc-sidecar-x86_64-pc-windows-msvc.exe" -Force
 
 Write-Host "==> [2/3] pnpm install"
 & pnpm install --no-frozen-lockfile
