@@ -88,6 +88,30 @@ jobs:
             ForEach-Object { Copy-Item $_.FullName (Join-Path out ("BCTC-Excel-${{ matrix.label }}" + $_.Extension)) -Force }
           Get-ChildItem out
 
+      # ------------------------------------------------- self-test OCR (đông lạnh)
+      - name: Self-test OCR (macOS, frozen)
+        if: runner.os == 'macOS'
+        continue-on-error: true
+        run: |
+          "$GITHUB_WORKSPACE/dist_sidecar/bctc-sidecar" --port 8799 &
+          SP=$!
+          R=""
+          for i in $(seq 1 40); do sleep 2; R=$(curl -s --max-time 3 http://127.0.0.1:8799/selftest || true); [ -n "$R" ] && break; done
+          echo "SELFTEST(mac): $R"
+          kill "$SP" 2>/dev/null || true
+
+      - name: Self-test OCR (Windows, frozen)
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $exe = "$env:GITHUB_WORKSPACE\dist_sidecar\bctc-sidecar.exe"
+          $p = Start-Process -PassThru -FilePath $exe -ArgumentList "--port","8799"
+          $r = $null
+          for ($i=0; $i -lt 40; $i++) { Start-Sleep 2; try { $r = Invoke-RestMethod "http://127.0.0.1:8799/selftest" -TimeoutSec 3; break } catch {} }
+          Write-Host ("SELFTEST(win): " + ($r | ConvertTo-Json -Compress))
+          if ($p -and -not $p.HasExited) { Stop-Process -Id $p.Id -Force }
+
       # ---------------------------------------------------------- publish
       - uses: actions/upload-artifact@v4
         with:

@@ -252,6 +252,17 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(data)
         elif parsed.path == "/llm/status":
             self._send(200, llm_analysis.status())
+        elif parsed.path == "/selftest":
+            # Tự kiểm OCR trên bản đóng gói (chẩn đoán Tesseract nhúng có chạy không).
+            tess, tessdata = ocr.locate_tesseract()
+            try:
+                text = ocr.selftest()
+                self._send(200, {"ok": True, "tesseract": tess, "tessdata": tessdata,
+                                 "has_vie": ocr.has_vietnamese(), "text": text, "error": None})
+            except Exception as e:
+                self._send(200, {"ok": False, "tesseract": tess, "tessdata": tessdata,
+                                 "has_vie": ocr.has_vietnamese(), "text": None,
+                                 "error": f"{type(e).__name__}: {e}"})
         else:
             self._send(404, {"error": "not found"})
 

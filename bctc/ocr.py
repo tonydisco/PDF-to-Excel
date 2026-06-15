@@ -28,7 +28,7 @@ if sys.platform == "win32":
 
 import fitz                       # PyMuPDF
 import pytesseract
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageDraw
 
 
 # ----------------------------------------------------------------------
@@ -120,6 +120,17 @@ def has_vietnamese():
         return "vie" in pytesseract.get_languages(config="")
     except Exception:
         return False
+
+
+def selftest():
+    """Tự kiểm OCR: tạo ảnh có chữ -> chạy Tesseract -> trả text đọc được.
+    Dùng để chẩn đoán bản ĐÓNG GÓI (chạy đúng luồng ảnh->temp->tesseract->parse
+    như OCR thật). RAISE nếu engine lỗi (DLL thiếu, không chạy được, v.v.)."""
+    configure_tesseract()
+    img = Image.new("RGB", (220, 44), "white")
+    ImageDraw.Draw(img).text((8, 14), "BCTC 12345", fill="black")
+    img = img.resize((660, 132), Image.LANCZOS)   # phóng to cho dễ đọc
+    return pytesseract.image_to_string(img, lang="vie").strip()
 
 
 # ----------------------------------------------------------------------
