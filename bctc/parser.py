@@ -295,6 +295,56 @@ def split_values(words, split_frac):
     return (left[1] if left else None), (right[1] if right else None)
 
 
+def detect_value_columns(section_lines, digit_pass):
+    """Tâm (right_x) các CỘT SỐ của 1 báo cáo, gom từ token số trên MỌI dòng dữ liệu.
+    Số canh phải -> right_x rất ổn định trong một cột. Bỏ cụm nhiễu (ít phần tử).
+    Trả centers (trái->phải). Báo cáo NĂM -> 2 cột; báo cáo QUÝ -> 4 cột."""
+    rights = []
+    for ln, _split, vtoks in section_lines:
+        words = vtoks if (digit_pass and vtoks) else ln
+        for wd in words:
+            if wd["cx"] < 0.55:
+                continue
+            tok = wd["text"].strip().strip("[]{}|")
+            if looks_like_value(tok) and parse_number(tok) is not None:
+                rights.append(wd["right"])
+    if len(rights) < 6:
+        return []
+    rights.sort()
+    clusters = [[rights[0]]]
+    for r in rights[1:]:
+        if r - clusters[-1][-1] > 0.05:     # cột mới khi cách > 0.05
+            clusters.append([r])
+        else:
+            clusters[-1].append(r)
+    big = max(len(c) for c in clusters)
+    keep = [c for c in clusters if len(c) >= max(3, big * 0.3)]   # bỏ cụm nhiễu
+    return [sum(c) / len(c) for c in keep]
+
+
+def pick_values(words, cur_c, prior_c, tol=0.045):
+    """Lấy giá trị tại 2 TÂM CỘT cho trước (cur_c, prior_c) — token số có right_x
+    gần tâm nhất (trong tol). Dùng cho báo cáo QUÝ (4 cột) để lấy đúng cặp 'Lũy kế'."""
+    cur = prior = None
+    cbd = pbd = tol
+    for wd in words:
+        if wd["cx"] < 0.55:
+            continue
+        tok = wd["text"].strip().strip("[]{}|")
+        if not looks_like_value(tok):
+            continue
+        v = parse_number(tok)
+        if v is None:
+            continue
+        rx = wd["right"]
+        dc, dp = abs(rx - cur_c), abs(rx - prior_c)
+        if dc < cbd:
+            cur, cbd = v, dc
+        if dp < pbd:
+            prior, pbd = v, dp
+    return cur, prior
+
+
 def estimate_split(all_words):
     """Tìm ranh giới giữa 2 cột số từ phân bố mép phải các con số (mặc định 0.84)."""
     rights = sorted(wd["right"] for wd in all_words
@@ -481,6 +531,10 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
     for key in T.STATEMENTS:
         col = detect_code_column(section_lines[key], valid[key], ORDER[key])
         cols[key] = col
+        # Báo cáo QUÝ có 4 cột (Quý này/Quý trước/Lũy kế nay/trước) -> lấy 2 cột PHẢI
+        # NHẤT ('Lũy kế') theo tâm cột. Báo cáo NĂM (<=2 cột) giữ split_values như cũ.
+        centers = detect_value_columns(section_lines[key], digit_pass)
+        sel = centers[-2:] if len(centers) > 2 else None
         for ln, split, vtoks in section_lines[key]:
             code = find_code_at(ln, valid[key], col)
             if not code:
@@ -489,7 +543,10 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
                 continue
             # ưu tiên token pass-số; không có thì fallback về pass chữ (không thụt lùi)
             value_words = vtoks if (digit_pass and vtoks) else ln
-            cur, prior = split_values(value_words, split)
+            if sel:
+                cur, prior = pick_values(value_words, sel[0], sel[1])
+            else:
+                cur, prior = split_values(value_words, split)
             if cur is None and prior is None:
                 results[key].setdefault(code, (None, None))
             else:
