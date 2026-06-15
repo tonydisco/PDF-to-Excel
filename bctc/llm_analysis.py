@@ -17,6 +17,7 @@ nếu keychain trong binary đóng băng trục trặc, app vẫn truyền key q
 """
 import os
 import json
+import importlib.util
 
 KEYCHAIN_SERVICE = "BCTC-PDF-to-Excel"
 PROVIDERS = ("anthropic", "google")
@@ -117,13 +118,13 @@ def save_key(provider, key):
 
 
 def _sdk_available(provider):
+    # Dùng find_spec để KIỂM TRA có sẵn mà KHÔNG import (không nạp) SDK -> tránh nạp
+    # hàng loạt DLL nặng (grpc/cryptography/protobuf...) lúc khởi động, vốn làm cạn
+    # TLS trên Windows -> lỗi R6016 "not enough space for thread data" khi OCR tạo thread.
+    mod = "anthropic" if provider == "anthropic" else "google.genai"
     try:
-        if provider == "anthropic":
-            import anthropic  # noqa: F401
-        else:
-            from google import genai  # noqa: F401
-        return True
-    except Exception:
+        return importlib.util.find_spec(mod) is not None
+    except (ImportError, ValueError, ModuleNotFoundError):
         return False
 
 

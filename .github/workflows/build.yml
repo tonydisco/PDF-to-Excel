@@ -95,11 +95,12 @@ jobs:
         run: |
           "$GITHUB_WORKSPACE/dist_sidecar/bctc-sidecar" --port 8799 &
           SP=$!
-          R=""
-          for i in $(seq 1 40); do sleep 2; R=$(curl -s --max-time 3 http://127.0.0.1:8799/selftest || true); [ -n "$R" ] && break; done
-          echo "SELFTEST(mac): $R"
+          for i in $(seq 1 40); do sleep 2; curl -s --max-time 3 http://127.0.0.1:8799/llm/status >/dev/null 2>&1 && break; done
+          echo "LLMSTATUS(mac): $(curl -s --max-time 5 http://127.0.0.1:8799/llm/status || true)"
+          echo "SELFTEST(mac): $(curl -s --max-time 20 http://127.0.0.1:8799/selftest || true)"
           kill "$SP" 2>/dev/null || true
 
+      # Tái hiện đúng luồng app: gọi /llm/status (nơi từng nạp SDK nặng) RỒI OCR.
       - name: Self-test OCR (Windows, frozen)
         if: runner.os == 'Windows'
         continue-on-error: true
@@ -107,9 +108,9 @@ jobs:
         run: |
           $exe = "$env:GITHUB_WORKSPACE\dist_sidecar\bctc-sidecar.exe"
           $p = Start-Process -PassThru -FilePath $exe -ArgumentList "--port","8799"
-          $r = $null
-          for ($i=0; $i -lt 40; $i++) { Start-Sleep 2; try { $r = Invoke-RestMethod "http://127.0.0.1:8799/selftest" -TimeoutSec 3; break } catch {} }
-          Write-Host ("SELFTEST(win): " + ($r | ConvertTo-Json -Compress))
+          for ($i=0; $i -lt 40; $i++) { Start-Sleep 2; try { Invoke-RestMethod "http://127.0.0.1:8799/llm/status" -TimeoutSec 3 | Out-Null; break } catch {} }
+          try { Write-Host ("LLMSTATUS(win): " + ((Invoke-RestMethod "http://127.0.0.1:8799/llm/status" -TimeoutSec 5) | ConvertTo-Json -Compress)) } catch { Write-Host "LLMSTATUS(win) ERR: $_" }
+          try { Write-Host ("SELFTEST(win): " + ((Invoke-RestMethod "http://127.0.0.1:8799/selftest" -TimeoutSec 25) | ConvertTo-Json -Compress)) } catch { Write-Host "SELFTEST(win) ERR: $_" }
           if ($p -and -not $p.HasExited) { Stop-Process -Id $p.Id -Force }
 
       # ---------------------------------------------------------- publish
