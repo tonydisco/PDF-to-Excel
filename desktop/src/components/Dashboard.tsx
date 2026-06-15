@@ -281,6 +281,11 @@ export function Dashboard({ onOpenReview, onAnalyze }: { onOpenReview: (id: stri
                 <div className="flex min-w-0 items-center gap-2.5">
                   <FilePdf weight="fill" className={cn("size-4 shrink-0", f.status === "done" ? "text-primary" : "text-muted-foreground")} />
                   <span className="truncate">{f.name}</span>
+                  {f.status === "done" && f.period && f.period.kind !== "unknown" && (
+                    <span className={cn("shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium", f.period.kind === "quarter" ? "border-primary/30 bg-primary/10 text-primary" : "border-border bg-muted/60 text-muted-foreground")} title={f.period.kind === "quarter" ? "Báo cáo quý" : "Báo cáo năm"}>
+                      {f.period.label}
+                    </span>
+                  )}
                 </div>
                 <span className="font-mono text-xs text-muted-foreground tabular-nums">{f.sizeMB ? fmtSize(f.sizeMB) : "—"}</span>
                 <StatusCell f={f} />

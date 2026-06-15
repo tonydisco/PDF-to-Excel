@@ -28,6 +28,22 @@ const loadId = (): string => {
   }
 }
 
+export type Mode = "dark" | "light"
+const MODE_KEY = "bctc.mode"
+const loadMode = (): Mode => {
+  try {
+    return localStorage.getItem(MODE_KEY) === "light" ? "light" : "dark"
+  } catch {
+    return "dark"
+  }
+}
+
+function applyMode(mode: Mode) {
+  const root = document.documentElement
+  if (mode === "light") root.setAttribute("data-theme", "light")
+  else root.removeAttribute("data-theme") // dark = mặc định (:root)
+}
+
 function applyAccent(a: Accent) {
   const root = document.documentElement
   const set = (k: string, v: string) => root.style.setProperty(k, v)
@@ -46,12 +62,15 @@ function applyAccent(a: Accent) {
 
 interface ThemeStore {
   accent: string
+  mode: Mode
   setAccent: (id: string) => void
+  setMode: (mode: Mode) => void
   init: () => void
 }
 
 export const useTheme = create<ThemeStore>((set) => ({
   accent: loadId(),
+  mode: loadMode(),
   setAccent: (id) => {
     const a = ACCENTS.find((x) => x.id === id) ?? ACCENTS[0]
     applyAccent(a)
@@ -62,8 +81,18 @@ export const useTheme = create<ThemeStore>((set) => ({
     }
     set({ accent: a.id })
   },
+  setMode: (mode) => {
+    applyMode(mode)
+    try {
+      localStorage.setItem(MODE_KEY, mode)
+    } catch {
+      /* ignore */
+    }
+    set({ mode })
+  },
   init: () => {
     const a = ACCENTS.find((x) => x.id === loadId()) ?? ACCENTS[0]
     applyAccent(a)
+    applyMode(loadMode())
   },
 }))

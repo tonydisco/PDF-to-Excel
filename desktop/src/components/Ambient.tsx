@@ -6,7 +6,7 @@
 // transform xoáy (GPU rẻ); blob đặt lệch tâm nên khi xoay sẽ "trôi" như nước.
 export function Ambient() {
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[oklch(0.15_0.005_262)]">
+    <div aria-hidden className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[var(--ambient-bg)]">
       {/* Vùng nước góc trên-trái: 2 blob mềm, xoay ngược chiều, 2 tông theo accent */}
       <div className="absolute -top-[26%] -left-[20%] size-[64vw]">
         <div

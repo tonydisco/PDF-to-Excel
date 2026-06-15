@@ -3,6 +3,13 @@ import type { Statement, BalanceCheck } from "@/lib/types"
 
 const BASE = "http://127.0.0.1:8756"
 
+export interface ReportPeriod {
+  kind: "quarter" | "year" | "unknown"
+  label: string // "Quý I/2026" | "Năm 2026" | ""
+  year?: string | null
+  quarter?: string | null
+}
+
 export interface ConvertResult {
   name: string
   sizeMB: number | null
@@ -14,6 +21,7 @@ export interface ConvertResult {
   warnings: string[]
   pageCount: number
   pages: Record<string, number> // {CDKT: 7, ...} trang đầu mỗi báo cáo (1-based)
+  period: ReportPeriod | null
 }
 
 export async function listDir(dir: string): Promise<string[]> {

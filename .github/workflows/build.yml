@@ -14,6 +14,11 @@ on:
 permissions:
   contents: write
 
+# Các action (checkout/setup-node/...) còn chạy Node.js 20 (deprecated) -> opt-in Node 24
+# để tắt cảnh báo. Các action lớn đều đã hỗ trợ Node 24.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     strategy:

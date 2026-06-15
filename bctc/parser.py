@@ -35,7 +35,9 @@ def norm(s):
 
 
 TITLES = {
-    "CDKT":   ["bang can doi ke toan"],
+    # "Báo cáo tình hình tài chính" = tên gọi KHÁC của Bảng cân đối kế toán (một số
+    # báo cáo dùng tên này; tương đương "statement of financial position").
+    "CDKT":   ["bang can doi ke toan", "bao cao tinh hinh tai chinh"],
     "KQHDKD": ["ket qua hoat dong kinh doanh", "ket qua kinh doanh"],
     "LCTT":   ["luu chuyen tien te"],
 }
@@ -93,6 +95,36 @@ def heading_in_lines(line_texts):
     if len(titles) != 1:        # 0 = không có; >=2 = trang liệt kê (mục lục/bìa)
         return None
     return titles[0]
+
+
+# Phát hiện KỲ báo cáo: QUÝ (có cột "Kỳ này"/"Lũy kế từ đầu năm") hay NĂM.
+_QUARTER_RE = re.compile(r"\bquy\s*(iv|iii|ii|i|[1-4])\b")
+_QUARTER_LABEL = {"i": "I", "ii": "II", "iii": "III", "iv": "IV",
+                  "1": "I", "2": "II", "3": "III", "4": "IV"}
+_YEAR_RE = re.compile(r"\b(20\d{2})\b")
+
+
+def detect_period(line_texts):
+    """Đoán kỳ báo cáo từ các dòng OCR của trang báo cáo.
+    Trả: {kind: 'quarter'|'year'|'unknown', label, year?, quarter?}.
+    Dấu hiệu QUÝ: có 'lũy kế' (cột lũy kế từ đầu năm) — đặc trưng báo cáo quý —
+    kèm 'kỳ này' hoặc 'Quý I/II/III/IV'. Còn lại coi là báo cáo năm (nếu thấy năm)."""
+    joined = " ".join(norm(t) for t in line_texts)
+    qm = _QUARTER_RE.search(joined)
+    years = _YEAR_RE.findall(joined)
+    # năm = xuất hiện NHIỀU NHẤT (năm tài chính, không phải năm ký tên); hoà -> mới nhất
+    year = max(years, key=lambda y: (years.count(y), y)) if years else None
+    # CHỈ nhận QUÝ khi có dấu hiệu CỘT đặc trưng: "lũy kế từ đầu năm" (cột lũy kế của
+    # báo cáo quý/giữa niên độ) HOẶC "Quý <số>" kèm cột "kỳ này". KHÔNG dùng "lũy kế"
+    # trơ trọi (vì có trong "giá trị hao mòn lũy kế" - khấu hao - ở báo cáo NĂM).
+    is_quarter = ("luy ke tu dau nam" in joined) or (qm is not None and "ky nay" in joined)
+    if is_quarter:
+        q = _QUARTER_LABEL.get(qm.group(1), qm.group(1).upper()) if qm else None
+        label = (f"Quý {q}" if q else "Báo cáo quý") + (f"/{year}" if year else "")
+        return {"kind": "quarter", "quarter": q, "year": year, "label": label}
+    if year:
+        return {"kind": "year", "year": year, "label": f"Năm {year}"}
+    return {"kind": "unknown", "year": year, "quarter": None, "label": ""}
 
 
 # ----------------------------------------------------------------------
@@ -237,8 +269,13 @@ def forced_total_code(words, key):
 
 
 def split_values(words, split_frac):
-    """Tách token số thành (năm nay/cuối năm, năm trước/đầu năm) theo vị trí x."""
-    cur = prior = None
+    """Tách token số thành (cur, prior) — lấy 2 CỘT PHẢI NHẤT:
+      cur   = cột phải nhất trong nhóm right <= split_frac
+      prior = cột phải nhất trong nhóm right >  split_frac
+    -> Báo cáo NĂM (2 cột Năm nay/Năm trước): không đổi.
+    -> Báo cáo QUÝ (4 cột Quý này / Quý trước / Lũy kế năm nay / Lũy kế năm trước):
+       tự lấy đúng cặp 'Lũy kế' (2 cột phải nhất) — phù hợp so sánh như báo cáo năm."""
+    left = right = None          # (right_x, value): phần tử phải nhất mỗi nhóm
     for wd in words:
         if wd["cx"] < 0.60:          # bỏ qua cột chỉ tiêu / mã số / thuyết minh
             continue
@@ -248,11 +285,14 @@ def split_values(words, split_frac):
         v = parse_number(tok)
         if v is None:
             continue
-        if wd["right"] <= split_frac:
-            cur = v if cur is None else cur
+        rx = wd["right"]
+        if rx <= split_frac:
+            if left is None or rx > left[0]:
+                left = (rx, v)
         else:
-            prior = v if prior is None else prior
-    return cur, prior
+            if right is None or rx > right[0]:
+                right = (rx, v)
+    return (left[1] if left else None), (right[1] if right else None)
 
 
 def estimate_split(all_words):
@@ -455,6 +495,9 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
             else:
                 results[key][code] = (cur, prior)
     page_meta["_code_columns"] = cols
+    page_meta["period"] = detect_period(
+        [" ".join(wd["text"] for wd in ln) for p in pages for ln in page_lines[p]]
+    )
     return results, warnings, page_meta
 
 

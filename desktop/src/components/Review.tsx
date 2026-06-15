@@ -79,6 +79,11 @@ export function Review({ fileId, onBack }: { fileId: string; onBack: () => void 
           <div className="flex items-center gap-2">
             <FilePdf weight="fill" className="size-4 text-primary" />
             <span className="text-sm font-medium">{file.name}</span>
+            {state.data?.period && state.data.period.kind !== "unknown" && (
+              <span className={cn("rounded border px-1.5 py-0.5 text-[10px] font-medium", state.data.period.kind === "quarter" ? "border-primary/30 bg-primary/10 text-primary" : "border-border bg-muted/60 text-muted-foreground")} title={state.data.period.kind === "quarter" ? "Báo cáo quý" : "Báo cáo năm"}>
+                {state.data.period.label}
+              </span>
+            )}
             {state.loading && <CircleNotch className="size-4 animate-spin text-primary" />}
           </div>
         </div>

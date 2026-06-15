@@ -84,7 +84,8 @@ def _extract(pdf_path, hq=False):
     located = {}
     for p0, k in scope:
         located.setdefault(k, p0 + 1)              # 1-based, trang đầu mỗi báo cáo
-    out = (results, warnings, conflicts, located, page_count)
+    period = meta.get("period") if isinstance(meta, dict) else None
+    out = (results, warnings, conflicts, located, page_count, period)
     _CACHE[key] = out
     return out
 
@@ -102,7 +103,7 @@ def _ratios_for(path, hq=False):
 
 
 def convert(pdf_path, hq=False):
-    results, warnings, conflicts, located, page_count = _extract(pdf_path, hq)
+    results, warnings, conflicts, located, page_count, period = _extract(pdf_path, hq)
 
     flags_by_key = excel_writer._flags_by_key(conflicts)
     statements = []
@@ -135,6 +136,7 @@ def convert(pdf_path, hq=False):
         "warnings": warnings,
         "pageCount": page_count,
         "pages": located,                          # {CDKT: 7, KQHDKD: 9, ...}
+        "period": period,                          # {kind, label, year, quarter} hoặc None
     }
 
 
@@ -156,7 +158,7 @@ _LABEL_FOR_COL = {"cur": "cuối năm/năm nay", "prior": "đầu năm/năm trư
 def export_xlsx(path, out_dir=None, edits=None, hq=False):
     """Ghi Excel TỪ kết quả OCR đã cache + áp chỉnh sửa của người dùng.
     KHÔNG OCR lại từ PDF -> số đã sửa/đã soát trong Review được giữ nguyên."""
-    results, _warnings, conflicts, _located, _pc = _extract(path, hq)
+    results, _warnings, conflicts, _located, _pc, _period = _extract(path, hq)
     results = {k: dict(v) for k, v in results.items()}   # copy, không đụng cache
     edited = set()
     for e in (edits or []):

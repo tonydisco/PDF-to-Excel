@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { ShieldCheck, CheckCircle, WarningCircle, FloppyDisk, Trash, Check, EnvelopeSimple } from "@phosphor-icons/react"
+import { ShieldCheck, CheckCircle, WarningCircle, FloppyDisk, Trash, Check, EnvelopeSimple, Sun, Moon } from "@phosphor-icons/react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,6 +23,8 @@ export function Settings() {
   const { settingsOpen, closeSettings, provider, model, status, setProvider, setModel, refreshStatus } = useLlm()
   const accent = useTheme((s) => s.accent)
   const setAccent = useTheme((s) => s.setAccent)
+  const mode = useTheme((s) => s.mode)
+  const setMode = useTheme((s) => s.setMode)
   const [keyInput, setKeyInput] = useState("")
   const [saving, setSaving] = useState(false)
 
@@ -150,7 +152,20 @@ export function Settings() {
 
           {/* ---------- Giao diện ---------- */}
           <section className="border-t border-border pt-4">
-            <SectionTitle>Giao diện · Màu nhấn</SectionTitle>
+            <SectionTitle>Giao diện · Chế độ</SectionTitle>
+            <div className="mb-4 grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+              {([["dark", "Tối", Moon], ["light", "Sáng", Sun]] as const).map(([m, label, Icon]) => (
+                <button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  className={cn("inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer", mode === m ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                >
+                  <Icon weight={mode === m ? "fill" : "regular"} className="size-4" /> {label}
+                </button>
+              ))}
+            </div>
+
+            <SectionTitle>Màu nhấn</SectionTitle>
             <div className="flex flex-wrap items-center gap-2.5">
               {ACCENTS.map((a) => {
                 const on = accent === a.id

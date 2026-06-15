@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import { convert, sizes, type ConvertResult, type CellEdit } from "./api"
+import { convert, sizes, type ConvertResult, type CellEdit, type ReportPeriod } from "./api"
 
 const EXPORT_DIR_KEY = "bctc.exportDir"
 const loadExportDir = (): string | null => {
@@ -25,6 +25,7 @@ export interface QFile {
   found: 0 | 1 | 2 | 3
   conflicts: number
   balanceOk: boolean | null
+  period: ReportPeriod | null
   error?: string
 }
 
@@ -36,7 +37,7 @@ function newFile(path: string, name?: string): QFile {
   return {
     id: path, name: name ?? baseName(path), path,
     sizeMB: null, pages: null, status: "queued",
-    found: 0, conflicts: 0, balanceOk: null,
+    found: 0, conflicts: 0, balanceOk: null, period: null,
   }
 }
 
@@ -291,7 +292,7 @@ async function runQueue(
         results: { ...s.results, [id]: r },
         files: s.files.map((x) =>
           x.id === id
-            ? { ...x, status: "done", sizeMB: r.sizeMB, pages: r.pageCount, found: r.found as QFile["found"], conflicts: r.conflicts, balanceOk: r.balanceOk }
+            ? { ...x, status: "done", sizeMB: r.sizeMB, pages: r.pageCount, found: r.found as QFile["found"], conflicts: r.conflicts, balanceOk: r.balanceOk, period: r.period }
             : x,
         ),
       }))
