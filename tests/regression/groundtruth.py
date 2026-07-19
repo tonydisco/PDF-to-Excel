@@ -222,24 +222,41 @@ def _norm_local(s):
     return re.sub(r"\s+", " ", _strip_accents_local(s).lower()).strip()
 
 
-# Nhãn mojibake (vd. 'N¨m nay' đọc lệch từ TCVN3) KHÔNG chuẩn hoá trùng với
-# các mốc dưới đây (đã xác minh: '¨' giải mã NFKD ra khoảng trắng + dấu kết
-# hợp, chứ không ra 'a') nên không lo khớp nhầm.
+# Đã xác minh: nhãn mojibake (vd. 'N¨m nay' đọc lệch từ TCVN3) KHÔNG chuẩn
+# hoá trùng với các mốc dưới đây ('¨' giải mã NFKD ra khoảng trắng + dấu kết
+# hợp, chứ không ra 'a') nên mojibake không tự khớp nhầm thành current/prior.
+# Điều đó KHÔNG có nghĩa mọi cụm tiếng Việt hợp lệ chỉ khớp một phía: nhiều
+# cụm tự nhiên (vd. "Số dư cuối năm trước", "Cuối kỳ trước") chứa cả mốc năm
+# nay ("cuối năm") LẪN mốc năm trước ("năm trước") làm con của cùng một cụm.
+# _year_marker() xử lý ca đó bằng cách trả None khi khớp CẢ HAI danh sách —
+# nhập nhằng bị bỏ qua có chủ đích, KHÔNG được đoán đại một phía; bên gọi
+# (_order_by_header_labels) sẽ không dùng ô đó làm căn cứ và rơi về mặc định
+# vị trí (trái = năm nay) thay vì gán liều một kết quả sai mà tự tin.
 _CUR_YEAR_MARKERS = ("nam nay", "ky nay", "so cuoi nam", "cuoi ky", "cuoi nam")
 _PRIOR_YEAR_MARKERS = ("nam truoc", "ky truoc", "so dau nam", "dau ky", "dau nam")
 _LABEL_SCAN_ABOVE = 3  # số hàng phía TRÊN hàng tiêu đề ứng viên cũng được xét
 
 
 def _year_marker(cell):
-    """'current' / 'prior' / None — ô này có khớp nhãn năm nay/năm trước không."""
+    """'current' / 'prior' / None — ô này có khớp nhãn năm nay/năm trước không.
+
+    Khớp CẢ HAI danh sách (vd. "Số dư cuối năm trước" vừa chứa "cuối năm" vừa
+    chứa "năm trước") nghĩa là nhập nhằng: trả về None, KHÔNG đoán đại một
+    phía. Không khớp danh sách nào, ô rỗng, hoặc không phải chuỗi cũng trả về
+    None — chỉ trả 'current'/'prior' khi khớp ĐÚNG MỘT phía.
+    """
     if not isinstance(cell, str):
         return None
     text = _norm_local(cell)
     if not text:
         return None
-    if any(m in text for m in _CUR_YEAR_MARKERS):
+    is_current = any(m in text for m in _CUR_YEAR_MARKERS)
+    is_prior = any(m in text for m in _PRIOR_YEAR_MARKERS)
+    if is_current and is_prior:
+        return None
+    if is_current:
         return "current"
-    if any(m in text for m in _PRIOR_YEAR_MARKERS):
+    if is_prior:
         return "prior"
     return None
 

@@ -294,3 +294,68 @@ def test_statement_detail_doi_chieu_file_that_bi_dao_nam(corpus_root):
     detail = G.statement_detail(path)
     assert detail["column_order"] == "labels"
     assert detail["values"] == vals
+
+
+# ---------------------------------------------------------------------------
+# Defect 4: _year_marker() xét _CUR_YEAR_MARKERS TRƯỚC _PRIOR_YEAR_MARKERS
+# bằng containment thuần, không có bước phát hiện nhập nhằng. Nhiều mốc năm
+# nay lại là tiền tố của cụm tiếng Việt tự nhiên nói về năm TRƯỚC (vd. "Số dư
+# cuối năm trước" chứa "cuối năm" - mốc năm nay - nhưng cả câu là năm trước;
+# "Cuối kỳ trước" chứa "cuối kỳ" - mốc năm nay - nhưng cả câu cũng là năm
+# trước). _year_marker() từng trả 'current' một cách TỰ TIN nhưng SAI cho các
+# câu này, khiến _order_by_header_labels gán nhầm cột và _find_columns_fallback
+# còn báo column_order == "labels" - tức đánh dấu câu trả lời sai là đáng tin
+# hơn cả "positional". Từ nay: khớp CẢ HAI danh sách -> nhập nhằng -> trả về
+# None, không đoán đại một phía; bên gọi phải rơi về mặc định vị trí thay vì
+# đoán liều một kết quả sai mà tự tin.
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("text,expected", [
+    ("Kỳ này", "current"),
+    ("Kỳ trước", "prior"),
+    ("Năm nay", "current"),
+    ("Năm trước", "prior"),
+    ("Số cuối năm", "current"),
+    ("Số đầu năm", "prior"),
+    ("Số dư cuối năm trước", None),  # chứa "cuối năm" LẪN "năm trước" -> nhập nhằng
+    ("Cuối kỳ trước", None),         # chứa "cuối kỳ" LẪN "kỳ trước" -> nhập nhằng
+    ("Năm nay và năm trước", None),  # cả 2 cụm cùng có mặt -> nhập nhằng
+    ("Chỉ tiêu", None),              # không khớp danh sách nào
+    ("", None),                      # chuỗi rỗng
+])
+def test_year_marker_nhap_nhang_tra_ve_none(text, expected):
+    assert G._year_marker(text) == expected
+
+
+def _rows_nhan_nhap_nhang_cuoi_ky_truoc_dau_ky():
+    """
+    Bảng giả lập kiểu bảng cân đối phát sinh: nhãn tiêu đề 'Số dư cuối kỳ
+    trước' vừa chứa mốc năm nay ('cuối kỳ') vừa chứa mốc năm trước ('kỳ
+    trước') trong cùng một cụm tự nhiên - nhập nhằng thật, không phải lỗi gõ.
+    KHÔNG có hàng đánh số cột nên buộc phải rơi xuống _find_columns_fallback.
+    """
+    return [
+        ["Chỉ tiêu", "MS", "Số dư cuối kỳ trước", "Số dư đầu kỳ"],
+        ["Tiền mặt", "111", 1000000, 2000000],
+        ["Tiền gửi ngân hàng", "112", 3000000, 4000000],
+        ["Phải thu khách hàng", "131", 5000000, 6000000],
+        ["Hàng tồn kho", "141", 7000000, 8000000],
+        ["Tài sản cố định", "211", 9000000, 10000000],
+        ["Đầu tư tài chính", "221", 11000000, 12000000],
+    ]
+
+
+def test_find_columns_du_phong_nhan_nhap_nhang_khong_doan_bua():
+    """Nhãn nhập nhằng ('Số dư cuối kỳ trước' khớp cả 2 danh sách mốc) không
+    được phép quyết định thứ tự cột - _order_by_header_labels phải từ chối
+    (trả None) và _find_columns_fallback phải rơi về mặc định vị trí, báo
+    đúng column_order == "positional" thay vì "labels" tự tin nhưng sai.
+    Trước khi sửa Defect 4, ca này báo column_order == "labels" và gán cột
+    'cuối kỳ trước' làm cột năm nay - sai mà không có tín hiệu cảnh báo."""
+    rows = _rows_nhan_nhap_nhang_cuoi_ky_truoc_dau_ky()
+    found = G._find_columns_fallback(rows)
+    assert found is not None
+    _, _, _, _, column_order = found
+    assert column_order == "positional", (
+        "nhãn nhập nhằng không được đoán bừa: kỳ vọng column_order='positional' "
+        "nhưng dò được %r" % (column_order,)
+    )
