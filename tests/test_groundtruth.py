@@ -166,3 +166,131 @@ def test_read_statement_ty_le_thanh_cong_tren_corpus(corpus_root):
         "Tỉ lệ đọc thành công chỉ %.1f%% (%d/%d file) — chưa vượt ngưỡng %.0f%%"
         % (rate * 100, ok, len(sample), _MIN_SUCCESS_RATE * 100)
     )
+
+
+# ---------------------------------------------------------------------------
+# Defect 3: _find_columns_fallback từng LUÔN coi cột giá trị bên TRÁI là năm
+# nay ('cur_col, prior_col = sorted(value_cols[:2])'), bất kể nhãn tiêu đề
+# thật sự nói gì. File thật xác nhận điều ngược lại: 'Luu chuyen tien te
+# 2015.xls' (Cty CP DL KS Tháng Mười, Quý 4/2015) có nhãn tiêu đề ĐỌC ĐƯỢC
+# 'Kỳ trước' | 'Kỳ này' với cột TRÁI lại là Kỳ trước — 2 năm bị hoán đổi lặng
+# lẽ, không raise lỗi, không cảnh báo. Từ nay khi nhãn tiêu đề còn đọc được
+# và xác định rõ đâu là năm nay/năm trước, nhãn phải THẮNG vị trí; chỉ rơi về
+# mặc định trái=năm nay khi nhãn mojibake/thiếu/mơ hồ.
+# ---------------------------------------------------------------------------
+def _rows_nhan_doc_duoc_ky_truoc_ky_nay():
+    """
+    Mô phỏng đúng cấu trúc file LCTT thật đã xác nhận trên corpus: nhãn tiêu
+    đề ĐỌC ĐƯỢC 'Kỳ trước' | 'Kỳ này' (không mojibake), KHÔNG có hàng đánh số
+    cột, và — giống hệt file thật — cột TRÁI là Kỳ trước chứ không phải Kỳ
+    này.
+    """
+    return [
+        ["Chỉ tiêu", "MS", "Kỳ trước", "Kỳ này"],
+        ["I. Lưu chuyển tiền từ hoạt động SXKD", "", 0, 0],
+        ["1. Tiền thu từ bán hàng, cung cấp dịch vụ", "01", 1000, 31000000],
+        ["2. Tiền chi trả cho người cung cấp", "02", 2000, 13000000],
+        ["3. Tiền chi trả cho người lao động", "03", 3000, 7000000],
+        ["4. Tiền chi trả lãi vay", "04", 4000, 100000],
+        ["5. Tiền chi nộp thuế TNDN", "05", 5000, 0],
+        ["6. Tiền thu khác từ hoạt động kinh doanh", "06", 6000, 1000000],
+    ]
+
+
+def test_find_columns_nhan_doc_duoc_thang_vi_tri():
+    """Nhãn 'Kỳ trước' | 'Kỳ này' còn đọc được -> cột năm nay là cột BÊN
+    PHẢI (chỉ số LỚN HƠN cột năm trước), dù mặc định vị trí (trái = năm nay)
+    sẽ chọn NGƯỢC LẠI nếu chỉ nhìn hình dạng ô."""
+    rows = _rows_nhan_doc_duoc_ky_truoc_ky_nay()
+    found = G._find_columns(rows)
+    assert found is not None
+    hdr_row, code_col, cur_col, prior_col = found
+    assert cur_col > prior_col, (
+        "nhãn tiêu đề phải thắng vị trí: 'Kỳ này' nằm bên phải 'Kỳ trước' "
+        "trong dữ liệu giả lập này nhưng dò được cur_col=%d, prior_col=%d"
+        % (cur_col, prior_col)
+    )
+    assert (hdr_row, code_col, cur_col, prior_col) == (1, 1, 3, 2)
+
+
+def test_find_columns_mojibake_giu_thu_tu_vi_tri_mac_dinh():
+    """Companion của test trên: nhãn mojibake ('N¨m nay' / 'N¨m tr­íc') không
+    khớp mốc nào -> không có tín hiệu chữ đáng tin -> GIỮ mặc định vị trí
+    (trái = năm nay), y hệt hành vi trước khi sửa Defect 3."""
+    rows = _rows_khong_co_hang_danh_so()
+    found = G._find_columns(rows)
+    assert found is not None
+    hdr_row, code_col, cur_col, prior_col = found
+    assert cur_col < prior_col
+    assert (hdr_row, code_col, cur_col, prior_col) == (2, 1, 3, 4)
+    # Đối chiếu thẳng cách quyết định, không chỉ suy luận qua thứ tự chỉ số.
+    _, _, _, _, column_order = G._find_columns_fallback(rows)
+    assert column_order == "positional"
+
+
+def test_statement_detail_bao_cao_dung_strategy_va_column_order(tmp_path):
+    """statement_detail() phải lộ đúng provenance cho cả 2 nhánh dò cột:
+    hàng đánh số (strategy='numbering' -> luôn column_order='positional' vì
+    nhánh này không đọc nhãn chữ) và dự phòng hình học có nhãn đọc được
+    (strategy='fallback' -> column_order='labels')."""
+    import openpyxl
+
+    numbering_path = tmp_path / "numbering.xlsx"
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    for row in [
+        ["CÔNG TY CỔ PHẦN ABC", None, None, None, None],
+        ["BÁO CÁO KẾT QUẢ HOẠT ĐỘNG KINH DOANH", None, None, None, None],
+        ["Chỉ tiêu", "Mã số", "TM", "Năm nay", "Năm trước"],
+        [1, 2, 3, 4, 5],
+        ["Doanh thu bán hàng", 1, "VI.25", 52000000, 41000000],
+    ]:
+        ws.append(row)
+    wb.save(numbering_path)
+
+    labels_path = tmp_path / "labels.xlsx"
+    wb2 = openpyxl.Workbook()
+    ws2 = wb2.active
+    for row in _rows_nhan_doc_duoc_ky_truoc_ky_nay():
+        ws2.append(row)
+    wb2.save(labels_path)
+
+    numbering_detail = G.statement_detail(str(numbering_path))
+    assert numbering_detail["strategy"] == "numbering"
+    assert numbering_detail["column_order"] == "positional"
+    assert numbering_detail["values"]["1"] == (52000000, 41000000)
+    assert numbering_detail["values"] == G.read_statement(str(numbering_path))
+
+    labels_detail = G.statement_detail(str(labels_path))
+    assert labels_detail["strategy"] == "fallback"
+    assert labels_detail["column_order"] == "labels"
+    assert labels_detail["values"]["01"] == (31000000, 1000)
+    assert labels_detail["values"] == G.read_statement(str(labels_path))
+
+
+# ---------------------------------------------------------------------------
+# Đối chiếu trực tiếp trên file corpus thật đã xác nhận bị đảo năm (xem đầu
+# khối Defect 3 ở trên). Đường dẫn tương đối tính từ BCTC_CORPUS; tự skip nếu
+# máy không có corpus hoặc không có đúng file này.
+# ---------------------------------------------------------------------------
+_SWAPPED_YEAR_REL_PATH = (
+    "BTG document/BCTC 10/2015/Quy 4.2015/"
+    "21_Cty CP DL KS Thang Muoi_BCTC 2015/Luu chuyen tien te 2015.xls"
+)
+
+
+def test_statement_detail_doi_chieu_file_that_bi_dao_nam(corpus_root):
+    """
+    File thật: nhãn tiêu đề CÒN ĐỌC ĐƯỢC 'Kỳ trước' | 'Kỳ này' nhưng cột TRÁI
+    lại là Kỳ trước — ngược mặc định trái = năm nay. Trước khi sửa Defect 3,
+    read_statement() trả về vals['01'] == (0, 31023721511): 2 năm bị đảo hoàn
+    toàn mà không có bất kỳ exception hay cảnh báo nào.
+    """
+    path = os.path.join(corpus_root, *_SWAPPED_YEAR_REL_PATH.split("/"))
+    if not os.path.isfile(path):
+        pytest.skip("Không có file corpus: %s" % _SWAPPED_YEAR_REL_PATH)
+    vals = G.read_statement(path)
+    assert vals["01"] == (31023721511, 0)
+    detail = G.statement_detail(path)
+    assert detail["column_order"] == "labels"
+    assert detail["values"] == vals
