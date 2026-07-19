@@ -34,8 +34,10 @@ Các đặc điểm khác ảnh hưởng trực tiếp tới thiết kế:
   Thông tư 49/2014/TT-NHNN — không khớp TT200.
 - 12,3% file scan có DPI gốc < 150 (OCR kém ở mức này).
 - Tồn tại 1 file PDF 0 byte sẽ làm `fitz.open` ném lỗi.
-- **187 file Excel xuất trực tiếp** (`CDKT.XLS`, `KQKD.XLS`, `LCTT.XLS`,
-  `CDPS.XLS`) nằm cùng thư mục với PDF tương ứng → dùng làm đáp án chuẩn.
+- **173 file Excel xuất trực tiếp** (`CDKT.XLS`, `KQKD.XLS`, `LCTT.XLS`,
+  `CDPS.XLS`) tồn tại trong corpus. Sau khi ghép cặp chặt chẽ (xem §4.3) chỉ
+  **45 file ghép được với PDF tương ứng, thuộc 14 PDF riêng biệt**. 114/173 là
+  BIFF cũ (cần `xlrd`), 59/173 là OOXML.
 
 ### 1.2 Vì sao máy nóng
 
@@ -123,11 +125,31 @@ tests/regression/
   so khớp cột theo vị trí sau khi tìm được hàng số thứ tự `1|2|3|4|5`).
 - **Có cột Thuyết minh** (`VI.25`) nằm giữa Mã số và cột giá trị.
 
-### 4.3 Cách ghép cặp
+### 4.3 Cách ghép cặp — ghép sai còn tệ hơn không ghép
 
 Mỗi Excel đáp án ứng với **một** báo cáo (`CDKT`/`KQKD`/`LCTT`), còn PDF thường
-chứa cả ba. Ghép theo thư mục chứa, rồi theo tiền tố mã công ty `NN_`. Chỉ so
-sánh những báo cáo có đáp án.
+chứa cả ba. Chỉ so sánh những báo cáo có đáp án.
+
+**Cạm bẫy đã kiểm chứng:** ghép ngây thơ theo số đầu tên file cho ra cặp **sai
+công ty**. File `1 Can doi ke toan 06 thang dau 2025.xlsx` nằm trong thư mục
+`27_Cty CP SXKD Hàng XK Tân Bình 6Th_2025/` — số `1` là số thứ tự trong tên
+file, không phải mã công ty. Ghép theo số đó sẽ nối nó với
+`01_CTCP DVTH Saigon 2025 (Riêng).pdf`, tức so số liệu của hai doanh nghiệp
+khác nhau. Một bộ đo dựng trên cặp sai sẽ cho ra chỉ số vô nghĩa và còn nguy
+hiểm hơn không đo, vì nó tạo cảm giác an toàn giả.
+
+Quy tắc ghép bắt buộc:
+
+1. **Mã công ty chỉ lấy từ tên THƯ MỤC tổ tiên** khớp `^NN[._\s-]`, tuyệt đối
+   không lấy từ tên file Excel.
+2. **Khớp kỳ báo cáo** (`6T`/`Q1`–`Q4`/`NAM`) suy từ cả hai phía. Đáp án 6 tháng
+   không được ghép với PDF cả năm — số liệu khác nhau hợp lệ, sẽ bị tính nhầm
+   thành `lệch`.
+3. **Khớp năm.**
+4. **Chốt danh sách thủ công.** 14 PDF là đủ nhỏ để người xác nhận từng cặp một
+   lần, kể cả phạm vi riêng/hợp nhất. Danh sách sau khi xác nhận được đóng băng
+   vào `tests/regression/pairs.json` và commit vào repo — bộ đo **không** tự dò
+   lại lúc chạy.
 
 ### 4.4 Cách tính điểm
 
@@ -143,11 +165,40 @@ Với mỗi cặp `(mã số, cột)`, gọi `g` = giá trị đáp án, `o` = g
 Báo cáo theo từng báo cáo, từng file, và tổng hợp. Ghi kèm: thời gian thực,
 **CPU-giây** (`time.process_time` + `resource.getrusage`), **RSS đỉnh**.
 
-### 4.5 Quy mô chạy
+### 4.5 Ba tầng đo — vì đáp án chính xác quá ít
 
-- Bộ **nhanh** (~30 cặp, phân tầng theo năm / scan-vs-text / thường-vs-ngân hàng)
-  để lặp trong lúc phát triển.
-- Bộ **đầy đủ** (toàn bộ 187 cặp) chạy trước và sau mỗi giai đoạn.
+14 PDF có đáp án là quá mỏng để phủ hết các nhóm quan trọng (file trước 2015,
+file ngân hàng, file mojibake, file có trang xoay). Bộ đo vì vậy chia ba tầng,
+tầng sau bù đúng chỗ tầng trước không với tới.
+
+**Tầng 1 — Đối chiếu giá trị tuyệt đối** (14 PDF, 45 báo cáo)
+
+Chỉ số `đúng`/`sót`/`lệch`/`thừa` theo §4.4. Đây là thước đo chính xác thật sự,
+nhưng phạm vi hẹp.
+
+**Tầng 2 — Tự nhất quán, không cần đáp án** (mẫu phân tầng vài trăm file)
+
+Hai chỉ số chạy được trên *bất kỳ* file nào, phủ mọi nhóm mà tầng 1 bỏ sót:
+
+- **Độ phủ**: tỷ lệ dòng trong khung có giá trị. Đây là proxy trực tiếp cho
+  "sót data" — lỗi §7.1 (mất toàn bộ mã 01–09) sẽ hiện ra ngay dưới dạng độ phủ
+  thấp bất thường ở KQHDKD/LCTT, và mức tăng sau khi sửa đo được định lượng.
+- **Tỷ lệ đạt kiểm tra cân đối**: `270=440`, `100+200=270`, `300+400=440`.
+  Số liệu sai do OCR gần như luôn làm vỡ cân đối, nên đây là tín hiệu chất lượng
+  đáng tin mà không cần đáp án.
+
+Hạn chế cần nhớ: độ phủ cao không đảm bảo giá trị đúng, và cân đối đạt không
+loại trừ được sai số bù trừ nhau. Tầng 2 bắt hồi quy trên diện rộng, không thay
+thế tầng 1.
+
+**Tầng 3 — Tài nguyên** (mẫu bất kỳ, không cần đáp án)
+
+Thời gian thực, **CPU-giây**, **RSS đỉnh**, **%CPU đỉnh**. Đây là thước đo cho
+G3/G4/G5 và là tiêu chí nghiệm thu chính của Đợt 1.
+
+**Quy mô chạy:** bộ nhanh (14 PDF tầng 1 + ~30 file tầng 2) để lặp trong lúc
+phát triển; bộ đầy đủ (tầng 1 toàn bộ + ~300 file phân tầng cho tầng 2) chạy
+trước và sau mỗi giai đoạn.
 
 ## 5. Giai đoạn 1 — Cắt tính toán thừa
 
@@ -449,7 +500,8 @@ Dành cho máy yếu hoặc khi cần chạy nền lâu mà không muốn máy n
 | Bảng QĐ15/TCTD lập sai | Sai có hệ thống trên cả nhóm file | Đối chiếu văn bản pháp quy gốc; kiểm bằng đáp án Excel của đúng nhóm đó |
 | Refactor luồng render gây race | Crash hoặc lỗi ngắt quãng | Một luồng render duy nhất; chạy bộ đầy đủ 187 cặp để phát hiện |
 | Bộ lọc mojibake quá chặt | Bỏ nhầm file text tốt sang OCR | Chỉ mất tốc độ, không mất chính xác; hiệu chỉnh ngưỡng trên 628 file đã phân loại |
-| Đáp án Excel không khớp kỳ báo cáo của PDF | Điểm hồi quy sai lệch | Đối chiếu kỳ/năm khi ghép cặp; loại cặp không khớp |
+| **Ghép cặp sai công ty/kỳ** (đã xảy ra khi thử nghiệm, xem §4.3) | Toàn bộ chỉ số hồi quy vô nghĩa, tạo cảm giác an toàn giả | Mã công ty chỉ lấy từ tên thư mục; khớp cả kỳ và năm; chốt thủ công 14 cặp rồi đóng băng vào `pairs.json` |
+| Đáp án chỉ phủ 14 PDF, thiếu nhóm cũ/ngân hàng/mojibake | Hồi quy ở các nhóm đó không bị phát hiện | Tầng 2 (độ phủ + cân đối) chạy trên mẫu phân tầng vài trăm file, phủ mọi nhóm |
 
 ## 11. Ngoài phạm vi
 
