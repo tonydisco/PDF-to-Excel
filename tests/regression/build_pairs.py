@@ -8,6 +8,24 @@ Lấy từ tên file sẽ ghép nhầm công ty — đã kiểm chứng: file
 '27_Cty CP SXKD Hàng XK Tân Bình 6Th_2025/' nhưng số '1' ở đầu tên file lại
 nối nó với '01_CTCP DVTH Saigon 2025 (Riêng).pdf'.
 
+Khớp (mã, năm, kỳ) CHƯA đủ — mã công ty chỉ duy nhất TRONG một thư mục năm,
+không duy nhất toàn corpus. Bốn lớp lọc bổ sung (mỗi lần loại đều được ĐẾM,
+không bao giờ lặng lẽ vứt):
+  A. Trùng danh tính công ty: hai phía phải chung >= 2 token tên (đã bỏ dấu,
+     bỏ từ đệm) — đã kiểm chứng '10_BCTC kiem toan Bac Au.pdf' (Bắc Âu) từng
+     ghép với '10_BCTC chua kiem toan Volvo/CDSPS.xlsx' (Volvo) vì cùng số 10.
+  B. Cùng cơ sở lập (kiểm toán vs tự lập — số liệu sau kiểm toán được điều
+     chỉnh hợp pháp, không so được) và cùng phạm vi (hợp nhất vs riêng).
+     Phân loại đọc MỌI bản sao cùng tên file trong khóa, vì bản sao ở cây
+     'BCTC - Da kiem toan .../' mang mốc mà bản sao ở cây trần không có
+     (xem _merged_labels). UNKNOWN không bị loại nhưng được đếm để người
+     xác nhận biết cặp nào đứng trên cơ sở chưa kiểm chứng.
+  C. PDF xuất đơn lẻ một loại báo cáo (vd. 'cdps_6t.pdf' chỉ có 4 trang bảng
+     cân đối phát sinh) chỉ được ghép với Excel cùng loại đó.
+  Cuối cùng gộp các bản sao do corpus nhân đôi cây thư mục ('BCTC 3/',
+  'BCTC 4/'...): trùng cả (mã, năm, kỳ, loại, tên file PDF, tên file Excel)
+  thì giữ bản đầu tiên theo thứ tự đường dẫn.
+
 Kết quả của module này là ĐỀ XUẤT. Người phải xác nhận rồi mới đóng băng vào
 pairs.json — xem hướng dẫn ở cuối file.
 """
@@ -66,8 +84,174 @@ def _pdf_company(path):
     return (m.group(1).lstrip("0") or "0") if m else ""
 
 
-def build(corpus_root):
-    """Trả về danh sách cặp đề xuất, khớp cả (mã công ty, năm, kỳ)."""
+# ----------------------------------------------------------------------
+# Lọc A — trùng danh tính công ty. Mã số chỉ duy nhất TRONG một thư mục năm
+# (đã kiểm chứng: Bắc Âu và Volvo cùng mang số 10 năm 2018), nên hai phía
+# phải chung tên công ty thật sự, không chỉ chung con số.
+# ----------------------------------------------------------------------
+_MIN_SHARED_TOKENS = 2
+
+# Từ đệm KHÔNG được dùng làm bằng chứng trùng tên công ty. Gồm 3 nhóm:
+#   1. từ đệm pháp nhân/hồ sơ theo brief: cty, ctcp, cong, ty, co, phan,
+#      tnhh, mtv, bctc, nam, quy (token chứa chữ số bị loại riêng bên dưới,
+#      bao trùm luôn 'năm 2016', '6t2025', 'q2'...);
+#   2. từ vựng cơ sở lập / phạm vi / trạng thái: nếu tính chúng, cặp Bắc Âu
+#      vs Volvo sẽ "trùng tên" chỉ nhờ 2 token {kiem, toan} — đúng lỗi mà
+#      lớp lọc này sinh ra để chặn;
+#   3. từ vựng nhãn hồ sơ chung (bao, cao, tai, chinh, quyet) — hai công ty
+#      khác nhau vẫn cùng có 'Bao cao tai chinh' trong tên thư mục.
+# LƯU Ý: 'thang' KHÔNG phải từ đệm — 'Cty CP DL KS Tháng Mười' dùng nó làm
+# tên riêng, loại nó sẽ giết cặp thật của công ty 21.
+_TU_DEM = frozenset((
+    "cty", "ctcp", "cong", "ty", "co", "phan", "tnhh", "mtv", "bctc",
+    "nam", "quy",
+    "kiem", "toan", "soat", "xet", "chua", "lap", "rieng", "audited",
+    "hop", "nhat",
+    "bao", "cao", "tai", "chinh", "quyet",
+))
+
+
+def _norm_text(s):
+    """Bỏ dấu, hạ chữ thường, mọi ký tự không chữ-số thành 1 khoảng trắng."""
+    t = _strip_accents(s)
+    t = re.sub(r"[^a-z0-9]+", " ", t)
+    return " ".join(t.split())
+
+
+def _identity_text(path, dung_ten_file):
+    """
+    Chuỗi tên công ty của một phía: phần chữ SAU tiền tố số 'NN[._ -]' của
+    thư mục tổ tiên GẦN NHẤT mang tiền tố đó. Với PDF (dung_ten_file=True),
+    nếu không thư mục tổ tiên nào mang mã thì lấy từ chính tên file (bỏ đuôi)
+    — nhất quán với cách _pdf_company suy ra mã. Excel KHÔNG bao giờ lấy từ
+    tên file (xem QUY TẮC SỐNG CÒN đầu module). Trả về '' nếu không có.
+
+    Lưu ý ca 'BCTC 2018_BenthanhMuine_chuakiemtoan/5.pdf': _pdf_company vẫn
+    ra mã 5 (khớp '5.' trên tên file đủ đuôi), nhưng sau khi bỏ đuôi thì '5'
+    trần trụi không còn khớp '^NN[._ -]' — trả về '' và lớp lọc A loại cặp
+    theo đúng quy tắc "không có chữ nào ngoài con số thì không tin".
+    """
+    parts = os.path.dirname(path).split(os.sep)
+    for d in reversed(parts):
+        m = _DIR_INDEX.match(d)
+        if m:
+            return d[m.end():]
+    if dung_ten_file:
+        base = os.path.splitext(os.path.basename(path))[0]
+        m = _DIR_INDEX.match(base)
+        if m:
+            return base[m.end():]
+    return ""
+
+
+def _company_tokens(text):
+    """Tập token tên công ty: >= 3 ký tự, không chứa chữ số, không từ đệm."""
+    toks = set()
+    for tok in _norm_text(text).split():
+        if len(tok) < 3 or tok in _TU_DEM:
+            continue
+        if any(ch.isdigit() for ch in tok):
+            continue
+        toks.add(tok)
+    return toks
+
+
+def _same_company(pdf_rel, excel_rel):
+    """True nếu hai phía chung >= 2 token tên công ty. Phía nào không còn
+    chữ nào ngoài con số thì KHÔNG tin — trả về False."""
+    a = _company_tokens(_identity_text(pdf_rel, True))
+    b = _company_tokens(_identity_text(excel_rel, False))
+    if not a or not b:
+        return False
+    return len(a & b) >= _MIN_SHARED_TOKENS
+
+
+# ----------------------------------------------------------------------
+# Lọc B — cơ sở lập và phạm vi, phân loại theo TOÀN BỘ đường dẫn (đã bỏ dấu,
+# đệm khoảng trắng hai đầu để so cụm theo ranh giới từ).
+# 'chua kiem toan' CHỨA 'kiem toan' nên nhóm TULAP phải xét TRƯỚC KIEMTOAN.
+# ----------------------------------------------------------------------
+_TULAP_MARKS = (" tu lap ", " chua kiem toan ", " chua ky ")
+_KIEMTOAN_MARKS = (" da kiem toan ", " kiem toan ", " soat xet ", " audited ")
+_HN_MARKS = (" hop nhat ", " hn ")
+# 'cty me' là dạng viết tắt thật trên corpus ('00_TCT Ben Thanh_BCTC Cty me
+# Q3.2016.pdf') của 'cong ty me' — bổ sung để không bỏ sót phạm vi RIENG.
+_RIENG_MARKS = (" rieng ", " cong ty me ", " cty me ")
+
+
+def basis_of(path):
+    """Cơ sở lập suy từ đường dẫn: 'KIEMTOAN' / 'TULAP' / 'UNKNOWN'."""
+    t = " %s " % _norm_text(path)
+    if any(m in t for m in _TULAP_MARKS):
+        return "TULAP"
+    if any(m in t for m in _KIEMTOAN_MARKS):
+        return "KIEMTOAN"
+    return "UNKNOWN"
+
+
+def scope_of(path):
+    """Phạm vi suy từ đường dẫn: 'HN' / 'RIENG' / 'UNKNOWN'.
+
+    Đường dẫn chứa CẢ HAI loại mốc (vd. bộ 'BCTC riêng và hợp nhất') là nhập
+    nhằng — trả về 'UNKNOWN', không đoán đại một phía.
+    """
+    t = " %s " % _norm_text(path)
+    hn = any(m in t for m in _HN_MARKS)
+    rieng = any(m in t for m in _RIENG_MARKS)
+    if hn and rieng:
+        return "UNKNOWN"
+    if hn:
+        return "HN"
+    if rieng:
+        return "RIENG"
+    return "UNKNOWN"
+
+
+def _pair_label(a, b):
+    """Nhãn chung của cặp: chỉ khẳng định khi CẢ HAI phía cùng khẳng định.
+    Một phía UNKNOWN nghĩa là cặp đứng trên cơ sở chưa kiểm chứng -> UNKNOWN
+    (được đếm riêng trong thống kê, không lặng lẽ coi như đã khớp)."""
+    return a if a == b else "UNKNOWN"
+
+
+def _merged_labels(rel_paths):
+    """
+    (basis, scope) hợp nhất trên MỌI bản sao cùng tên file trong cùng khóa
+    (mã, năm, kỳ).
+
+    Corpus nhân đôi nội dung qua 'BCTC 3/', 'BCTC 4/'... nên cùng một file có
+    thể nằm ở cả cây CÓ đánh dấu lẫn cây KHÔNG đánh dấu — đã kiểm chứng:
+    '30.Cty TNHH Ben Thanh - Sao Thuy 2023.pdf' vừa nằm trần ở 'BTG document/
+    BCTC/' (không dấu hiệu gì) vừa nằm trong 'BCTC - Da kiem toan 2023/'.
+    Nếu chỉ phân loại theo đường dẫn của bản sao được chọn (bản ngắn nhất,
+    không đánh dấu) thì mốc kiểm toán bị che mất và cặp kiểm-toán-vs-tự-lập
+    lọt lưới. Vì vậy: bản sao có đánh dấu nói hộ cho bản sao không đánh dấu;
+    các bản sao khẳng định MÂU THUẪN nhau (vd. cùng tên file dưới cả cây
+    'Da kiem toan' lẫn 'tu lap') -> UNKNOWN, không đoán đại.
+    """
+    bases = {basis_of(p) for p in rel_paths}
+    bases.discard("UNKNOWN")
+    scopes = {scope_of(p) for p in rel_paths}
+    scopes.discard("UNKNOWN")
+    b = bases.pop() if len(bases) == 1 else "UNKNOWN"
+    s = scopes.pop() if len(scopes) == 1 else "UNKNOWN"
+    return b, s
+
+
+def build_with_stats(corpus_root):
+    """
+    Như build() nhưng trả thêm thống kê loại bỏ: (danh sách cặp, stats).
+
+    stats — mọi cặp ứng viên bị loại đều được đếm, không bao giờ lặng lẽ vứt:
+      ung_vien             : số cặp khớp (mã, năm, kỳ) TRƯỚC khi lọc
+      loai_khac_cong_ty    : lọc A — danh tính công ty không trùng
+      loai_khac_co_so      : lọc B — kiểm toán vs tự lập
+      loai_khac_pham_vi    : lọc B — hợp nhất vs riêng
+      loai_khac_loai_bc    : lọc C — PDF đơn lẻ khác loại báo cáo
+      gop_ban_sao          : bản sao thư mục nhân bản đã gộp
+      co_so_chua_xac_minh  : cặp SỐNG SÓT có basis UNKNOWN
+      pham_vi_chua_xac_minh: cặp SỐNG SÓT có scope UNKNOWN
+    """
     pdfs = {}
     excels = []
     for f in glob.glob(os.path.join(corpus_root, "**", "*"), recursive=True):
@@ -81,42 +265,138 @@ def build(corpus_root):
         elif low.endswith((".xls", ".xlsx", ".xlsm")) and groundtruth.statement_kind(f):
             excels.append(f)
 
-    out = []
+    # Nhóm các bản sao Excel cùng (mã, năm, kỳ, tên file) để lọc B phân loại
+    # trên MỌI bản sao (xem _merged_labels) — đối xứng với phía PDF.
+    ex_keyed = []
+    ex_groups = {}
     for x in excels:
         c, y, p = company_index(x), year(x), period(x)
         if not (c and y):
             continue
+        ex_keyed.append((x, c, y, p))
+        ex_groups.setdefault(
+            (c, y, p, os.path.basename(x)), []).append(x)
+
+    stats = {
+        "ung_vien": 0,
+        "loai_khac_cong_ty": 0,
+        "loai_khac_co_so": 0,
+        "loai_khac_pham_vi": 0,
+        "loai_khac_loai_bc": 0,
+        "gop_ban_sao": 0,
+        "co_so_chua_xac_minh": 0,
+        "pham_vi_chua_xac_minh": 0,
+    }
+    raw = []
+    for x, c, y, p in ex_keyed:
         cands = pdfs.get((c, y, p))
         if not cands:
             continue
-        out.append({
-            "pdf": min(cands, key=len),      # tên ngắn nhất = ít hậu tố nhất
+        # tên ngắn nhất = ít hậu tố nhất; thêm khóa phụ theo chuỗi để kết quả
+        # ổn định khi hai bản sao dài bằng nhau (glob không đảm bảo thứ tự)
+        pdf = min(cands, key=lambda s: (len(s), s))
+        stats["ung_vien"] += 1
+
+        # Mọi phân loại chỉ nhìn phần đường dẫn BÊN TRONG corpus — thành phần
+        # bên ngoài (tên máy, thư mục tạm của pytest...) không được phép ảnh
+        # hưởng tới danh tính/cơ sở lập/phạm vi.
+        pdf_rel = os.path.relpath(pdf, corpus_root)
+        x_rel = os.path.relpath(x, corpus_root)
+
+        if not _same_company(pdf_rel, x_rel):               # lọc A
+            stats["loai_khac_cong_ty"] += 1
+            continue
+        # Lọc B trên nhãn hợp nhất của mọi bản sao cùng tên trong khóa
+        pdf_copies = [os.path.relpath(q, corpus_root) for q in cands
+                      if os.path.basename(q) == os.path.basename(pdf)]
+        x_copies = [os.path.relpath(q, corpus_root)
+                    for q in ex_groups[(c, y, p, os.path.basename(x))]]
+        b_pdf, s_pdf = _merged_labels(pdf_copies)
+        b_x, s_x = _merged_labels(x_copies)
+        if {b_pdf, b_x} == {"KIEMTOAN", "TULAP"}:           # lọc B: cơ sở lập
+            stats["loai_khac_co_so"] += 1
+            continue
+        if {s_pdf, s_x} == {"HN", "RIENG"}:                 # lọc B: phạm vi
+            stats["loai_khac_pham_vi"] += 1
+            continue
+        kind = groundtruth.statement_kind(x)
+        pdf_kind = groundtruth.statement_kind(pdf)          # lọc C
+        if pdf_kind and pdf_kind != kind:
+            stats["loai_khac_loai_bc"] += 1
+            continue
+
+        raw.append({
+            "pdf": pdf,
             "excel": x,
-            "kind": groundtruth.statement_kind(x),
+            "kind": kind,
             "company": c,
             "year": y,
             "period": p,
+            "basis": _pair_label(b_pdf, b_x),
+            "scope": _pair_label(s_pdf, s_x),
         })
-    return sorted(out, key=lambda d: (d["company"], d["year"], d["kind"]))
+
+    # Gộp bản sao: corpus nhân đôi nội dung qua 'BCTC 3/', 'BCTC 4/'...
+    # Sắp xếp trước để "bản đầu tiên được giữ" ổn định theo đường dẫn.
+    raw.sort(key=lambda d: (d["company"], d["year"], d["period"], d["kind"],
+                            d["pdf"], d["excel"]))
+    seen = set()
+    out = []
+    for d in raw:
+        key = (d["company"], d["year"], d["period"], d["kind"],
+               os.path.basename(d["pdf"]), os.path.basename(d["excel"]))
+        if key in seen:
+            stats["gop_ban_sao"] += 1
+            continue
+        seen.add(key)
+        out.append(d)
+
+    for d in out:
+        if d["basis"] == "UNKNOWN":
+            stats["co_so_chua_xac_minh"] += 1
+        if d["scope"] == "UNKNOWN":
+            stats["pham_vi_chua_xac_minh"] += 1
+    return out, stats
+
+
+def build(corpus_root):
+    """Trả về danh sách cặp đề xuất, khớp cả (mã công ty, năm, kỳ) rồi qua
+    các lớp lọc A/B/C và gộp bản sao (xem docstring đầu module). Mỗi cặp có
+    thêm 2 khóa 'basis' và 'scope'. Cần số liệu loại bỏ thì dùng
+    build_with_stats()."""
+    return build_with_stats(corpus_root)[0]
 
 
 def main():
     root = os.environ.get(
         "BCTC_CORPUS", "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents")
-    pairs = build(root)
+    pairs, stats = build_with_stats(root)
     here = os.path.dirname(os.path.abspath(__file__))
     out_path = os.path.join(here, "pairs.candidate.json")
     with open(out_path, "w", encoding="utf-8") as fh:
         json.dump({"pairs": pairs}, fh, ensure_ascii=False, indent=2)
+
+    print("TỔNG KẾT LOẠI BỎ (không cặp nào bị vứt lặng lẽ):")
+    print("  Ứng viên khớp (mã, năm, kỳ):              %3d" % stats["ung_vien"])
+    print("  Loại A  — khác danh tính công ty:         %3d" % stats["loai_khac_cong_ty"])
+    print("  Loại B  — kiểm toán vs tự lập:            %3d" % stats["loai_khac_co_so"])
+    print("  Loại B  — hợp nhất vs riêng:              %3d" % stats["loai_khac_pham_vi"])
+    print("  Loại C  — PDF đơn lẻ khác loại báo cáo:   %3d" % stats["loai_khac_loai_bc"])
+    print("  Gộp bản sao thư mục nhân bản:             %3d" % stats["gop_ban_sao"])
     print("Đã đề xuất %d cặp (%d PDF riêng biệt) -> %s"
           % (len(pairs), len({p["pdf"] for p in pairs}), out_path))
+    print("  trong đó: cơ sở lập chưa xác minh %d cặp, phạm vi chưa xác minh %d cặp"
+          % (stats["co_so_chua_xac_minh"], stats["pham_vi_chua_xac_minh"]))
+
     print("\nNGƯỜI PHẢI XÁC NHẬN trước khi dùng:")
-    print("  1. Mở pairs.candidate.json, đối chiếu từng cặp.")
+    print("  1. Mở pairs.candidate.json, đối chiếu từng cặp — ưu tiên soi các")
+    print("     cặp basis/scope UNKNOWN (chưa kiểm chứng được từ đường dẫn).")
     print("  2. Xoá cặp sai phạm vi (riêng vs hợp nhất) hoặc sai kỳ.")
     print("  3. Đổi tên thành pairs.json rồi commit.")
     for p in pairs:
-        print("  CT%-3s %s %-4s %-7s %s  <-  %s"
+        print("  CT%-3s %s %-4s %-7s %-8s %-7s %s  <-  %s"
               % (p["company"], p["year"], p["period"], p["kind"],
+                 p["basis"], p["scope"],
                  os.path.basename(p["excel"])[:30],
                  os.path.basename(p["pdf"])[:44]))
 

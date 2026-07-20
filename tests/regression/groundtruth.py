@@ -23,11 +23,20 @@ import unicodedata
 MAGIC_OOXML = b"PK\x03\x04"
 MAGIC_BIFF = b"\xd0\xcf\x11\xe0"
 
-# Thứ tự quan trọng: 'can doi ke toan' phải xét TRƯỚC 'cdps/cdsps' vì
-# 'CDSPS.XLS' cũng chứa 'cd'. Mỗi mẫu khớp trên tên file đã hạ chữ thường.
+# Thứ tự quan trọng: nhóm CDPS phải xét TRƯỚC CDKT vì tên kiểu 'Bang can doi
+# so phat sinh' cũng chứa cụm 'bang can doi'. Mỗi mẫu khớp trên tên file đã
+# hạ chữ thường.
+#
+# PHÂN BIỆT SỐNG CÒN (đã xác nhận trên file thật 'bang can doi tai khoan
+# 2016.xls' — bảng cân đối thử trên tài khoản 111, 112, 131... 911):
+#   - 'bảng cân đối KẾ TOÁN'  = CDKT (báo cáo tài sản/nguồn vốn, mã 100-440);
+#   - 'bảng cân đối TÀI KHOẢN' / 'bảng cân đối SỐ PHÁT SINH' = CDPS.
+# Vì vậy mẫu 'bang can doi' TRẦN TRỤI không được suy ra CDKT nữa: một mình nó
+# không phân biệt được hai loại trên. Chỉ 'can doi ke toan' (và chữ tắt
+# 'cdkt') mới là CDKT.
 _KIND_PATTERNS = (
-    ("CDPS", r"cdsps|cdps|can doi so phat sinh|can doi phat sinh"),
-    ("CDKT", r"cdkt|can doi ke toan|bang can doi"),
+    ("CDPS", r"cdsps|cdps|can doi so phat sinh|can doi phat sinh|can doi tai khoan"),
+    ("CDKT", r"cdkt|can doi ke toan"),
     ("KQHDKD", r"kqkd|kqhdkd|ket qua"),
     ("LCTT", r"lctt|luu chuyen"),
 )

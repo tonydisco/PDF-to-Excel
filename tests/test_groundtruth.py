@@ -17,6 +17,26 @@ def test_statement_kind_nhan_dien_theo_ten_file():
     assert G.statement_kind("BCTC 2019.pdf") == ""
 
 
+# ---------------------------------------------------------------------------
+# Defect 5: mẫu 'bang can doi' của CDKT quá lỏng — 'bang can doi tai khoan
+# 2016.xls' là bảng cân đối THỬ trên tài khoản (111, 112, 131... 911), tức
+# CDPS, nhưng từng bị dán nhãn CDKT (bảng cân đối kế toán, mã 100-440). Ghép
+# nhầm hai loại này vào bộ hồi quy sẽ biến sai số ĐO thành sai số TRÍCH XUẤT.
+# Từ nay: 'bảng cân đối tài khoản' và 'bảng cân đối số phát sinh' là CDPS;
+# chỉ 'cân đối kế toán' (và chữ tắt 'cdkt') mới là CDKT.
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("filename,expected", [
+    ("bang can doi tai khoan 2016.xls", "CDPS"),
+    ("Bang can doi so phat sinh 2020.xls", "CDPS"),
+    ("CDSPS.XLS", "CDPS"),
+    ("2. Bang can doi ke toan 2023.xlsx", "CDKT"),
+    ("CDKT.XLS", "CDKT"),
+    ("cdkt_30.06.2024.xls", "CDKT"),
+])
+def test_statement_kind_phan_biet_can_doi_tai_khoan_va_ke_toan(filename, expected):
+    assert G.statement_kind(filename) == expected
+
+
 def test_sniff_format_khong_tin_duoi_file(corpus_root):
     """KQKD.XLS thực chất là OOXML - đuôi file nói dối."""
     hits = glob.glob(os.path.join(corpus_root, "**", "KQKD.XLS"), recursive=True)
