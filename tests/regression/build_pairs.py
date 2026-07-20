@@ -16,15 +16,22 @@ không bao giờ lặng lẽ vứt):
      ghép với '10_BCTC chua kiem toan Volvo/CDSPS.xlsx' (Volvo) vì cùng số 10.
   B. Cùng cơ sở lập (kiểm toán vs tự lập — số liệu sau kiểm toán được điều
      chỉnh hợp pháp, không so được) và cùng phạm vi (hợp nhất vs riêng).
-     Phân loại đọc MỌI bản sao cùng tên file trong khóa, vì bản sao ở cây
-     'BCTC - Da kiem toan .../' mang mốc mà bản sao ở cây trần không có
-     (xem _merged_labels). UNKNOWN không bị loại nhưng được đếm để người
-     xác nhận biết cặp nào đứng trên cơ sở chưa kiểm chứng.
+     Phân loại đọc mọi bản sao THẬT trong khóa — cùng tên file VÀ trùng
+     nội dung từng byte (SHA-256) — vì bản sao ở cây 'BCTC - Da kiem toan
+     .../' mang mốc mà bản sao ở cây trần không có (xem _merged_labels).
+     Trùng tên nhưng KHÁC nội dung là sổ khác (vd. cùng 'CDKT quy 2.2016.xls'
+     dưới '(Rieng)/' và '(Hop nhat)/'): nhãn giữ riêng từng bản, không trộn;
+     khi các bản khác-nội-dung cùng tên khẳng định ĐỐI NGHỊCH nhau mà bản
+     đại diện không tự khẳng định được thì danh tính tranh chấp — cặp bị
+     loại có đếm (loai_xung_dot_ban_sao). UNKNOWN không bị loại nhưng được
+     đếm để người xác nhận biết cặp nào đứng trên cơ sở chưa kiểm chứng.
   C. PDF xuất đơn lẻ một loại báo cáo (vd. 'cdps_6t.pdf' chỉ có 4 trang bảng
      cân đối phát sinh) chỉ được ghép với Excel cùng loại đó.
   Cuối cùng gộp các bản sao do corpus nhân đôi cây thư mục ('BCTC 3/',
   'BCTC 4/'...): trùng cả (mã, năm, kỳ, loại, tên file PDF, tên file Excel)
-  thì giữ bản đầu tiên theo thứ tự đường dẫn.
+  VÀ trùng nội dung từng byte ở CẢ HAI phía thì giữ bản đầu tiên theo thứ
+  tự đường dẫn; cùng tên nhưng khác nội dung là hai cặp riêng biệt, cả hai
+  sống sót. File không đọc được khi băm -> coi là duy nhất, không bị gộp.
 
 Kết quả của module này là ĐỀ XUẤT. Người phải xác nhận rồi mới đóng băng vào
 pairs.json — xem hướng dẫn ở cuối file.
@@ -32,6 +39,7 @@ pairs.json — xem hướng dẫn ở cuối file.
 import os
 import re
 import glob
+import hashlib
 import json
 import unicodedata
 
@@ -214,10 +222,36 @@ def _pair_label(a, b):
     return a if a == b else "UNKNOWN"
 
 
-def _merged_labels(rel_paths):
+def _content_digest(path, cache):
+    """SHA-256 nội dung file, đọc theo khối 1 MiB; mỗi file chỉ băm đúng một
+    lần mỗi lượt chạy nhờ `cache` (dict đường dẫn -> digest). Trả về None
+    nếu không đọc được — file đó phải được coi là DUY NHẤT: không mượn nhãn
+    của ai, không bị gộp với ai (nhất quán nguyên tắc không lặng lẽ vứt
+    dữ liệu)."""
+    if path in cache:
+        return cache[path]
+    h = hashlib.sha256()
+    try:
+        with open(path, "rb") as fh:
+            while True:
+                chunk = fh.read(1024 * 1024)
+                if not chunk:
+                    break
+                h.update(chunk)
+        digest = h.hexdigest()
+    except OSError:
+        digest = None
+    cache[path] = digest
+    return digest
+
+
+def _merged_labels(rep, copies, corpus_root, cache):
     """
-    (basis, scope) hợp nhất trên MỌI bản sao cùng tên file trong cùng khóa
-    (mã, năm, kỳ).
+    (basis, scope, xung_dot) cho file đại diện `rep`, hợp nhất nhãn trên các
+    bản sao THẬT trong `copies` — cùng tên file trong cùng khóa (mã, năm, kỳ)
+    VÀ trùng nội dung từng byte với `rep` (SHA-256). `rep` và `copies` là
+    đường dẫn tuyệt đối; nhãn luôn phân loại trên đường dẫn TƯƠNG ĐỐI trong
+    corpus (thành phần ngoài corpus không được ảnh hưởng).
 
     Corpus nhân đôi nội dung qua 'BCTC 3/', 'BCTC 4/'... nên cùng một file có
     thể nằm ở cả cây CÓ đánh dấu lẫn cây KHÔNG đánh dấu — đã kiểm chứng:
@@ -225,17 +259,53 @@ def _merged_labels(rel_paths):
     BCTC/' (không dấu hiệu gì) vừa nằm trong 'BCTC - Da kiem toan 2023/'.
     Nếu chỉ phân loại theo đường dẫn của bản sao được chọn (bản ngắn nhất,
     không đánh dấu) thì mốc kiểm toán bị che mất và cặp kiểm-toán-vs-tự-lập
-    lọt lưới. Vì vậy: bản sao có đánh dấu nói hộ cho bản sao không đánh dấu;
-    các bản sao khẳng định MÂU THUẪN nhau (vd. cùng tên file dưới cả cây
-    'Da kiem toan' lẫn 'tu lap') -> UNKNOWN, không đoán đại.
+    lọt lưới. Vì vậy: bản sao có đánh dấu nói hộ cho bản sao không đánh dấu.
+
+    NHƯNG "bản sao" phải là bản sao THẬT — trùng tên file KHÔNG đủ:
+    '05_... (Rieng)/CDKT quy 2.2016.xls' và '05_... (Hop nhat)/CDKT quy
+    2.2016.xls' cùng khóa, cùng tên mà là HAI SỔ khác nhau (riêng vs hợp
+    nhất). Trộn nhãn của chúng -> UNKNOWN sẽ vô hiệu hóa lọc HN-vs-RIENG
+    đúng chỗ cần nó nhất. Quy tắc:
+      - Chỉ bản TRÙNG nội dung với rep mới được hợp nhất nhãn; trong cùng
+        nhóm nội dung mà nhãn khẳng định MÂU THUẪN nhau (vd. cùng một file
+        nằm dưới cả cây 'Da kiem toan' lẫn 'tu lap') -> UNKNOWN, không
+        đoán đại (giữ hành vi cũ cho bản sao thật).
+      - Bản KHÁC nội dung (hoặc không đọc được -> coi là duy nhất) giữ nhãn
+        riêng, không trộn vào rep.
+      - xung_dot=True khi nhóm của rep không tự khẳng định được (UNKNOWN)
+        mà các bản khác-nội-dung cùng tên lại khẳng định ĐỐI NGHỊCH nhau
+        (KIEMTOAN vs TULAP, hoặc HN vs RIENG): tên file đang trỏ tới những
+        sổ mâu thuẫn — bên gọi phải loại cặp và ĐẾM (loai_xung_dot_ban_sao),
+        không được lặng lẽ coi là UNKNOWN.
     """
-    bases = {basis_of(p) for p in rel_paths}
+    rep_digest = _content_digest(rep, cache)
+    nhom_rep = []      # đường dẫn tương đối của rep + các bản sao thật
+    nhan_le = []       # đường dẫn tương đối của các bản cùng tên KHÁC nội dung
+    for q in copies:
+        rel = os.path.relpath(q, corpus_root)
+        if q == rep:
+            nhom_rep.append(rel)
+        elif rep_digest is not None and _content_digest(q, cache) == rep_digest:
+            nhom_rep.append(rel)
+        else:
+            nhan_le.append(rel)
+
+    bases = {basis_of(p) for p in nhom_rep}
     bases.discard("UNKNOWN")
-    scopes = {scope_of(p) for p in rel_paths}
+    scopes = {scope_of(p) for p in nhom_rep}
     scopes.discard("UNKNOWN")
     b = bases.pop() if len(bases) == 1 else "UNKNOWN"
     s = scopes.pop() if len(scopes) == 1 else "UNKNOWN"
-    return b, s
+
+    xung_dot = False
+    if nhan_le:
+        bases_le = {basis_of(p) for p in nhan_le}
+        scopes_le = {scope_of(p) for p in nhan_le}
+        if b == "UNKNOWN" and {"KIEMTOAN", "TULAP"} <= bases_le:
+            xung_dot = True
+        if s == "UNKNOWN" and {"HN", "RIENG"} <= scopes_le:
+            xung_dot = True
+    return b, s, xung_dot
 
 
 def build_with_stats(corpus_root):
@@ -247,8 +317,11 @@ def build_with_stats(corpus_root):
       loai_khac_cong_ty    : lọc A — danh tính công ty không trùng
       loai_khac_co_so      : lọc B — kiểm toán vs tự lập
       loai_khac_pham_vi    : lọc B — hợp nhất vs riêng
+      loai_xung_dot_ban_sao: lọc B — cùng tên file trong khóa nhưng KHÁC nội
+                             dung và nhãn đối nghịch nhau (danh tính tranh
+                             chấp, xem _merged_labels)
       loai_khac_loai_bc    : lọc C — PDF đơn lẻ khác loại báo cáo
-      gop_ban_sao          : bản sao thư mục nhân bản đã gộp
+      gop_ban_sao          : bản sao thật (trùng cả nội dung) đã gộp
       co_so_chua_xac_minh  : cặp SỐNG SÓT có basis UNKNOWN
       pham_vi_chua_xac_minh: cặp SỐNG SÓT có scope UNKNOWN
     """
@@ -282,11 +355,13 @@ def build_with_stats(corpus_root):
         "loai_khac_cong_ty": 0,
         "loai_khac_co_so": 0,
         "loai_khac_pham_vi": 0,
+        "loai_xung_dot_ban_sao": 0,
         "loai_khac_loai_bc": 0,
         "gop_ban_sao": 0,
         "co_so_chua_xac_minh": 0,
         "pham_vi_chua_xac_minh": 0,
     }
+    bang_bam = {}   # cache digest nội dung: mỗi file chỉ băm 1 lần mỗi lượt
     raw = []
     for x, c, y, p in ex_keyed:
         cands = pdfs.get((c, y, p))
@@ -306,18 +381,23 @@ def build_with_stats(corpus_root):
         if not _same_company(pdf_rel, x_rel):               # lọc A
             stats["loai_khac_cong_ty"] += 1
             continue
-        # Lọc B trên nhãn hợp nhất của mọi bản sao cùng tên trong khóa
-        pdf_copies = [os.path.relpath(q, corpus_root) for q in cands
+        # Lọc B trên nhãn hợp nhất của các bản sao THẬT (cùng tên VÀ trùng
+        # nội dung) trong khóa; bản cùng tên khác nội dung là sổ khác — nhãn
+        # giữ riêng, khẳng định đối nghịch thì loại (xem _merged_labels).
+        pdf_copies = [q for q in cands
                       if os.path.basename(q) == os.path.basename(pdf)]
-        x_copies = [os.path.relpath(q, corpus_root)
-                    for q in ex_groups[(c, y, p, os.path.basename(x))]]
-        b_pdf, s_pdf = _merged_labels(pdf_copies)
-        b_x, s_x = _merged_labels(x_copies)
+        x_copies = ex_groups[(c, y, p, os.path.basename(x))]
+        b_pdf, s_pdf, xd_pdf = _merged_labels(pdf, pdf_copies,
+                                              corpus_root, bang_bam)
+        b_x, s_x, xd_x = _merged_labels(x, x_copies, corpus_root, bang_bam)
         if {b_pdf, b_x} == {"KIEMTOAN", "TULAP"}:           # lọc B: cơ sở lập
             stats["loai_khac_co_so"] += 1
             continue
         if {s_pdf, s_x} == {"HN", "RIENG"}:                 # lọc B: phạm vi
             stats["loai_khac_pham_vi"] += 1
+            continue
+        if xd_pdf or xd_x:                    # lọc B: xung đột bản sao giả
+            stats["loai_xung_dot_ban_sao"] += 1
             continue
         kind = groundtruth.statement_kind(x)
         pdf_kind = groundtruth.statement_kind(pdf)          # lọc C
@@ -337,14 +417,24 @@ def build_with_stats(corpus_root):
         })
 
     # Gộp bản sao: corpus nhân đôi nội dung qua 'BCTC 3/', 'BCTC 4/'...
+    # Chỉ gộp bản sao THẬT — trùng tên file VÀ trùng nội dung từng byte ở
+    # CẢ HAI phía; cùng tên nhưng khác nội dung là hai cặp riêng biệt (vd.
+    # sổ riêng vs sổ hợp nhất cùng tên), cả hai phải sống sót. File không
+    # đọc được -> coi là duy nhất, không bao giờ gộp.
     # Sắp xếp trước để "bản đầu tiên được giữ" ổn định theo đường dẫn.
     raw.sort(key=lambda d: (d["company"], d["year"], d["period"], d["kind"],
                             d["pdf"], d["excel"]))
     seen = set()
     out = []
     for d in raw:
+        bam_pdf = _content_digest(d["pdf"], bang_bam)
+        bam_x = _content_digest(d["excel"], bang_bam)
+        if bam_pdf is None or bam_x is None:
+            out.append(d)
+            continue
         key = (d["company"], d["year"], d["period"], d["kind"],
-               os.path.basename(d["pdf"]), os.path.basename(d["excel"]))
+               os.path.basename(d["pdf"]), os.path.basename(d["excel"]),
+               bam_pdf, bam_x)
         if key in seen:
             stats["gop_ban_sao"] += 1
             continue
@@ -381,8 +471,9 @@ def main():
     print("  Loại A  — khác danh tính công ty:         %3d" % stats["loai_khac_cong_ty"])
     print("  Loại B  — kiểm toán vs tự lập:            %3d" % stats["loai_khac_co_so"])
     print("  Loại B  — hợp nhất vs riêng:              %3d" % stats["loai_khac_pham_vi"])
+    print("  Loại B  — xung đột bản sao khác nội dung: %3d" % stats["loai_xung_dot_ban_sao"])
     print("  Loại C  — PDF đơn lẻ khác loại báo cáo:   %3d" % stats["loai_khac_loai_bc"])
-    print("  Gộp bản sao thư mục nhân bản:             %3d" % stats["gop_ban_sao"])
+    print("  Gộp bản sao thật (trùng nội dung):        %3d" % stats["gop_ban_sao"])
     print("Đã đề xuất %d cặp (%d PDF riêng biệt) -> %s"
           % (len(pairs), len({p["pdf"] for p in pairs}), out_path))
     print("  trong đó: cơ sở lập chưa xác minh %d cặp, phạm vi chưa xác minh %d cặp"

@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
+import json
+import os
+
 import pytest
 
+from tests import conftest
 from tests.regression import build_pairs as B
 from tests.regression import groundtruth as G
 
@@ -194,6 +198,178 @@ def test_gop_ban_sao_thu_muc_nhan_ban(tmp_path):
     assert len(pairs) == 1
     assert stats["gop_ban_sao"] == 1
     assert stats["ung_vien"] == 2
+
+
+# ---------------------------------------------------------------------------
+# "Bản sao" xác định theo NỘI DUNG (SHA-256), không theo tên file — cùng tên
+# file trong cùng khóa vẫn có thể là hai sổ khác nhau (riêng vs hợp nhất).
+# ---------------------------------------------------------------------------
+def _lam_corpus_noi_dung(tmp_path, files):
+    """Như _lam_corpus nhưng chỉ định được NỘI DUNG từng file (dict
+    đường-dẫn-tương-đối -> bytes) để phân biệt bản sao thật / sổ khác."""
+    for rel, noi_dung in files.items():
+        f = tmp_path.joinpath(*rel.split("/"))
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_bytes(noi_dung)
+    return str(tmp_path)
+
+
+def test_ban_sao_khac_noi_dung_khong_tron_nhan(tmp_path):
+    """Ca thăm dò của reviewer: '05_... (Rieng)/CDKT quy 2.2016.xls' và
+    '05_... (Hop nhat)/CDKT quy 2.2016.xls' cùng khóa, cùng tên file nhưng
+    NỘI DUNG khác — là hai sổ khác nhau, không phải bản sao. Nhãn không được
+    trộn thành UNKNOWN: PDF hợp nhất phải bị loại với sổ Riêng (lọc
+    HN-vs-RIENG không bị vô hiệu hóa) và được giữ với sổ Hợp nhất."""
+    root = _lam_corpus_noi_dung(tmp_path, {
+        "Quy 2.2016/05-Cty CP VHTH Ben Thanh_BCTC HN soat xet 6T2016.pdf":
+            b"pdf hop nhat",
+        "Quy 2.2016/05_Cty CP VHTH Ben Thanh (Rieng)/CDKT quy 2.2016.xls":
+            b"so lieu rieng",
+        "Quy 2.2016/05_Cty CP VHTH Ben Thanh (Hop nhat)/CDKT quy 2.2016.xls":
+            b"so lieu hop nhat",
+    })
+    pairs, stats = B.build_with_stats(root)
+    assert stats["loai_khac_pham_vi"] == 1     # PDF HN vs sổ Riêng: bị loại
+    assert stats["loai_xung_dot_ban_sao"] == 0
+    assert len(pairs) == 1                     # chỉ cặp Hợp nhất sống sót
+    assert "(Hop nhat)" in pairs[0]["excel"]
+    assert pairs[0]["scope"] == "HN"           # nhãn riêng của từng sổ được giữ
+    assert stats["gop_ban_sao"] == 0           # hai sổ khác nhau: không gộp
+
+
+def test_xung_dot_ban_sao_khac_noi_dung_bi_loai_va_dem(tmp_path):
+    """Cùng tên file trong khóa trỏ tới các sổ KHÁC nội dung mang nhãn đối
+    nghịch (Riêng vs Hợp nhất) trong khi bản đại diện không tự khẳng định
+    được -> danh tính tranh chấp: cặp của bản đại diện bị loại và ĐẾM
+    (loai_xung_dot_ban_sao), không lặng lẽ rơi về UNKNOWN; hai sổ thật vẫn
+    sống sót thành hai cặp riêng biệt (không bị gộp dù cùng tên file)."""
+    root = _lam_corpus_noi_dung(tmp_path, {
+        "Quy 2.2016/05-Cty CP VHTH Ben Thanh_BCTC 6T2016.pdf": b"pdf mo ho",
+        "Quy 2.2016/05_Cty CP VHTH Ben Thanh/CDKT quy 2.2016.xls":
+            b"so lieu tran",
+        "Quy 2.2016/05_Cty CP VHTH Ben Thanh (Rieng)/CDKT quy 2.2016.xls":
+            b"so lieu rieng",
+        "Quy 2.2016/05_Cty CP VHTH Ben Thanh (Hop nhat)/CDKT quy 2.2016.xls":
+            b"so lieu hop nhat",
+    })
+    pairs, stats = B.build_with_stats(root)
+    assert stats["ung_vien"] == 3
+    assert stats["loai_xung_dot_ban_sao"] == 1   # bản trần: tranh chấp, bị loại
+    assert len(pairs) == 2                       # sổ Riêng + sổ Hợp nhất đều sống
+    assert {os.path.basename(os.path.dirname(p["excel"])) for p in pairs} == {
+        "05_Cty CP VHTH Ben Thanh (Rieng)",
+        "05_Cty CP VHTH Ben Thanh (Hop nhat)",
+    }
+    assert stats["gop_ban_sao"] == 0             # cùng tên, khác nội dung: giữ cả 2
+
+
+def test_ban_sao_trung_noi_dung_giu_hanh_vi_cu(tmp_path):
+    """Đối chứng với ca khác-nội-dung: cùng tên file dưới '(Rieng)/' và
+    '(Hop nhat)/' nhưng nội dung TRÙNG từng byte là bản sao thật — nhãn
+    mâu thuẫn TRONG cùng nhóm nội dung vẫn hợp nhất về UNKNOWN như trước
+    (không đoán đại, không loại) và bản trùng lặp bị gộp có đếm."""
+    root = _lam_corpus_noi_dung(tmp_path, {
+        "Quy 2.2016/05-Cty CP VHTH Ben Thanh_BCTC HN soat xet 6T2016.pdf":
+            b"pdf hop nhat",
+        "Quy 2.2016/05_Cty CP VHTH Ben Thanh (Rieng)/CDKT quy 2.2016.xls":
+            b"cung mot so lieu",
+        "Quy 2.2016/05_Cty CP VHTH Ben Thanh (Hop nhat)/CDKT quy 2.2016.xls":
+            b"cung mot so lieu",
+    })
+    pairs, stats = B.build_with_stats(root)
+    assert len(pairs) == 1                       # bản sao thật: gộp còn 1
+    assert stats["gop_ban_sao"] == 1
+    assert pairs[0]["scope"] == "UNKNOWN"        # nhóm tự mâu thuẫn -> UNKNOWN
+    assert stats["loai_khac_pham_vi"] == 0
+    assert stats["loai_xung_dot_ban_sao"] == 0
+    assert stats["pham_vi_chua_xac_minh"] == 1   # UNKNOWN sống sót nhưng bị đếm
+
+
+@pytest.mark.skipif(os.name != "posix" or os.geteuid() == 0,
+                    reason="cần POSIX và không phải root để giả lập file không đọc được")
+def test_file_khong_doc_duoc_coi_la_duy_nhat_khong_gop(tmp_path):
+    """File không đọc được khi băm nội dung -> coi là DUY NHẤT: không mượn
+    nhãn của ai và không bao giờ bị gộp — dữ liệu không bị vứt lặng lẽ chỉ
+    vì không xác minh được nội dung."""
+    root = _lam_corpus_noi_dung(tmp_path, {
+        "BCTC 3/2025/Quy 2.2025/18_Cty CP Sai gon Mui Ne 6Th_2025/bctc_6t.pdf":
+            b"pdf",
+        "BCTC 3/2025/Quy 2.2025/18_Cty CP Sai gon Mui Ne 6Th_2025/cdkt_6t.xls":
+            b"so lieu",
+        "BCTC 4/2025/Quy 2.2025/18_Cty CP Sai gon Mui Ne 6Th_2025/bctc_6t.pdf":
+            b"pdf",
+        "BCTC 4/2025/Quy 2.2025/18_Cty CP Sai gon Mui Ne 6Th_2025/cdkt_6t.xls":
+            b"so lieu",
+    })
+    bi_khoa = os.path.join(
+        root, "BCTC 4", "2025", "Quy 2.2025",
+        "18_Cty CP Sai gon Mui Ne 6Th_2025", "cdkt_6t.xls")
+    os.chmod(bi_khoa, 0)
+    try:
+        pairs, stats = B.build_with_stats(root)
+    finally:
+        os.chmod(bi_khoa, 0o644)
+    assert len(pairs) == 2               # bản bị khóa không bị gộp vào bản kia
+    assert stats["gop_ban_sao"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Bất biến của pairs.json ĐÃ ĐÓNG BĂNG — phần cấu trúc kiểm được không cần
+# corpus; sự tồn tại trên đĩa chỉ kiểm khi corpus có mặt (tách test riêng để
+# thiếu corpus KHÔNG làm mất phần kiểm cấu trúc).
+# ---------------------------------------------------------------------------
+_PAIRS_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "regression", "pairs.json")
+
+
+def _cap_dong_bang():
+    with open(_PAIRS_JSON, encoding="utf-8") as fh:
+        return json.load(fh)["pairs"]
+
+
+def test_pairs_json_dong_bang_du_khoa_va_tu_nhat_quan():
+    """Mỗi cặp đóng băng phải đủ khóa, giá trị hợp lệ, và tự nhất quán theo
+    chính các hàm của module (mã công ty / năm / kỳ hai phía khớp giá trị đã
+    ghi; không đóng băng cặp mâu thuẫn kiểm-toán-vs-tự-lập hay HN-vs-riêng;
+    loại báo cáo khớp lọc C)."""
+    pairs = _cap_dong_bang()
+    assert pairs, "pairs.json đóng băng không được rỗng"
+    bat_buoc = {"pdf", "excel", "kind", "company", "year", "period",
+                "basis", "scope"}
+    for p in pairs:
+        thieu = bat_buoc - set(p)
+        assert not thieu, "cặp thiếu khóa %s: %r" % (sorted(thieu), p)
+        assert p["kind"] in ("CDKT", "KQHDKD", "LCTT", "CDPS")
+        assert p["basis"] in ("KIEMTOAN", "TULAP", "UNKNOWN")
+        assert p["scope"] in ("HN", "RIENG", "UNKNOWN")
+        # danh tính hai phía phải khớp giá trị đã ghi, theo đúng hàm module
+        assert B._pdf_company(p["pdf"]) == p["company"], p["pdf"]
+        assert B.company_index(p["excel"]) == p["company"], p["excel"]
+        assert B.year(p["pdf"]) == p["year"], p["pdf"]
+        assert B.year(p["excel"]) == p["year"], p["excel"]
+        assert B.period(p["pdf"]) == p["period"], p["pdf"]
+        assert B.period(p["excel"]) == p["period"], p["excel"]
+        # không được đóng băng cặp mâu thuẫn cơ sở lập / phạm vi
+        assert {B.basis_of(p["pdf"]), B.basis_of(p["excel"])} \
+            != {"KIEMTOAN", "TULAP"}, p
+        assert {B.scope_of(p["pdf"]), B.scope_of(p["excel"])} \
+            != {"HN", "RIENG"}, p
+        # lọc C: Excel phải đúng loại đã ghi; PDF đơn lẻ phải cùng loại đó
+        assert G.statement_kind(p["excel"]) == p["kind"], p["excel"]
+        assert G.statement_kind(p["pdf"]) in ("", p["kind"]), p["pdf"]
+
+
+def test_pairs_json_dong_bang_ton_tai_tren_dia():
+    """Chỉ chạy khi corpus có mặt: từng file PDF/Excel đóng băng phải còn
+    trên đĩa. Thiếu corpus thì bỏ qua RIÊNG phần này (phần cấu trúc ở test
+    trên vẫn luôn chạy)."""
+    root = os.environ.get("BCTC_CORPUS", conftest.DEFAULT_CORPUS)
+    if not os.path.isdir(root):
+        pytest.skip("Không có corpus tại %s — bỏ qua kiểm tồn tại file" % root)
+    for p in _cap_dong_bang():
+        assert os.path.isfile(p["pdf"]), "PDF đóng băng biến mất: %s" % p["pdf"]
+        assert os.path.isfile(p["excel"]), \
+            "Excel đóng băng biến mất: %s" % p["excel"]
 
 
 # ---------------------------------------------------------------------------

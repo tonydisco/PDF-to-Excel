@@ -23,6 +23,10 @@ Thumbs.db
 *.xlsx
 *.xls
 
+# Đề xuất cặp CHƯA được người xác nhận — không để 'git add -A' cuốn vào
+# (chứa đường dẫn tuyệt đối tới corpus công ty thật ngoài repo)
+tests/regression/pairs.candidate.json
+
 # Giữ lại gói OCR tiếng Việt (cần cho ứng dụng)
 !tessdata/vie.traineddata
 
