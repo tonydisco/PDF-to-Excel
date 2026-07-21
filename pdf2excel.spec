@@ -40,12 +40,17 @@ a = Analysis(
 pyz = PYZ(a.pure)
 
 exe = EXE(
-    pyz, a.scripts, a.binaries, a.datas, [],
+    pyz,
+    a.scripts,
+    [],
+    exclude_binaries=True,         # onedir: binaries/datas do COLLECT() gom
     name="BCTC_PDF_to_Excel",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,                     # UPX: tốn thời gian giải nén mỗi lần chạy
+                                   # + là tác nhân kinh điển gây false-positive
+                                   # antivirus trên Windows
     console=False,                 # ứng dụng cửa sổ (không hiện terminal)
     disable_windowed_traceback=False,
     argv_emulation=True,           # macOS: nhận file kéo-thả vào icon
@@ -55,10 +60,24 @@ exe = EXE(
     icon=ICON_FILE,
 )
 
+# onedir: giải nén MỘT lần lúc cài đặt, các lần mở sau chạy thẳng.
+# Chế độ onefile cũ giải nén lại toàn bộ payload ra %TEMP% mỗi lần khởi động,
+# rồi bị Windows Defender quét lại từ đầu — trên máy Win10 ổ HDD mất 30-90
+# giây MỖI LẦN MỞ.
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    name="BCTC_PDF_to_Excel",
+)
+
 # macOS: gói thành .app
 if sys.platform == "darwin":
     app = BUNDLE(
-        exe,
+        coll,
         name="BCTC_PDF_to_Excel.app",
         icon=(_icns if os.path.exists(_icns) else None),
         bundle_identifier="vn.btg.bctc.pdf2excel",
