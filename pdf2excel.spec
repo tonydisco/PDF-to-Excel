@@ -43,10 +43,27 @@ a = Analysis(
 )
 pyz = PYZ(a.pure)
 
+# Splash: phản hồi thị giác ngay khi bấm mở, trong lúc Python + thư viện nạp.
+# Chỉ hỗ trợ trên Windows/Linux (PyInstaller chưa hỗ trợ splash trên macOS).
+_splash_img = os.path.join("assets", "icon_256.png")
+splash = None
+if sys.platform != "darwin" and os.path.exists(_splash_img):
+    splash = Splash(
+        _splash_img,
+        binaries=a.binaries,
+        datas=a.datas,
+        text_pos=(10, 240),
+        text_size=10,
+        text_color="black",
+    )
+
+_exe_args = [pyz, a.scripts]
+if splash is not None:
+    _exe_args.append(splash)
+_exe_args.append([])
+
 exe = EXE(
-    pyz,
-    a.scripts,
-    [],
+    *_exe_args,
     exclude_binaries=True,         # onedir: binaries/datas do COLLECT() gom
     name="BCTC_PDF_to_Excel",
     debug=False,
@@ -68,10 +85,13 @@ exe = EXE(
 # Chế độ onefile cũ giải nén lại toàn bộ payload ra %TEMP% mỗi lần khởi động,
 # rồi bị Windows Defender quét lại từ đầu — trên máy Win10 ổ HDD mất 30-90
 # giây MỖI LẦN MỞ.
+_coll_args = [exe]
+if splash is not None:
+    _coll_args.append(splash.binaries)
+_coll_args += [a.binaries, a.datas]
+
 coll = COLLECT(
-    exe,
-    a.binaries,
-    a.datas,
+    *_coll_args,
     strip=False,
     upx=False,
     upx_exclude=[],
