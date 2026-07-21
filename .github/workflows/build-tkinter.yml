@@ -57,19 +57,33 @@ jobs:
           Get-ChildItem tesseract -Recurse -File | Select-Object -First 30 FullName
       - name: Đóng gói .exe
         run: python -m PyInstaller --noconfirm --clean pdf2excel.spec
-      - name: Đổi tên & gom
+      - name: Đọc số phiên bản
+        id: ver
+        shell: pwsh
         run: |
-          mkdir out
-          copy "dist\BCTC_PDF_to_Excel.exe" "out\BCTC_PDF_to_Excel-windows.exe"
+          $v = (Select-String -Path version.py -Pattern '__version__\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
+          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Phiên bản: $v"
+
+      - name: Dựng bộ cài (Inno Setup)
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
+            "/DAppVersion=${{ steps.ver.outputs.version }}" `
+            installer\BCTC_Setup.iss
+          Get-ChildItem installer\Output
+
       - uses: actions/upload-artifact@v4
         with:
-          name: BCTC_PDF_to_Excel-windows
-          path: out/BCTC_PDF_to_Excel-windows.exe
+          name: BCTC_PDF_to_Excel-windows-setup
+          path: installer/Output/BCTC_PDF_to_Excel-Setup.exe
+
       - name: Đính kèm Release (khi push tag v*)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: out/BCTC_PDF_to_Excel-windows.exe
+          files: installer/Output/BCTC_PDF_to_Excel-Setup.exe
 
   # ------------------------------------------------------------------ macOS
   macos:
