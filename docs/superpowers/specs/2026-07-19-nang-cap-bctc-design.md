@@ -319,6 +319,15 @@ kỹ thuật, cần quyết định mua. Ghi nhận để bạn cân nhắc riê
 
 ### 7.1 Chuẩn hoá mã số *(lỗi nghiêm trọng nhất, đã kiểm chứng)*
 
+> **Ghi nhận sau baseline (2026-07-22):** dự đoán "độ phủ KQHDKD/LCTT thấp bất
+> thường so với CĐKT" KHÔNG xuất hiện ở mức tổng — baseline 30 file đo được
+> CĐKT 11,1% / KQ 20,0% / LC 12,8%, và tầng 1 chỉ đạt 12,8% ô đúng với 4/6 PDF
+> bóc được gần như bằng không. Lỗi mã 1 chữ số vẫn đúng ở mức đơn vị (file đáp
+> án Đăk Lăk in mã `1`, template ghi `"01"`, so khớp chuỗi chính xác trượt),
+> nhưng chữ ký tổng hợp của nó bị che bởi thất bại bóc tách trên diện rộng hơn.
+> Đợt 2 phải bắt đầu bằng chẩn đoán per-file các ca bóc-ra-số-không trước khi
+> quy công cải thiện cho bất kỳ hạng mục nào của §7.
+
 Khung template ghi `"01"`, `"02"` (`templates.py` dòng 142–143) nhưng báo cáo
 thật in mã số là `1`, `2` — đã xác nhận trên file đáp án gốc của Du Lịch Đăk Lăk.
 `parser._token_code()` (dòng 118) so khớp **chuỗi chính xác**
