@@ -26,6 +26,14 @@ def test_compare_khop_du_lech_so_khong_dung_dau():
     assert M.compare({"1": (5, None)}, {"01": (5, None)})["dung"] == 1
 
 
+def test_compare_dap_an_bang_0_tinh_la_thua():
+    """Đáp án = 0 nghĩa là 'không có số liệu': máy bóc ra số -> phải đếm
+    'thừa', tuyệt đối không phải 'lệch' (chốt quy tắc g != 0)."""
+    r = M.compare({"1": (0, None)}, {"1": (5, None)})
+    assert r["thua"] == 1
+    assert r["lech"] == 0
+
+
 def test_coverage_ty_le_dong_co_gia_tri():
     assert M.coverage({}, "CDKT") == 0.0
     full = {c: (1, 1) for c in M._codes("CDKT")}

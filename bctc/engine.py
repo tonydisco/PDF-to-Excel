@@ -74,6 +74,7 @@ def convert_pdf(pdf_path, out_dir, lang="vie", dpis=(180, 235), log=lambda *_: N
         "pdf": pdf_path, "name": name, "out_path": out_path,
         "rows": n_rows, "warnings": warnings, "checks": checks,
         "conflicts": conflicts,
+        "results": results,          # <-- THÊM: phục vụ bộ đo hồi quy
     }
 
 
