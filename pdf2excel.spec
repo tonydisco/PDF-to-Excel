@@ -8,14 +8,18 @@ import sys
 from PyInstaller.utils.hooks import collect_submodules
 
 datas = [
-    ("tessdata", "tessdata"),      # đóng gói kèm gói tiếng Việt (vie.traineddata)
     ("assets", "assets"),          # icon + sprite
 ]
 
 # Tesseract-OCR portable đi kèm app (nếu có thư mục 'tesseract/').
-# CI Windows sẽ tạo thư mục này -> .exe chạy độc lập, không cần cài Tesseract.
+# CI Windows tạo thư mục này -> app chạy độc lập, không cần cài Tesseract.
+# vie.traineddata đã nằm trong tesseract/tessdata/ nên KHÔNG đóng gói thêm
+# thư mục tessdata/ ở gốc — trước đây bị gói hai lần.
 if os.path.isdir("tesseract"):
     datas.append(("tesseract", "tesseract"))
+else:
+    # Chạy từ mã nguồn / build macOS: dùng tessdata cạnh mã nguồn.
+    datas.append(("tessdata", "tessdata"))
 
 # icon theo nền tảng (nếu đã sinh bằng assets/make_icon.py)
 _icns = os.path.join("assets", "icon.icns")
