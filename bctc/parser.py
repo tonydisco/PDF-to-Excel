@@ -16,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from . import ocr
 from . import templates as T
+from . import textlayer
 from . import workers as W
 
 # số luồng OCR song song (mỗi luồng gọi 1 tiến trình tesseract riêng)
@@ -405,6 +406,15 @@ def _scan_strip(doc, i, lang, scan_dpi):
     """OCR dải đầu 1 trang -> (i, title_key_or_None)."""
     from PIL import Image
     page = doc[i]
+
+    if getattr(doc, "_bctc_dung_lop_text", False):
+        # Có lớp text tin cậy -> lấy chữ ở dải đầu trang, khỏi OCR.
+        gioi_han = page.rect.y0 + (page.rect.y1 - page.rect.y0) * 0.42
+        line_texts = [" ".join(w["text"] for w in ln)
+                      for ln in textlayer.page_lines(page)
+                      if ln and ln[0]["top"] <= gioi_han]
+        return i, heading_in_lines(line_texts)
+
     pix = page.get_pixmap(dpi=scan_dpi, clip=fitz_rect(page, top_frac=0.42))
     img = ocr.preprocess(Image.frombytes("RGB", (pix.width, pix.height), pix.samples))
     _, _, lines = ocr.ocr_lines(img, lang=lang, psm=6, min_conf=20)
@@ -419,6 +429,10 @@ def locate_pages(doc, lang="vie", scan_dpi=135, page_range=None, log=lambda *_: 
     cả 3 báo cáo và batch tiếp theo không còn trang báo cáo nào.
     """
     nw = workers or MAX_WORKERS
+    try:
+        doc._bctc_dung_lop_text = textlayer.is_usable(doc)
+    except Exception:
+        pass
     lo, hi = (page_range or (0, doc.page_count))
     lo, hi = max(0, lo), min(doc.page_count, hi)
     pages = list(range(lo, hi))
@@ -487,32 +501,45 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
     current = None
     from PIL import Image
 
-    # render (tuần tự) rồi OCR (song song) các trang đã định vị
-    rendered = []
-    for p in pages:
-        pix = doc[p].get_pixmap(dpi=dpi)
-        rendered.append((p, Image.frombytes("RGB", (pix.width, pix.height), pix.samples)))
+    dung_lop_text = getattr(doc, "_bctc_dung_lop_text", None)
+    if dung_lop_text is None:
+        dung_lop_text = textlayer.is_usable(doc)
+        try:
+            doc._bctc_dung_lop_text = dung_lop_text
+        except Exception:
+            pass
 
-    nw = workers or MAX_WORKERS
-
-    def _ocr(item):
-        p, img = item
-        _, _, lines = ocr.ocr_lines(ocr.preprocess(img), lang=lang, psm=6, min_conf=25)
-        return p, lines
-
-    with ThreadPoolExecutor(max_workers=nw) as ex:
-        page_lines = dict(ex.map(_ocr, rendered))
-
-    # PASS CHỈ-CHỮ-SỐ (B-A1): OCR lại trang với whitelist số -> token số sạch hơn.
     page_digits = {p: [] for p in pages}
-    if digit_pass:
-        def _ocr_digits(item):
+    if dung_lop_text:
+        # Lớp text tin cậy -> đọc thẳng, không OCR (và không cần pass chữ-số).
+        # Chính xác tuyệt đối và gần như không tốn CPU.
+        log("   ⚡ Dùng lớp text sẵn có (bỏ qua OCR)")
+        page_lines = {p: textlayer.page_lines(doc[p]) for p in pages}
+    else:
+        nw = workers or MAX_WORKERS
+        # render (tuần tự) rồi OCR (song song) các trang đã định vị
+        rendered = []
+        for p in pages:
+            pix = doc[p].get_pixmap(dpi=dpi)
+            rendered.append((p, Image.frombytes("RGB", (pix.width, pix.height), pix.samples)))
+
+        def _ocr(item):
             p, img = item
-            _, _, dlines = ocr.ocr_lines(ocr.preprocess(img), lang=lang, psm=6,
-                                         min_conf=0, whitelist=DIGIT_WHITELIST)
-            return p, [wd for ln in dlines for wd in ln]
+            _, _, lines = ocr.ocr_lines(ocr.preprocess(img), lang=lang, psm=6, min_conf=25)
+            return p, lines
+
         with ThreadPoolExecutor(max_workers=nw) as ex:
-            page_digits = dict(ex.map(_ocr_digits, rendered))
+            page_lines = dict(ex.map(_ocr, rendered))
+
+        # PASS CHỈ-CHỮ-SỐ (B-A1): OCR lại trang với whitelist số -> token số sạch hơn.
+        if digit_pass:
+            def _ocr_digits(item):
+                p, img = item
+                _, _, dlines = ocr.ocr_lines(ocr.preprocess(img), lang=lang, psm=6,
+                                             min_conf=0, whitelist=DIGIT_WHITELIST)
+                return p, [wd for ln in dlines for wd in ln]
+            with ThreadPoolExecutor(max_workers=nw) as ex:
+                page_digits = dict(ex.map(_ocr_digits, rendered))
 
     # ---- Lượt 1: gán mỗi dòng vào đúng báo cáo ----
     # Mỗi trang đã được locate gán 1 báo cáo (đáng tin); dùng làm mốc đầu trang,
