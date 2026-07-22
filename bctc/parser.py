@@ -349,6 +349,176 @@ def pick_values(words, cur_c, prior_c, tol=0.045):
     return cur, prior
 
 
+# ----------------------------------------------------------------------
+# Chọn CẶP cột giá trị khi bảng có >= 3 cột số (Đợt 2, việc #1)
+# ----------------------------------------------------------------------
+# Gia đình bản in phần mềm kế toán ("Phần I. Lãi Lỗ", "Kỳ kế toán: MM/YYYY")
+# in KQHDKD/LCTT với BA cột số 'Kỳ này | Kỳ trước | Lũy kế'. Lối chọn cũ
+# `centers[-2:]` lấy (Kỳ trước, Lũy kế); trên báo cáo 6 tháng/năm Lũy kế ==
+# Kỳ này nên kết quả hoán vị hoàn hảo hai cột (kqkd_6t.pdf lệch 24/24 ô —
+# xem docs/superpowers/plans/chan-doan-dot-2.md §2). Cặp đúng: (Kỳ này,
+# Kỳ trước). Ba tín hiệu, xét theo độ tin cậy giảm dần:
+#   1. NHÃN tiêu đề cột (khi OCR đọc được) — mạnh nhất; 'lũy kế' bị LOẠI.
+#   2. Cột phải nhất TRÙNG GIÁ TRỊ cột 1 trên nhiều dòng (Lũy kế == Kỳ này).
+#   3. Kỳ báo cáo QUÝ + 3-4 cột không nhãn -> quy ước bố cục quý, lấy 2 cột
+#      TRÁI (không áp cho CDKT — bảng cân đối không có cột Lũy kế).
+# <= 2 cột: GIỮ NGUYÊN hành vi cũ. Nhãn nhập nhằng/mâu thuẫn: giữ đường cũ
+# nhưng BẮT BUỘC cảnh báo (không bao giờ im lặng).
+_NHAN_KY_NAY = ("ky nay", "quy nay", "nam nay", "so cuoi")
+_NHAN_KY_TRUOC = ("ky truoc", "quy truoc", "nam truoc", "so dau")
+_NHAN_LUY_KE = ("luy ke",)
+# Cửa sổ x quanh TÂM CỘT SỐ (right_x) để gom chữ tiêu đề của cột: nhãn nằm
+# giữa cột nên lệch TRÁI so với mép phải của các con số (đo trên kqkd_6t:
+# "Kỳ này" cx 0.61-0.64 dưới cột right_x 0.668).
+_NHAN_X_TRAI, _NHAN_X_PHAI = 0.13, 0.04
+# Ngưỡng tin "cột phải trùng giá trị cột 1": tối thiểu số dòng so sánh được
+# và tỷ lệ dòng bằng nhau (kqkd_6t đo được 12/13, BCTC-2023-KQ 5/5).
+_TRUNG_MIN_DONG = 4
+_TRUNG_MIN_TYLE = 0.6
+
+
+def doc_nhan_cot(section_lines, centers, valid_codes, col_center):
+    """Đọc nhãn tiêu đề ('Kỳ này'/'Kỳ trước'/'Lũy kế'...) cho từng TÂM CỘT SỐ.
+
+    Chỉ quét các dòng PHÍA TRÊN dòng dữ liệu đầu tiên có mã số (dải tiêu đề
+    bảng); chữ trong cửa sổ x quanh mỗi tâm cột được ghép lại rồi norm() để
+    so mốc. Trả về list cùng thứ tự với centers, mỗi phần tử là set con của
+    {"cur", "prior", "cum"} (rỗng = không đọc được nhãn — OCR nát là chuyện
+    thường trên gia đình bản in này).
+    """
+    nhan = [set() for _ in centers]
+    if not centers:
+        return nhan
+    for ln, _split, _vtoks in section_lines:
+        if find_code_at(ln, valid_codes, col_center):
+            break                      # đã chạm thân bảng -> hết dải tiêu đề
+        for ci, c in enumerate(centers):
+            toks = [wd["text"] for wd in ln
+                    if c - _NHAN_X_TRAI <= wd["cx"] <= c + _NHAN_X_PHAI]
+            if not toks:
+                continue
+            text = norm(" ".join(toks))
+            if any(m in text for m in _NHAN_LUY_KE):
+                nhan[ci].add("cum")
+            if any(m in text for m in _NHAN_KY_NAY):
+                nhan[ci].add("cur")
+            if any(m in text for m in _NHAN_KY_TRUOC):
+                nhan[ci].add("prior")
+    return nhan
+
+
+def dem_cot_trung(section_lines, centers, digit_pass, tol=0.045):
+    """Đếm theo từng CẶP cột (i, j): (số dòng hai giá trị BẰNG NHAU, số dòng
+    cả hai cột cùng có số). Token số của mỗi dòng được gán vào tâm cột gần
+    nhất trong tol — cùng cách gán với pick_values để hai nơi nhìn thấy cùng
+    một bảng. Dùng để nhận diện cột Lũy kế trùng cột Kỳ này (báo cáo 6T/năm).
+    """
+    rows = []
+    for ln, _split, vtoks in section_lines:
+        words = vtoks if (digit_pass and vtoks) else ln
+        gia_tri = {}                  # cột -> (khoảng cách, giá trị) gần nhất
+        for wd in words:
+            if wd["cx"] < 0.55:
+                continue
+            tok = wd["text"].strip().strip("[]{}|")
+            if not looks_like_value(tok):
+                continue
+            v = parse_number(tok)
+            if v is None:
+                continue
+            rx = wd["right"]
+            for ci, c in enumerate(centers):
+                d = abs(rx - c)
+                if d < tol and (ci not in gia_tri or d < gia_tri[ci][0]):
+                    gia_tri[ci] = (d, v)
+        if len(gia_tri) >= 2:
+            rows.append({ci: dv[1] for ci, dv in gia_tri.items()})
+    ket = {}
+    for i in range(len(centers)):
+        for j in range(i + 1, len(centers)):
+            bang = so_sanh = 0
+            for gia_tri in rows:
+                if i in gia_tri and j in gia_tri:
+                    so_sanh += 1
+                    if gia_tri[i] == gia_tri[j]:
+                        bang += 1
+            ket[(i, j)] = (bang, so_sanh)
+    return ket
+
+
+def chon_cap_cot(centers, nhan, ky_bao_cao, trung, bao_cao=None):
+    """Chọn cặp (tâm cột Kỳ-này, tâm cột Kỳ-trước) khi có >= 3 cột số.
+
+    centers   : tâm (right_x) các cột số, trái -> phải (detect_value_columns)
+    nhan      : nhãn từng cột từ doc_nhan_cot (list các set {"cur","prior","cum"})
+    ky_bao_cao: detect_period(...)["kind"] ('quarter'/'year'/'unknown')
+    trung     : bảng đếm trùng giá trị từ dem_cot_trung
+    bao_cao   : mã báo cáo ('CDKT'/'KQHDKD'/'LCTT') — quy ước quý không áp
+                cho CDKT
+
+    Trả (sel, canh_bao): sel = [tâm kỳ này, tâm kỳ trước] hoặc None (giữ
+    đường cũ '2 cột phải nhất'); canh_bao = list chuỗi tiếng Việt (chỉ khi
+    nhãn nhập nhằng/mâu thuẫn — không bao giờ chọn khác đi một cách im lặng).
+    """
+    if len(centers) <= 2:
+        return None, []
+    nhan = list(nhan or []) + [set()] * (len(centers) - len(nhan or []))
+
+    # 1) NHÃN tiêu đề — căn cứ mạnh nhất khi đọc được
+    vai = []
+    for tags in nhan[:len(centers)]:
+        if "cum" in tags:
+            # 'Lũy kế' thắng mọi nhãn con trong cùng cột (header 2 tầng kiểu
+            # 'Lũy kế từ đầu năm' đè trên 'Năm nay/Năm trước')
+            vai.append("cum")
+        elif "cur" in tags and "prior" in tags:
+            return None, ["nhãn cột giá trị NHẬP NHẰNG (một cột khớp cả "
+                          "'kỳ này' lẫn 'kỳ trước') — giữ cách chọn cũ "
+                          "(2 cột phải nhất), số liệu 2 cột cần soát lại."]
+        elif "cur" in tags:
+            vai.append("cur")
+        elif "prior" in tags:
+            vai.append("prior")
+        else:
+            vai.append(None)
+    if vai.count("cur") > 1 or vai.count("prior") > 1:
+        return None, ["nhãn cột giá trị MÂU THUẪN (nhiều cột cùng khớp một "
+                      "nhãn kỳ) — giữ cách chọn cũ (2 cột phải nhất), số "
+                      "liệu 2 cột cần soát lại."]
+    if vai.count("cur") == 1 and vai.count("prior") == 1:
+        return [centers[vai.index("cur")], centers[vai.index("prior")]], []
+    con = [ci for ci, v in enumerate(vai) if v != "cum"]
+    if len(con) == 2:
+        # nhãn 'Lũy kế' loại được cột dồn — còn đúng 2 cột; thứ tự theo nhãn
+        # nếu đọc được một phía, mặc định trái = kỳ này
+        a, b = con
+        if vai[a] == "prior" or vai[b] == "cur":
+            a, b = b, a
+        return [centers[a], centers[b]], []
+    if len(con) < 2:
+        return None, ["nhãn 'Lũy kế' khớp gần hết các cột số — giữ cách "
+                      "chọn cũ (2 cột phải nhất), số liệu 2 cột cần soát lại."]
+
+    # 2) Cột phải nhất TRÙNG GIÁ TRỊ cột 1 (Lũy kế == Kỳ này trên báo cáo
+    #    6T/năm của gia đình bản in này) -> loại dần từ phải
+    trung = trung or {}
+    while len(con) > 2:
+        bang, so_sanh = trung.get((con[0], con[-1]), (0, 0))
+        if so_sanh >= _TRUNG_MIN_DONG and bang >= so_sanh * _TRUNG_MIN_TYLE:
+            con = con[:-1]
+        else:
+            break
+    if len(con) == 2:
+        return [centers[con[0]], centers[con[1]]], []
+
+    # 3) Kỳ báo cáo QUÝ + 3-4 cột không nhãn -> quy ước bố cục quý
+    #    (Kỳ này | Kỳ trước | Lũy kế [| Lũy kế trước]): lấy 2 cột TRÁI.
+    #    CDKT không có cột Lũy kế nên không áp quy ước này.
+    if ky_bao_cao == "quarter" and bao_cao != "CDKT" and len(con) in (3, 4):
+        return [centers[con[0]], centers[con[1]]], []
+    return None, []
+
+
 def estimate_split(all_words):
     """Tìm ranh giới giữa 2 cột số từ phân bố mép phải các con số (mặc định 0.84)."""
     rights = sorted(wd["right"] for wd in all_words
@@ -565,14 +735,33 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
                 section_lines[current].append((ln, split, line_vtoks[li]))
 
     # ---- Lượt 2: dò cột Mã số cho từng báo cáo rồi bóc số ----
+    # Kỳ báo cáo (quý/năm) tính MỘT lần trên toàn bộ dòng: vừa là metadata
+    # (page_meta["period"]) vừa là tín hiệu chọn cặp cột khi bảng >= 3 cột số.
+    period = detect_period(
+        [" ".join(wd["text"] for wd in ln) for p in pages for ln in page_lines[p]]
+    )
     cols = {}
     for key in T.STATEMENTS:
         col = detect_code_column(section_lines[key], valid[key], ORDER[key])
         cols[key] = col
-        # Báo cáo QUÝ có 4 cột (Quý này/Quý trước/Lũy kế nay/trước) -> lấy 2 cột PHẢI
-        # NHẤT ('Lũy kế') theo tâm cột. Báo cáo NĂM (<=2 cột) giữ split_values như cũ.
+        # Bảng >= 3 cột số (bản in 'Kỳ này | Kỳ trước | Lũy kế' hoặc báo cáo
+        # quý 4 cột) -> chọn cặp theo NGỮ NGHĨA (nhãn tiêu đề / cột trùng giá
+        # trị / quy ước quý); không tín hiệu nào thì giữ đường cũ 2 cột phải
+        # nhất. Báo cáo NĂM (<=2 cột) giữ split_values như cũ.
         centers = detect_value_columns(section_lines[key], digit_pass)
-        sel = centers[-2:] if len(centers) > 2 else None
+        if len(centers) > 2:
+            sel, canh_bao = chon_cap_cot(
+                centers,
+                doc_nhan_cot(section_lines[key], centers, valid[key], col),
+                period.get("kind"),
+                dem_cot_trung(section_lines[key], centers, digit_pass),
+                bao_cao=key)
+            for cb in canh_bao:
+                warnings.append("%s: %s" % (T.STATEMENTS[key][0], cb))
+            if sel is None:
+                sel = centers[-2:]          # đường cũ: 2 cột phải nhất
+        else:
+            sel = None
         for ln, split, vtoks in section_lines[key]:
             code = find_code_at(ln, valid[key], col)
             if not code:
@@ -590,9 +779,7 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
             else:
                 results[key][code] = (cur, prior)
     page_meta["_code_columns"] = cols
-    page_meta["period"] = detect_period(
-        [" ".join(wd["text"] for wd in ln) for p in pages for ln in page_lines[p]]
-    )
+    page_meta["period"] = period
     return results, warnings, page_meta
 
 
