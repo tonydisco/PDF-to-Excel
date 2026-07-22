@@ -429,10 +429,13 @@ def locate_pages(doc, lang="vie", scan_dpi=135, page_range=None, log=lambda *_: 
     cả 3 báo cáo và batch tiếp theo không còn trang báo cáo nào.
     """
     nw = workers or MAX_WORKERS
-    try:
-        doc._bctc_dung_lop_text = textlayer.is_usable(doc)
-    except Exception:
-        pass
+    # Chỉ tính cờ lớp text khi CHƯA đặt. Lượt thử-lại-bằng-OCR đặt cờ False
+    # một cách chủ đích — định vị lại không được lật ngược nó về True.
+    if getattr(doc, "_bctc_dung_lop_text", None) is None:
+        try:
+            doc._bctc_dung_lop_text = textlayer.is_usable(doc)
+        except Exception:
+            pass
     lo, hi = (page_range or (0, doc.page_count))
     lo, hi = max(0, lo), min(doc.page_count, hi)
     pages = list(range(lo, hi))
@@ -602,34 +605,62 @@ def extract_consensus(doc, lang="vie", dpis=(185, 240), page_range=None,
       - các DPI sau chỉ ĐIỀN vào ô còn trống, KHÔNG ghi đè giá trị đã có
         (tránh mang lỗi của DPI cao vào);
       - ô nào hai lần đọc ra số KHÁC nhau -> ghi nhận 'nghi ngờ' để soát lại.
+    Đường text phải TỰ CHỨNG MINH nó cho ra số liệu: nếu không bóc được giá
+    trị nào thì quay về OCR (đúng một lần) — lớp text không bao giờ được làm
+    dữ liệu tệ đi.
     Trả về: results, warnings, meta, conflicts
     """
-    merged = {k: {} for k in T.STATEMENTS}
-    conflicts = []
-    base_warnings, base_meta = [], {}
-    # Định vị trang MỘT LẦN rồi tái dùng cho mọi DPI: locate_pages quét dải đầu ở
-    # scan_dpi cố định (135), không phụ thuộc DPI render -> chạy lại mỗi DPI là thừa.
-    scope = locate_pages(doc, lang=lang, page_range=page_range, log=log,
-                         workers=workers)
-    for idx, dpi in enumerate(dpis):
-        primary = (idx == 0)
-        res, warns, meta = extract(
-            doc, lang=lang, dpi=dpi, page_range=page_range,
-            log=(log if primary else (lambda *_: None)), scope=scope,
-            digit_pass=digit_pass, workers=workers)
-        if primary:
-            base_warnings, base_meta = warns, meta
-        for key in res:
-            for code, (cur, prior) in res[key].items():
-                if code not in merged[key]:
-                    merged[key][code] = (cur, prior)
-                    continue
-                ecur, eprior = merged[key][code]
-                if ecur is not None and cur is not None and ecur != cur:
-                    conflicts.append((key, code, "cuối năm/năm nay", ecur, cur))
-                if eprior is not None and prior is not None and eprior != prior:
-                    conflicts.append((key, code, "đầu năm/năm trước", eprior, prior))
-                merged[key][code] = (ecur if ecur is not None else cur,
-                                     eprior if eprior is not None else prior)
-        on_pass(idx + 1, len(dpis))
+
+    def _mot_luot():
+        """Một lượt trọn vẹn: định vị + bóc tách mọi DPI + hợp nhất."""
+        merged = {k: {} for k in T.STATEMENTS}
+        conflicts = []
+        base_warnings, base_meta = [], {}
+
+        # Định vị MỘT lần rồi dùng chung cho mọi lượt DPI: kết quả tất định,
+        # quét lại chỉ tốn thêm (số_DPI - 1) x số_trang lượt OCR mà không đổi gì.
+        scope = locate_pages(doc, lang=lang, page_range=page_range, log=log,
+                             workers=workers)
+
+        for idx, dpi in enumerate(dpis):
+            primary = (idx == 0)
+            res, warns, meta = extract(
+                doc, lang=lang, dpi=dpi, page_range=page_range,
+                log=(log if primary else (lambda *_: None)), scope=scope,
+                digit_pass=digit_pass, workers=workers)
+            if primary:
+                base_warnings, base_meta = warns, meta
+            for key in res:
+                for code, (cur, prior) in res[key].items():
+                    if code not in merged[key]:
+                        merged[key][code] = (cur, prior)
+                        continue
+                    ecur, eprior = merged[key][code]
+                    if ecur is not None and cur is not None and ecur != cur:
+                        conflicts.append((key, code, "cuối năm/năm nay", ecur, cur))
+                    if eprior is not None and prior is not None and eprior != prior:
+                        conflicts.append((key, code, "đầu năm/năm trước", eprior, prior))
+                    merged[key][code] = (ecur if ecur is not None else cur,
+                                         eprior if eprior is not None else prior)
+            on_pass(idx + 1, len(dpis))
+        return merged, base_warnings, base_meta, conflicts
+
+    merged, base_warnings, base_meta, conflicts = _mot_luot()
+
+    # Lớp text tuy qua được bộ lọc chất lượng nhưng vẫn có thể không cho parser
+    # bóc ra giá trị nào (hình học dòng/cột lệch chuẩn, thậm chí không định vị
+    # nổi trang). Khi đó quay về OCR thay vì trả kết quả trống. Cấu trúc thẳng
+    # dòng (không đệ quy) nên chỉ thử lại ĐÚNG MỘT lần.
+    khong_co_gia_tri = not any(
+        v is not None
+        for bang in merged.values()
+        for cap in bang.values()
+        for v in cap)
+    if getattr(doc, "_bctc_dung_lop_text", False) and khong_co_gia_tri:
+        log("   ↻ Lớp text không cho ra số liệu — thử lại bằng OCR.")
+        try:
+            doc._bctc_dung_lop_text = False
+        except Exception:
+            pass
+        merged, base_warnings, base_meta, conflicts = _mot_luot()
     return merged, base_warnings, base_meta, conflicts
