@@ -1,0 +1,164 @@
+{
+  "pairs": [
+    {
+      "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2016/Quy 2.2016/18_Cty TNHH Ben Thanh Hoang Thanh - kiem toan.pdf",
+      "excel": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2016/Quy 2.2016/18_Ben Thanh Hoang Thanh/18_Cty TNHH Ben Thanh Hoang Thanh_BCTC Q2.2016_CDKT.xls",
+      "kind": "CDKT",
+      "company": "18",
+      "year": "2016",
+      "period": "Q2",
+      "basis": "UNKNOWN",
+      "scope": "UNKNOWN"
+    },
+    {
+      "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2016/Quy 2.2016/18_Cty TNHH Ben Thanh Hoang Thanh - kiem toan.pdf",
+      "excel": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2016/Quy 2.2016/18_Ben Thanh Hoang Thanh/18_Cty TNHH Ben Thanh Hoang Thanh_BCTC Q2.2016_CDPS.xls",
+      "kind": "CDPS",
+      "company": "18",
+      "year": "2016",
+      "period": "Q2",
+      "basis": "UNKNOWN",
+      "scope": "UNKNOWN"
+    },
+    {
+      "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2016/Quy 2.2016/18_Cty TNHH Ben Thanh Hoang Thanh - kiem toan.pdf",
+      "excel": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2016/Quy 2.2016/18_Ben Thanh Hoang Thanh/18_Cty TNHH Ben Thanh Hoang Thanh_BCTC Q2.2016_KQKD.xls",
+      "kind": "KQHDKD",
+      "company": "18",
+      "year": "2016",
+      "period": "Q2",
+      "basis": "UNKNOWN",
+      "scope": "UNKNOWN"
+    },
+    {
+      "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2022/QUY II.2022/18_CTCP Du lich KS Sai Gon Mui Ne/18_Cty CP Sai gon Mui Ne.pdf",
+      "excel": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2022/QUY II.2022/18_CTCP Du lich KS Sai Gon Mui Ne/BCTC_Q2_SGMN/CDKT Q2.xls",
+      "kind": "CDKT",
+      "company": "18",
+      "year": "2022",
+      "period": "Q2",
+      "basis": "UNKNOWN",
+      "scope": "UNKNOWN"
+    },
+    {
+      "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2022/QUY II.2022/18_CTCP Du lich KS Sai Gon Mui Ne/18_Cty CP Sai gon Mui Ne.pdf",
+      "excel": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2022/QUY II.2022/18_CTCP Du lich KS Sai Gon Mui Ne/BCTC_Q2_SGMN/KQKD_Q2.xls",
+      "kind": "KQHDKD",
+      "company": "18",
+      "year": "2022",
+      "period": "Q2",
+      "basis": "UNKNOWN",
+      "scope": "UNKNOWN"
+    },
+    {
+      "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2022/QUY II.2022/18_CTCP Du lich KS Sai Gon Mui Ne/18_Cty CP Sai gon Mui Ne.pdf",
+      "excel": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 10/2022/QUY II.2022/18_CTCP Du lich KS Sai Gon Mui Ne/BCTC_Q2_SGMN/LCTT_Q2.xls",
+      "kind": "LCTT",
+      "company": "18",
+      "year": "2022",
+      "period": "Q2",
+      "basis": "UNKNOWN",
+      "scope": "UNKNOWN"
+    },
+    {
+      "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2023/BCTC - tu lap 2023/18_Cty CP Sai gon Mui Ne 2023/BCTC 2023.pdf",
+      "excel": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2023/BCTC - tu lap 2023/18_Cty CP Sai gon Mui Ne 2023/CDPS_2023.xls",
+      "kind": "CDPS",
+      "company": "18",
+      "year": "2023",
+      "period": "NAM",
+      "basis": "TULAP",
+      "scope": "UNKNOWN"
+    },
+    {
+      "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2023/BCTC - tu lap 2023/18_Cty CP Sai gon Mui Ne 2023/BCTC 2023.pdf",
+      "excel": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2023/BCTC - tu lap 2023/18_Cty CP Sai gon Mui Ne 2023/KQKD_2023.xls",
+      "kind": "KQHDKD",
+      "company": "18",
+      "year": "2023",
+      "period": "NAM",
+      "basis": "TULAP",
+      "scope": "UNKNOWN"
+    },
+    {
+      "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2023/BCTC - tu lap 2023/18_Cty CP Sai gon Mui Ne 2023/BCTC 2023.pdf",
+      "excel": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2023/BCTC - tu lap 2023/18_Cty CP Sai gon Mui Ne 2023/LCTT_2023.xls",
+      "kind": "LCTT",
+      "company": "18",
+      "year": "2023",
+      "period": "NAM",
+      "basis": "TULAP",
+      "scope": "UNKNOWN"
+    },
+    {
+      "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2024/Quý 2/18_Cty CP Sai gon Mui Ne 2022/BC 6T.2024/kqkd_6t.pdf",
+      "excel": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2024/Quý 2/18_Cty CP Sai gon Mui Ne 2022/BC 6T.2024/KQKD_6T.xls",
+      "kind": "KQHDKD",
+      "company": "18",
+      "year": "2024",
+      "period": "6T",
+      "basis": "UNKNOWN",
+      "scope": "UNKNOWN"
+    },
+    {
+      "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/Quy 2.2025/18_Cty CP Sai gon Mui Ne 6Th_2025/bctc_6t_1.932.031.414.pdf",
+      "excel": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2025/Quy 2.2025/18_Cty CP Sai gon Mui Ne 6Th_2025/cdkt_6t.xls",
+      "kind": "CDKT",
+      "company": "18",
+      "year": "2025",
+      "period": "6T",
+      "basis": "UNKNOWN",
+      "scope": "UNKNOWN"
+    },
+    {
+      "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/Quy 2.2025/18_Cty CP Sai gon Mui Ne 6Th_2025/bctc_6t_1.932.031.414.pdf",
+      "excel": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2025/Quy 2.2025/18_Cty CP Sai gon Mui Ne 6Th_2025/cdps_6t.xls",
+      "kind": "CDPS",
+      "company": "18",
+      "year": "2025",
+      "period": "6T",
+      "basis": "UNKNOWN",
+      "scope": "UNKNOWN"
+    },
+    {
+      "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/Quy 2.2025/18_Cty CP Sai gon Mui Ne 6Th_2025/bctc_6t_1.932.031.414.pdf",
+      "excel": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2025/Quy 2.2025/18_Cty CP Sai gon Mui Ne 6Th_2025/lctt_6t.xls",
+      "kind": "LCTT",
+      "company": "18",
+      "year": "2025",
+      "period": "6T",
+      "basis": "UNKNOWN",
+      "scope": "UNKNOWN"
+    },
+    {
+      "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/Quy 2.2025/27_Cty CP SXKD Hàng XK Tân Bình 6Th_2025/BCTC 6T ĐẦU NĂM 2025.pdf",
+      "excel": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2025/Quy 2.2025/27_Cty CP SXKD Hàng XK Tân Bình 6Th_2025/1 Can doi ke toan 06 thang dau 2025.xlsx",
+      "kind": "CDKT",
+      "company": "27",
+      "year": "2025",
+      "period": "6T",
+      "basis": "UNKNOWN",
+      "scope": "UNKNOWN"
+    },
+    {
+      "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/Quy 2.2025/27_Cty CP SXKD Hàng XK Tân Bình 6Th_2025/BCTC 6T ĐẦU NĂM 2025.pdf",
+      "excel": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2025/Quy 2.2025/27_Cty CP SXKD Hàng XK Tân Bình 6Th_2025/3 KQKD 6 thang 2025.xlsx",
+      "kind": "KQHDKD",
+      "company": "27",
+      "year": "2025",
+      "period": "6T",
+      "basis": "UNKNOWN",
+      "scope": "UNKNOWN"
+    },
+    {
+      "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/Quy 2.2025/27_Cty CP SXKD Hàng XK Tân Bình 6Th_2025/BCTC 6T ĐẦU NĂM 2025.pdf",
+      "excel": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2025/Quy 2.2025/27_Cty CP SXKD Hàng XK Tân Bình 6Th_2025/4 LCTT truc tiep 06 thang 2025.xlsx",
+      "kind": "LCTT",
+      "company": "27",
+      "year": "2025",
+      "period": "6T",
+      "basis": "UNKNOWN",
+      "scope": "UNKNOWN"
+    }
+  ]
+}

@@ -26,11 +26,32 @@ from tkinter import font as tkfont
 
 # cho phép chạy trực tiếp lẫn sau khi đóng gói
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from bctc import engine, ocr           # noqa: E402
 from version import __version__ as APP_VERSION   # noqa: E402
 
+# CỐ Ý KHÔNG import bctc.engine / bctc.ocr ở đây: chúng kéo theo fitz,
+# pytesseract và PIL (hàng chục MB) khiến cửa sổ chậm hiện ra. Nạp lười trong
+# _engine() ngay trước lúc thực sự cần.
+_ENGINE = None
+_OCR = None
+
+
+def _engine():
+    """Nạp lười lõi xử lý. Gọi từ luồng nền, không gọi lúc dựng giao diện."""
+    global _ENGINE, _OCR
+    if _ENGINE is None:
+        from bctc import engine as _e, ocr as _o
+        _ENGINE, _OCR = _e, _o
+    return _ENGINE
+
+
+def _ocr_mod():
+    if _OCR is None:
+        _engine()
+    return _OCR
+
+
 APP_TITLE = "BCTC PDF → Excel  •  Thông tư 200  •  v" + APP_VERSION
-MAX_FILES = engine.MAX_FILES
+MAX_FILES = 150          # giữ đồng bộ với bctc.engine.MAX_FILES
 EV_CONFIG = "<Configure>"
 LBL_PAUSE = "⏸  Tạm dừng"
 LBL_RETRY = "↻  Thử lại lỗi"
@@ -668,6 +689,12 @@ class App(tk.Tk):
         self._log_diagnostics()
         # bố cục xong -> hiện cửa sổ MỘT lần (tránh nhấp nháy lúc dựng giao diện)
         self.update_idletasks()
+        # Tắt splash của PyInstaller (nếu có) ngay khi giao diện sẵn sàng.
+        try:
+            import pyi_splash          # chỉ tồn tại trong bản đóng gói
+            pyi_splash.close()
+        except Exception:
+            pass
         self.deiconify()
         self.after(80, self._drain_queue)
         self.after(120, self._tick)
@@ -682,7 +709,17 @@ class App(tk.Tk):
             self._flog.info("Frozen=%s | exe=%s | MEIPASS=%s",
                             getattr(sys, "frozen", False), sys.executable,
                             getattr(sys, "_MEIPASS", None))
-            tess, td = ocr.locate_tesseract()
+        except Exception:
+            pass
+        # Phần Tesseract phải nạp pytesseract (kéo theo PIL, nặng) — chạy ở
+        # luồng nền để cửa sổ không phải chờ; chỉ ghi file log (an toàn luồng).
+        threading.Thread(target=self._log_tesseract_diagnostics,
+                         daemon=True).start()
+
+    def _log_tesseract_diagnostics(self):
+        """Phần chẩn đoán nặng, chạy ở luồng nền (không đụng widget Tk)."""
+        try:
+            tess, td = _ocr_mod().locate_tesseract()
             self._flog.info("Tesseract path = %s", tess)
             self._flog.info("tessdata dir   = %s", td)
             import pytesseract
@@ -997,14 +1034,32 @@ class App(tk.Tk):
             pass
 
     def _check_tesseract(self):
+        """Kiểm tra Tesseract ở luồng nền rồi báo kết quả qua msg_q.
+
+        Lần gọi đầu phải nạp pytesseract + PIL (nặng) — không được chặn
+        luồng giao diện, nhất là lúc dựng cửa sổ trong _build().
+        """
+        def _run():
+            try:
+                self.msg_q.put(("logt", self._tesseract_status()))
+            except Exception:
+                try:
+                    self._flog.error("Lỗi kiểm tra Tesseract:\n%s",
+                                     traceback.format_exc())
+                except Exception:
+                    pass
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _tesseract_status(self):
+        """Phần tính toán thuần (không đụng widget Tk) — an toàn ở luồng nền."""
+        o = _ocr_mod()
         try:
-            ocr.configure_tesseract()
-            if not ocr.has_vietnamese():
-                self._logln("⚠ Chưa có gói tiếng Việt (vie) cho Tesseract.", "warn")
-            else:
-                self._logln("✓ Tesseract + tiếng Việt sẵn sàng.", "ok")
-        except ocr.TesseractNotFound as e:
-            self._logln("✖ " + str(e), "err")
+            o.configure_tesseract()
+            if not o.has_vietnamese():
+                return ("⚠ Chưa có gói tiếng Việt (vie) cho Tesseract.", "warn")
+            return ("✓ Tesseract + tiếng Việt sẵn sàng.", "ok")
+        except o.TesseractNotFound as e:
+            return ("✖ " + str(e), "err")
 
     # --------------------------------------------------------------- thêm file
     def _add_paths(self, paths):
@@ -1281,7 +1336,7 @@ class App(tk.Tk):
                                 len(files), dpis, out_dir)
             except Exception:
                 pass
-            results = engine.convert_many(
+            results = _engine().convert_many(
                 files, out_dir, lang="vie", dpis=dpis, log=log, progress=prog,
                 on_file=on_file,
                 cancel=self._cancel.is_set,
@@ -1307,6 +1362,9 @@ class App(tk.Tk):
                 kind, payload = self.msg_q.get_nowait()
                 if kind == "log":
                     self._logln(payload)
+                elif kind == "logt":       # log kèm màu (từ luồng kiểm tra)
+                    text, tag = payload
+                    self._logln(text, tag)
                 elif kind == "prog":
                     done, total = payload
                     self.overall.set_frac(done / max(1, total))

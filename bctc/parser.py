@@ -16,9 +16,13 @@ from concurrent.futures import ThreadPoolExecutor
 
 from . import ocr
 from . import templates as T
+from . import textlayer
+from . import workers as W
 
 # số luồng OCR song song (mỗi luồng gọi 1 tiến trình tesseract riêng)
-MAX_WORKERS = max(2, min(8, (os.cpu_count() or 4)))
+# Số luồng OCR mặc định (chế độ Cân bằng — chừa headroom cho giao diện/HĐH).
+# Truyền tham số `workers` xuống các hàm để đổi lúc chạy mà không nạp lại module.
+MAX_WORKERS = W.worker_count()
 
 
 # ----------------------------------------------------------------------
@@ -402,6 +406,15 @@ def _scan_strip(doc, i, lang, scan_dpi):
     """OCR dải đầu 1 trang -> (i, title_key_or_None)."""
     from PIL import Image
     page = doc[i]
+
+    if getattr(doc, "_bctc_dung_lop_text", False):
+        # Có lớp text tin cậy -> lấy chữ ở dải đầu trang, khỏi OCR.
+        gioi_han = page.rect.y0 + (page.rect.y1 - page.rect.y0) * 0.42
+        line_texts = [" ".join(w["text"] for w in ln)
+                      for ln in textlayer.page_lines(page)
+                      if ln and ln[0]["top"] <= gioi_han]
+        return i, heading_in_lines(line_texts)
+
     pix = page.get_pixmap(dpi=scan_dpi, clip=fitz_rect(page, top_frac=0.42))
     img = ocr.preprocess(Image.frombytes("RGB", (pix.width, pix.height), pix.samples))
     _, _, lines = ocr.ocr_lines(img, lang=lang, psm=6, min_conf=20)
@@ -409,19 +422,28 @@ def _scan_strip(doc, i, lang, scan_dpi):
     return i, heading_in_lines(line_texts)
 
 
-def locate_pages(doc, lang="vie", scan_dpi=135, page_range=None, log=lambda *_: None):
+def locate_pages(doc, lang="vie", scan_dpi=135, page_range=None, log=lambda *_: None,
+                 workers=None):
     """
     Quét dải đầu mỗi trang theo từng BATCH song song, dừng sớm khi đã tìm đủ
     cả 3 báo cáo và batch tiếp theo không còn trang báo cáo nào.
     """
+    nw = workers or MAX_WORKERS
+    # Chỉ tính cờ lớp text khi CHƯA đặt. Lượt thử-lại-bằng-OCR đặt cờ False
+    # một cách chủ đích — định vị lại không được lật ngược nó về True.
+    if getattr(doc, "_bctc_dung_lop_text", None) is None:
+        try:
+            doc._bctc_dung_lop_text = textlayer.is_usable(doc)
+        except Exception:
+            pass
     lo, hi = (page_range or (0, doc.page_count))
     lo, hi = max(0, lo), min(doc.page_count, hi)
     pages = list(range(lo, hi))
 
     scope, found = [], set()
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
-        for b in range(0, len(pages), MAX_WORKERS):
-            chunk = pages[b:b + MAX_WORKERS]
+    with ThreadPoolExecutor(max_workers=nw) as ex:
+        for b in range(0, len(pages), nw):
+            chunk = pages[b:b + nw]
             res = sorted(ex.map(lambda i: _scan_strip(doc, i, lang, scan_dpi), chunk))
             had_stmt = False
             for i, title in res:
@@ -444,7 +466,7 @@ def fitz_rect(page, top_frac=0.34):
 # Trích xuất đầy đủ 3 báo cáo
 # ----------------------------------------------------------------------
 def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
-            scope=None, digit_pass=False):
+            scope=None, digit_pass=False, workers=None):
     """
     Trả về:
         results : {stmt_key: {code: (cur, prior)}}
@@ -459,7 +481,8 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
     (re-OCR whitelist trên CROP ô nghi ngờ — cách dùng đúng hơn).
     """
     if scope is None:
-        scope = locate_pages(doc, lang=lang, page_range=page_range, log=log)
+        scope = locate_pages(doc, lang=lang, page_range=page_range, log=log,
+                             workers=workers)
     results = {k: {} for k in T.STATEMENTS}
     warnings = []
     if not scope:
@@ -481,30 +504,45 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
     current = None
     from PIL import Image
 
-    # render (tuần tự) rồi OCR (song song) các trang đã định vị
-    rendered = []
-    for p in pages:
-        pix = doc[p].get_pixmap(dpi=dpi)
-        rendered.append((p, Image.frombytes("RGB", (pix.width, pix.height), pix.samples)))
+    dung_lop_text = getattr(doc, "_bctc_dung_lop_text", None)
+    if dung_lop_text is None:
+        dung_lop_text = textlayer.is_usable(doc)
+        try:
+            doc._bctc_dung_lop_text = dung_lop_text
+        except Exception:
+            pass
 
-    def _ocr(item):
-        p, img = item
-        _, _, lines = ocr.ocr_lines(ocr.preprocess(img), lang=lang, psm=6, min_conf=25)
-        return p, lines
-
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
-        page_lines = dict(ex.map(_ocr, rendered))
-
-    # PASS CHỈ-CHỮ-SỐ (B-A1): OCR lại trang với whitelist số -> token số sạch hơn.
     page_digits = {p: [] for p in pages}
-    if digit_pass:
-        def _ocr_digits(item):
+    if dung_lop_text:
+        # Lớp text tin cậy -> đọc thẳng, không OCR (và không cần pass chữ-số).
+        # Chính xác tuyệt đối và gần như không tốn CPU.
+        log("   ⚡ Dùng lớp text sẵn có (bỏ qua OCR)")
+        page_lines = {p: textlayer.page_lines(doc[p]) for p in pages}
+    else:
+        nw = workers or MAX_WORKERS
+        # render (tuần tự) rồi OCR (song song) các trang đã định vị
+        rendered = []
+        for p in pages:
+            pix = doc[p].get_pixmap(dpi=dpi)
+            rendered.append((p, Image.frombytes("RGB", (pix.width, pix.height), pix.samples)))
+
+        def _ocr(item):
             p, img = item
-            _, _, dlines = ocr.ocr_lines(ocr.preprocess(img), lang=lang, psm=6,
-                                         min_conf=0, whitelist=DIGIT_WHITELIST)
-            return p, [wd for ln in dlines for wd in ln]
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
-            page_digits = dict(ex.map(_ocr_digits, rendered))
+            _, _, lines = ocr.ocr_lines(ocr.preprocess(img), lang=lang, psm=6, min_conf=25)
+            return p, lines
+
+        with ThreadPoolExecutor(max_workers=nw) as ex:
+            page_lines = dict(ex.map(_ocr, rendered))
+
+        # PASS CHỈ-CHỮ-SỐ (B-A1): OCR lại trang với whitelist số -> token số sạch hơn.
+        if digit_pass:
+            def _ocr_digits(item):
+                p, img = item
+                _, _, dlines = ocr.ocr_lines(ocr.preprocess(img), lang=lang, psm=6,
+                                             min_conf=0, whitelist=DIGIT_WHITELIST)
+                return p, [wd for ln in dlines for wd in ln]
+            with ThreadPoolExecutor(max_workers=nw) as ex:
+                page_digits = dict(ex.map(_ocr_digits, rendered))
 
     # ---- Lượt 1: gán mỗi dòng vào đúng báo cáo ----
     # Mỗi trang đã được locate gán 1 báo cáo (đáng tin); dùng làm mốc đầu trang,
@@ -560,40 +598,69 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
 
 def extract_consensus(doc, lang="vie", dpis=(185, 240), page_range=None,
                       log=lambda *_: None, on_pass=lambda done, total: None,
-                      digit_pass=False):
+                      digit_pass=False, workers=None):
     """
     Chạy bóc tách ở NHIỀU độ phân giải rồi hợp nhất để giảm lỗi OCR:
       - DPI đầu tiên là CHÍNH (thực nghiệm cho kết quả tốt & ổn định nhất);
       - các DPI sau chỉ ĐIỀN vào ô còn trống, KHÔNG ghi đè giá trị đã có
         (tránh mang lỗi của DPI cao vào);
       - ô nào hai lần đọc ra số KHÁC nhau -> ghi nhận 'nghi ngờ' để soát lại.
+    Đường text phải TỰ CHỨNG MINH nó cho ra số liệu: nếu không bóc được giá
+    trị nào thì quay về OCR (đúng một lần) — lớp text không bao giờ được làm
+    dữ liệu tệ đi.
     Trả về: results, warnings, meta, conflicts
     """
-    merged = {k: {} for k in T.STATEMENTS}
-    conflicts = []
-    base_warnings, base_meta = [], {}
-    # Định vị trang MỘT LẦN rồi tái dùng cho mọi DPI: locate_pages quét dải đầu ở
-    # scan_dpi cố định (135), không phụ thuộc DPI render -> chạy lại mỗi DPI là thừa.
-    scope = locate_pages(doc, lang=lang, page_range=page_range, log=log)
-    for idx, dpi in enumerate(dpis):
-        primary = (idx == 0)
-        res, warns, meta = extract(
-            doc, lang=lang, dpi=dpi, page_range=page_range,
-            log=(log if primary else (lambda *_: None)), scope=scope,
-            digit_pass=digit_pass)
-        if primary:
-            base_warnings, base_meta = warns, meta
-        for key in res:
-            for code, (cur, prior) in res[key].items():
-                if code not in merged[key]:
-                    merged[key][code] = (cur, prior)
-                    continue
-                ecur, eprior = merged[key][code]
-                if ecur is not None and cur is not None and ecur != cur:
-                    conflicts.append((key, code, "cuối năm/năm nay", ecur, cur))
-                if eprior is not None and prior is not None and eprior != prior:
-                    conflicts.append((key, code, "đầu năm/năm trước", eprior, prior))
-                merged[key][code] = (ecur if ecur is not None else cur,
-                                     eprior if eprior is not None else prior)
-        on_pass(idx + 1, len(dpis))
+
+    def _mot_luot():
+        """Một lượt trọn vẹn: định vị + bóc tách mọi DPI + hợp nhất."""
+        merged = {k: {} for k in T.STATEMENTS}
+        conflicts = []
+        base_warnings, base_meta = [], {}
+
+        # Định vị MỘT lần rồi dùng chung cho mọi lượt DPI: kết quả tất định,
+        # quét lại chỉ tốn thêm (số_DPI - 1) x số_trang lượt OCR mà không đổi gì.
+        scope = locate_pages(doc, lang=lang, page_range=page_range, log=log,
+                             workers=workers)
+
+        for idx, dpi in enumerate(dpis):
+            primary = (idx == 0)
+            res, warns, meta = extract(
+                doc, lang=lang, dpi=dpi, page_range=page_range,
+                log=(log if primary else (lambda *_: None)), scope=scope,
+                digit_pass=digit_pass, workers=workers)
+            if primary:
+                base_warnings, base_meta = warns, meta
+            for key in res:
+                for code, (cur, prior) in res[key].items():
+                    if code not in merged[key]:
+                        merged[key][code] = (cur, prior)
+                        continue
+                    ecur, eprior = merged[key][code]
+                    if ecur is not None and cur is not None and ecur != cur:
+                        conflicts.append((key, code, "cuối năm/năm nay", ecur, cur))
+                    if eprior is not None and prior is not None and eprior != prior:
+                        conflicts.append((key, code, "đầu năm/năm trước", eprior, prior))
+                    merged[key][code] = (ecur if ecur is not None else cur,
+                                         eprior if eprior is not None else prior)
+            on_pass(idx + 1, len(dpis))
+        return merged, base_warnings, base_meta, conflicts
+
+    merged, base_warnings, base_meta, conflicts = _mot_luot()
+
+    # Lớp text tuy qua được bộ lọc chất lượng nhưng vẫn có thể không cho parser
+    # bóc ra giá trị nào (hình học dòng/cột lệch chuẩn, thậm chí không định vị
+    # nổi trang). Khi đó quay về OCR thay vì trả kết quả trống. Cấu trúc thẳng
+    # dòng (không đệ quy) nên chỉ thử lại ĐÚNG MỘT lần.
+    khong_co_gia_tri = not any(
+        v is not None
+        for bang in merged.values()
+        for cap in bang.values()
+        for v in cap)
+    if getattr(doc, "_bctc_dung_lop_text", False) and khong_co_gia_tri:
+        log("   ↻ Lớp text không cho ra số liệu — thử lại bằng OCR.")
+        try:
+            doc._bctc_dung_lop_text = False
+        except Exception:
+            pass
+        merged, base_warnings, base_meta, conflicts = _mot_luot()
     return merged, base_warnings, base_meta, conflicts

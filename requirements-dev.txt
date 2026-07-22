@@ -1,0 +1,3 @@
+# Chỉ dùng cho phát triển/kiểm thử. KHÔNG được import trong bctc/ hay app.py.
+pytest>=7.4
+xlrd>=2.0.1          # đọc file .xls định dạng BIFF cũ (114/173 file đáp án)

@@ -10,6 +10,8 @@ import fitz
 from . import ocr
 from . import parser
 from . import excel_writer
+from . import workers as W
+from . import dedup
 
 MAX_FILES = 150
 
@@ -43,7 +45,8 @@ def _check_balance(cdkt):
 
 
 def convert_pdf(pdf_path, out_dir, lang="vie", dpis=(180, 235), log=lambda *_: None,
-                file_progress=lambda frac: None, cancel=lambda: False):
+                file_progress=lambda frac: None, cancel=lambda: False,
+                mode=W.MODE_BALANCED):
     name = os.path.splitext(os.path.basename(pdf_path))[0]
     log(f"▶ {name}")
     if cancel():
@@ -58,7 +61,8 @@ def convert_pdf(pdf_path, out_dir, lang="vie", dpis=(180, 235), log=lambda *_: N
         file_progress(0.05 + 0.88 * done / max(1, total))
 
     results, warnings, _, conflicts = parser.extract_consensus(
-        doc, lang=lang, dpis=dpis, log=log, on_pass=_on_pass)
+        doc, lang=lang, dpis=dpis, log=log, on_pass=_on_pass,
+        workers=W.worker_count(mode))
     doc.close()
     file_progress(0.95)
 
@@ -74,13 +78,29 @@ def convert_pdf(pdf_path, out_dir, lang="vie", dpis=(180, 235), log=lambda *_: N
         "pdf": pdf_path, "name": name, "out_path": out_path,
         "rows": n_rows, "warnings": warnings, "checks": checks,
         "conflicts": conflicts,
+        "results": results,          # <-- THÊM: phục vụ bộ đo hồi quy
     }
+
+
+def _luu_ban_sao(pdf_path, out_dir, ket_qua_goc, log):
+    """Ghi lại kết quả của file gốc dưới tên của file trùng nội dung."""
+    name = os.path.splitext(os.path.basename(pdf_path))[0]
+    out_path = os.path.join(out_dir, name + ".xlsx")
+    excel_writer.save(name, ket_qua_goc["results"], out_path,
+                      conflicts=ket_qua_goc.get("conflicts"))
+    log("↩ %s — trùng nội dung với %s, dùng lại kết quả."
+        % (name, ket_qua_goc["name"]))
+    r = dict(ket_qua_goc)
+    r.update({"pdf": pdf_path, "name": name, "out_path": out_path,
+              "trung_voi": ket_qua_goc["name"]})
+    return r
 
 
 def convert_many(pdf_paths, out_dir, lang="vie", dpis=(180, 235),
                  log=lambda *_: None, progress=lambda done, total: None,
                  on_file=lambda index, event, data: None,
-                 cancel=lambda: False, pause_wait=lambda: None):
+                 cancel=lambda: False, pause_wait=lambda: None,
+                 mode=W.MODE_BALANCED):
     """
     on_file(index, event, data) báo trạng thái từng file cho giao diện:
         event="start"     data=None
@@ -104,6 +124,14 @@ def convert_many(pdf_paths, out_dir, lang="vie", dpis=(180, 235),
     os.makedirs(out_dir, exist_ok=True)
     out = []
     total = len(pdf_paths)
+
+    # File trùng nội dung chỉ xử lý một lần rồi chép kết quả sang tên còn lại.
+    _, ban_sao = dedup.group_duplicates(pdf_paths)
+    ket_qua_theo_file = {}
+    if ban_sao:
+        log("↩ Phát hiện %d file trùng nội dung — sẽ dùng lại kết quả."
+            % len(ban_sao))
+
     for i, p in enumerate(pdf_paths):
         pause_wait()                 # chặn nếu đang tạm dừng
         if cancel():                 # dừng hẳn trước khi sang file mới
@@ -112,9 +140,14 @@ def convert_many(pdf_paths, out_dir, lang="vie", dpis=(180, 235),
             break
         on_file(i, "start", None)
         try:
-            r = convert_pdf(p, out_dir, lang=lang, dpis=dpis, log=log,
-                            file_progress=lambda frac, i=i: on_file(i, "progress", frac),
-                            cancel=cancel)
+            goc = ban_sao.get(p)
+            if goc is not None and goc in ket_qua_theo_file:
+                r = _luu_ban_sao(p, out_dir, ket_qua_theo_file[goc], log)
+            else:
+                r = convert_pdf(p, out_dir, lang=lang, dpis=dpis, log=log,
+                                file_progress=lambda frac, i=i: on_file(i, "progress", frac),
+                                cancel=cancel, mode=mode)
+                ket_qua_theo_file[p] = r
             on_file(i, "done", r)
             out.append(r)
         except Cancelled:
