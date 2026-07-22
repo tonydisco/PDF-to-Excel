@@ -10,6 +10,7 @@ import fitz
 from . import ocr
 from . import parser
 from . import excel_writer
+from . import workers as W
 
 MAX_FILES = 150
 
@@ -43,7 +44,8 @@ def _check_balance(cdkt):
 
 
 def convert_pdf(pdf_path, out_dir, lang="vie", dpis=(180, 235), log=lambda *_: None,
-                file_progress=lambda frac: None, cancel=lambda: False):
+                file_progress=lambda frac: None, cancel=lambda: False,
+                mode=W.MODE_BALANCED):
     name = os.path.splitext(os.path.basename(pdf_path))[0]
     log(f"▶ {name}")
     if cancel():
@@ -58,7 +60,8 @@ def convert_pdf(pdf_path, out_dir, lang="vie", dpis=(180, 235), log=lambda *_: N
         file_progress(0.05 + 0.88 * done / max(1, total))
 
     results, warnings, _, conflicts = parser.extract_consensus(
-        doc, lang=lang, dpis=dpis, log=log, on_pass=_on_pass)
+        doc, lang=lang, dpis=dpis, log=log, on_pass=_on_pass,
+        workers=W.worker_count(mode))
     doc.close()
     file_progress(0.95)
 
@@ -81,7 +84,8 @@ def convert_pdf(pdf_path, out_dir, lang="vie", dpis=(180, 235), log=lambda *_: N
 def convert_many(pdf_paths, out_dir, lang="vie", dpis=(180, 235),
                  log=lambda *_: None, progress=lambda done, total: None,
                  on_file=lambda index, event, data: None,
-                 cancel=lambda: False, pause_wait=lambda: None):
+                 cancel=lambda: False, pause_wait=lambda: None,
+                 mode=W.MODE_BALANCED):
     """
     on_file(index, event, data) báo trạng thái từng file cho giao diện:
         event="start"     data=None
@@ -115,7 +119,7 @@ def convert_many(pdf_paths, out_dir, lang="vie", dpis=(180, 235),
         try:
             r = convert_pdf(p, out_dir, lang=lang, dpis=dpis, log=log,
                             file_progress=lambda frac, i=i: on_file(i, "progress", frac),
-                            cancel=cancel)
+                            cancel=cancel, mode=mode)
             on_file(i, "done", r)
             out.append(r)
         except Cancelled:

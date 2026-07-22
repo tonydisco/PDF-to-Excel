@@ -24,7 +24,7 @@ def test_extract_consensus_chi_goi_locate_pages_mot_lan(monkeypatch):
         calls.append(1)
         return []
 
-    def fake_extract(doc, lang="vie", dpi=300, page_range=None, digit_pass=False,
+    def fake_extract(doc, lang="vie", dpi=300, page_range=None, digit_pass=False, workers=None,
                      log=lambda *_: None, scope=None):
         if scope is None:
             fake_locate(doc)

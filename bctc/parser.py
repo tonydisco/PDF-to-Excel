@@ -16,9 +16,12 @@ from concurrent.futures import ThreadPoolExecutor
 
 from . import ocr
 from . import templates as T
+from . import workers as W
 
 # số luồng OCR song song (mỗi luồng gọi 1 tiến trình tesseract riêng)
-MAX_WORKERS = max(2, min(8, (os.cpu_count() or 4)))
+# Số luồng OCR mặc định (chế độ Cân bằng — chừa headroom cho giao diện/HĐH).
+# Truyền tham số `workers` xuống các hàm để đổi lúc chạy mà không nạp lại module.
+MAX_WORKERS = W.worker_count()
 
 
 # ----------------------------------------------------------------------
@@ -409,19 +412,21 @@ def _scan_strip(doc, i, lang, scan_dpi):
     return i, heading_in_lines(line_texts)
 
 
-def locate_pages(doc, lang="vie", scan_dpi=135, page_range=None, log=lambda *_: None):
+def locate_pages(doc, lang="vie", scan_dpi=135, page_range=None, log=lambda *_: None,
+                 workers=None):
     """
     Quét dải đầu mỗi trang theo từng BATCH song song, dừng sớm khi đã tìm đủ
     cả 3 báo cáo và batch tiếp theo không còn trang báo cáo nào.
     """
+    nw = workers or MAX_WORKERS
     lo, hi = (page_range or (0, doc.page_count))
     lo, hi = max(0, lo), min(doc.page_count, hi)
     pages = list(range(lo, hi))
 
     scope, found = [], set()
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
-        for b in range(0, len(pages), MAX_WORKERS):
-            chunk = pages[b:b + MAX_WORKERS]
+    with ThreadPoolExecutor(max_workers=nw) as ex:
+        for b in range(0, len(pages), nw):
+            chunk = pages[b:b + nw]
             res = sorted(ex.map(lambda i: _scan_strip(doc, i, lang, scan_dpi), chunk))
             had_stmt = False
             for i, title in res:
@@ -444,7 +449,7 @@ def fitz_rect(page, top_frac=0.34):
 # Trích xuất đầy đủ 3 báo cáo
 # ----------------------------------------------------------------------
 def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
-            scope=None, digit_pass=False):
+            scope=None, digit_pass=False, workers=None):
     """
     Trả về:
         results : {stmt_key: {code: (cur, prior)}}
@@ -459,7 +464,8 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
     (re-OCR whitelist trên CROP ô nghi ngờ — cách dùng đúng hơn).
     """
     if scope is None:
-        scope = locate_pages(doc, lang=lang, page_range=page_range, log=log)
+        scope = locate_pages(doc, lang=lang, page_range=page_range, log=log,
+                             workers=workers)
     results = {k: {} for k in T.STATEMENTS}
     warnings = []
     if not scope:
@@ -487,12 +493,14 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
         pix = doc[p].get_pixmap(dpi=dpi)
         rendered.append((p, Image.frombytes("RGB", (pix.width, pix.height), pix.samples)))
 
+    nw = workers or MAX_WORKERS
+
     def _ocr(item):
         p, img = item
         _, _, lines = ocr.ocr_lines(ocr.preprocess(img), lang=lang, psm=6, min_conf=25)
         return p, lines
 
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
+    with ThreadPoolExecutor(max_workers=nw) as ex:
         page_lines = dict(ex.map(_ocr, rendered))
 
     # PASS CHỈ-CHỮ-SỐ (B-A1): OCR lại trang với whitelist số -> token số sạch hơn.
@@ -503,7 +511,7 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
             _, _, dlines = ocr.ocr_lines(ocr.preprocess(img), lang=lang, psm=6,
                                          min_conf=0, whitelist=DIGIT_WHITELIST)
             return p, [wd for ln in dlines for wd in ln]
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
+        with ThreadPoolExecutor(max_workers=nw) as ex:
             page_digits = dict(ex.map(_ocr_digits, rendered))
 
     # ---- Lượt 1: gán mỗi dòng vào đúng báo cáo ----
@@ -560,7 +568,7 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
 
 def extract_consensus(doc, lang="vie", dpis=(185, 240), page_range=None,
                       log=lambda *_: None, on_pass=lambda done, total: None,
-                      digit_pass=False):
+                      digit_pass=False, workers=None):
     """
     Chạy bóc tách ở NHIỀU độ phân giải rồi hợp nhất để giảm lỗi OCR:
       - DPI đầu tiên là CHÍNH (thực nghiệm cho kết quả tốt & ổn định nhất);
@@ -574,13 +582,14 @@ def extract_consensus(doc, lang="vie", dpis=(185, 240), page_range=None,
     base_warnings, base_meta = [], {}
     # Định vị trang MỘT LẦN rồi tái dùng cho mọi DPI: locate_pages quét dải đầu ở
     # scan_dpi cố định (135), không phụ thuộc DPI render -> chạy lại mỗi DPI là thừa.
-    scope = locate_pages(doc, lang=lang, page_range=page_range, log=log)
+    scope = locate_pages(doc, lang=lang, page_range=page_range, log=log,
+                         workers=workers)
     for idx, dpi in enumerate(dpis):
         primary = (idx == 0)
         res, warns, meta = extract(
             doc, lang=lang, dpi=dpi, page_range=page_range,
             log=(log if primary else (lambda *_: None)), scope=scope,
-            digit_pass=digit_pass)
+            digit_pass=digit_pass, workers=workers)
         if primary:
             base_warnings, base_meta = warns, meta
         for key in res:
