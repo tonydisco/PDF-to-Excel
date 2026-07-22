@@ -11,6 +11,7 @@ from . import ocr
 from . import parser
 from . import excel_writer
 from . import workers as W
+from . import dedup
 
 MAX_FILES = 150
 
@@ -81,6 +82,20 @@ def convert_pdf(pdf_path, out_dir, lang="vie", dpis=(180, 235), log=lambda *_: N
     }
 
 
+def _luu_ban_sao(pdf_path, out_dir, ket_qua_goc, log):
+    """Ghi lại kết quả của file gốc dưới tên của file trùng nội dung."""
+    name = os.path.splitext(os.path.basename(pdf_path))[0]
+    out_path = os.path.join(out_dir, name + ".xlsx")
+    excel_writer.save(name, ket_qua_goc["results"], out_path,
+                      conflicts=ket_qua_goc.get("conflicts"))
+    log("↩ %s — trùng nội dung với %s, dùng lại kết quả."
+        % (name, ket_qua_goc["name"]))
+    r = dict(ket_qua_goc)
+    r.update({"pdf": pdf_path, "name": name, "out_path": out_path,
+              "trung_voi": ket_qua_goc["name"]})
+    return r
+
+
 def convert_many(pdf_paths, out_dir, lang="vie", dpis=(180, 235),
                  log=lambda *_: None, progress=lambda done, total: None,
                  on_file=lambda index, event, data: None,
@@ -109,6 +124,14 @@ def convert_many(pdf_paths, out_dir, lang="vie", dpis=(180, 235),
     os.makedirs(out_dir, exist_ok=True)
     out = []
     total = len(pdf_paths)
+
+    # File trùng nội dung chỉ xử lý một lần rồi chép kết quả sang tên còn lại.
+    _, ban_sao = dedup.group_duplicates(pdf_paths)
+    ket_qua_theo_file = {}
+    if ban_sao:
+        log("↩ Phát hiện %d file trùng nội dung — sẽ dùng lại kết quả."
+            % len(ban_sao))
+
     for i, p in enumerate(pdf_paths):
         pause_wait()                 # chặn nếu đang tạm dừng
         if cancel():                 # dừng hẳn trước khi sang file mới
@@ -117,9 +140,14 @@ def convert_many(pdf_paths, out_dir, lang="vie", dpis=(180, 235),
             break
         on_file(i, "start", None)
         try:
-            r = convert_pdf(p, out_dir, lang=lang, dpis=dpis, log=log,
-                            file_progress=lambda frac, i=i: on_file(i, "progress", frac),
-                            cancel=cancel, mode=mode)
+            goc = ban_sao.get(p)
+            if goc is not None and goc in ket_qua_theo_file:
+                r = _luu_ban_sao(p, out_dir, ket_qua_theo_file[goc], log)
+            else:
+                r = convert_pdf(p, out_dir, lang=lang, dpis=dpis, log=log,
+                                file_progress=lambda frac, i=i: on_file(i, "progress", frac),
+                                cancel=cancel, mode=mode)
+                ket_qua_theo_file[p] = r
             on_file(i, "done", r)
             out.append(r)
         except Cancelled:
