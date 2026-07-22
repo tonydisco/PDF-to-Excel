@@ -572,8 +572,42 @@ def assign_value_tokens(lines, digit_tokens, tol=DIGIT_BAND_TOL):
 # ----------------------------------------------------------------------
 # Định vị các trang chứa báo cáo (quét nhanh dải đầu trang)
 # ----------------------------------------------------------------------
+# V1 Đợt 2: CĐKT/LCTT dài 2-3 trang nhưng trang TIẾP DIỄN không lặp tiêu đề
+# nên trước đây bị vứt vĩnh viễn (BCTC 6T Tân Bình mất CĐKT p4-p5, LCTT p8 —
+# docs/superpowers/plans/chan-doan-dot-2.md §1). Sau khi định vị, scope được
+# mở rộng: trang nằm giữa một trang báo cáo và mốc kế tiếp thuộc về báo cáo
+# đứng TRƯỚC nó, có trần số trang để chặn chi phí.
+TRAN_TIEP_DIEN = 3          # trần số trang tiếp diễn cho MỖI báo cáo
+
+# Cụm nhận trang mở đầu phần THUYẾT MINH (mốc dừng mở rộng) trong MỘT dòng
+# ngắn. KHÔNG dùng chữ "thuyết minh" trơ trọi: header bảng của chính trang
+# báo cáo (và trang tiếp diễn) có CỘT 'Thuyết minh' sẽ dính oan.
+_DUNG_THUYET_MINH = ("ban thuyet minh", "notes to the financial statements")
+
+
+def _dau_hieu_dung(line_texts):
+    """Dấu hiệu DỪNG mở rộng scope trên dải đầu trang.
+
+    Trả 'thuyet minh' (trang mở đầu phần thuyết minh), 'muc luc', hoặc None.
+    Tiêu đề thuyết minh là DÒNG NGẮN chứa cả cụm 'thuyết minh' lẫn 'báo cáo
+    tài chính' (hoặc 'bản thuyết minh' / bản tiếng Anh); câu văn dài kiểu
+    'Các thuyết minh ... là bộ phận hợp thành của báo cáo tài chính này'
+    (chân trang báo cáo) không tính.
+    """
+    lines_norm = [norm(t) for t in line_texts]
+    if any("muc luc" in nl for nl in lines_norm):
+        return "muc luc"
+    for nl in lines_norm:
+        if len(nl.split()) > MAX_HEADING_WORDS:
+            continue
+        if ("thuyet minh" in nl and "bao cao tai chinh" in nl) \
+                or any(p in nl for p in _DUNG_THUYET_MINH):
+            return "thuyet minh"
+    return None
+
+
 def _scan_strip(doc, i, lang, scan_dpi):
-    """OCR dải đầu 1 trang -> (i, title_key_or_None)."""
+    """OCR dải đầu 1 trang -> (i, tiêu đề báo cáo | None, dấu hiệu dừng | None)."""
     from PIL import Image
     page = doc[i]
 
@@ -583,13 +617,48 @@ def _scan_strip(doc, i, lang, scan_dpi):
         line_texts = [" ".join(w["text"] for w in ln)
                       for ln in textlayer.page_lines(page)
                       if ln and ln[0]["top"] <= gioi_han]
-        return i, heading_in_lines(line_texts)
+        return i, heading_in_lines(line_texts), _dau_hieu_dung(line_texts)
 
     pix = page.get_pixmap(dpi=scan_dpi, clip=fitz_rect(page, top_frac=0.42))
     img = ocr.preprocess(Image.frombytes("RGB", (pix.width, pix.height), pix.samples))
     _, _, lines = ocr.ocr_lines(img, lang=lang, psm=6, min_conf=20)
     line_texts = [" ".join(w["text"] for w in ln) for ln in lines]
-    return i, heading_in_lines(line_texts)
+    return i, heading_in_lines(line_texts), _dau_hieu_dung(line_texts)
+
+
+def _mo_rong_tiep_dien(doc, scope, quet, lang, scan_dpi, hi, log):
+    """Gán trang TIẾP DIỄN (không lặp tiêu đề) vào báo cáo đứng trước nó.
+
+    Mốc dừng cho mỗi báo cáo đã định vị: (a) trang tiêu đề kế tiếp — kể cả
+    tiêu đề chỉ lộ ra khi quét thêm sau điểm dừng sớm; (b) trang thuyết minh
+    / mục lục (dấu hiệu trên dải đầu); (c) trần TRAN_TIEP_DIEN trang. KHÔNG
+    lọc theo mật độ mã số: trang không có mã vào scope cũng vô hại vì lượt 2
+    của extract chỉ map mã thuộc khung chuẩn — trần (c) đã chặn chi phí.
+
+    Quyết định mở rộng chỉ dùng quét DẢI ĐẦU giá rẻ: trang đã quét trong vòng
+    batch được tái dùng qua `quet` (trang -> (tiêu đề, dấu hiệu)), chỉ trang
+    CHƯA quét (nằm sau điểm dừng sớm) mới được quét thêm. Giữ nguyên hình
+    dạng trả về [(trang, nhãn báo cáo)] và thứ tự trang tăng dần — mọi tầng
+    dưới (extract lượt 1, sidecar) không phải đổi gì.
+    """
+    if not scope:
+        return scope
+    ket = []
+    for idx, (p, t) in enumerate(scope):
+        ket.append((p, t))
+        # biên phải: trang tiêu đề kế tiếp đã định vị, hoặc hết vùng quét
+        bien = scope[idx + 1][0] if idx + 1 < len(scope) else hi
+        for q in range(p + 1, min(p + 1 + TRAN_TIEP_DIEN, bien)):
+            if q in quet:
+                title_q, dau_hieu = quet[q]
+            else:
+                _, title_q, dau_hieu = _scan_strip(doc, q, lang, scan_dpi)
+                quet[q] = (title_q, dau_hieu)
+            if title_q or dau_hieu:
+                break               # gặp mốc dừng -> trang đó không thuộc t
+            ket.append((q, t))
+            log(f"   + trang {q+1}: tiếp diễn {t}")
+    return ket
 
 
 def locate_pages(doc, lang="vie", scan_dpi=135, page_range=None, log=lambda *_: None,
@@ -611,19 +680,23 @@ def locate_pages(doc, lang="vie", scan_dpi=135, page_range=None, log=lambda *_: 
     pages = list(range(lo, hi))
 
     scope, found = [], set()
+    quet = {}          # trang -> (tiêu đề, dấu hiệu dừng): tái dùng khi mở rộng
     with ThreadPoolExecutor(max_workers=nw) as ex:
         for b in range(0, len(pages), nw):
             chunk = pages[b:b + nw]
             res = sorted(ex.map(lambda i: _scan_strip(doc, i, lang, scan_dpi), chunk))
             had_stmt = False
-            for i, title in res:
+            for i, title, dau_hieu in res:
+                quet[i] = (title, dau_hieu)
                 if title:
                     scope.append((i, title)); found.add(title); had_stmt = True
                     log(f"   • trang {i+1}: {title}")
             # đã đủ 3 báo cáo và batch này không còn -> dừng (đã sang phần thuyết minh)
             if len(found) >= 3 and not had_stmt and scope:
                 break
-    return scope
+    # V1: trang tiếp diễn không lặp tiêu đề — mở rộng SAU vòng batch để cơ chế
+    # dừng sớm giữ nguyên; chỉ dùng kết quả quét dải giá rẻ đã có.
+    return _mo_rong_tiep_dien(doc, scope, quet, lang, scan_dpi, hi, log)
 
 
 def fitz_rect(page, top_frac=0.34):
