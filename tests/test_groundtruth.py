@@ -346,6 +346,255 @@ def test_year_marker_nhap_nhang_tra_ve_none(text, expected):
     assert G._year_marker(text) == expected
 
 
+# ---------------------------------------------------------------------------
+# Defect 6 (Đợt 2): hàng đánh số '1..5' nằm trên Ô MERGE nên marker '4'/'5'
+# có thể lệch 1 cột so với cột giá trị thật. Ba file thật đã xác nhận (xem
+# .superpowers/sdd/dot2-chan-doan-report.md §4):
+#   - 'KQKD_2023.xls' (SGMN 2023): marker '4','5' ở c9/c11 nhưng giá trị ở
+#     c8/c10 -> key 20 mã bị đọc thành toàn (None, None), 14 ô parser trích
+#     ĐÚNG bị đếm "thừa".
+#   - 'cdkt_6t.xls' (SGMN 6T/2025) và 'CDKT Q2.xls' (SGMN Q2/2022): marker
+#     '5' ở cột RỖNG (c12/c9), cột Kỳ-trước thật ở kề trái (c11/c8) -> mất
+#     NGUYÊN cột năm trước (~47-115 ô đáp án mỗi file).
+# Từ nay: sau khi neo cột theo hàng đánh số phải XÁC MINH cột được chọn có ô
+# số thật trên các hàng có mã; cột rỗng thì dò 2 cột kề (trái/phải), lấy cột
+# nhiều ô số hơn, hoà thì ưu tiên TRÁI (bằng chứng corpus: marker merge nằm
+# bên phải cột giá trị).
+# ---------------------------------------------------------------------------
+def _rows_hang_danh_so_marker_lech_phai_do_merged_cell():
+    """
+    Mô phỏng thu nhỏ KQKD_2023.xls: numbering row có marker '4' ở c9 và '5' ở
+    c11 (ô merge), trong khi giá trị Kỳ này/Kỳ trước thật nằm ở c8/c10; c9 và
+    c11 rỗng hoàn toàn; c12 là cột Lũy kế (trùng Kỳ này) để chốt rằng bộ đọc
+    phải ưu tiên cột kề TRÁI chứ không vồ cột phải.
+    """
+    return [
+        ["KÕt qu¶ ho¹t ®éng kinh doanh"] + [None] * 13,
+        ["ChØ tiªu", None, None, None, None, None, "M· sè", "TM",
+         "Kú nµy", None, "Kú tr\xadíc", None, "Lòy kÕ", None],
+        [None, 1, None, None, None, None, 2, 3, None, 4, None, 5, None, None],
+        ["1. Doanh thu", None, None, None, None, None, "01", None,
+         52000000, None, 41000000, None, 52000000, None],
+        ["2. Gi¶m trõ", None, None, None, None, None, "02", None,
+         0, None, 0, None, 0, None],
+        ["3. Doanh thu thuÇn", None, None, None, None, None, "10", None,
+         52000000, None, 41000000, None, 52000000, None],
+        ["4. Gi¸ vèn", None, None, None, None, None, "11", None,
+         31000000, None, 26000000, None, 31000000, None],
+        ["5. Lîi nhuËn gép", None, None, None, None, None, "20", None,
+         21000000, None, 15000000, None, 21000000, None],
+    ]
+
+
+def test_find_columns_hang_danh_so_marker_lech_phai_do_merged_cell():
+    """Marker '4'/'5' trỏ vào cột rỗng -> phải dò sang cột kề trái có số thật
+    (c8/c10), không được trả về cặp cột rỗng làm key thành toàn (None, None)."""
+    rows = _rows_hang_danh_so_marker_lech_phai_do_merged_cell()
+    found = G._find_columns(rows)
+    assert found is not None
+    hdr_row, code_col, cur_col, prior_col = found
+    assert (hdr_row, code_col) == (2, 6)
+    assert (cur_col, prior_col) == (8, 10), (
+        "marker lệch cột do merged cell: kỳ vọng dò ra cột giá trị thật "
+        "(8, 10) nhưng được (%d, %d)" % (cur_col, prior_col)
+    )
+
+
+def _rows_hang_danh_so_marker_lech_trai_canh_thuyet_minh():
+    """
+    Đối xứng gương của ca trên: marker '4' nằm bên TRÁI cột giá trị thật (c3
+    rỗng, giá trị ở c4), và cột kề trái của marker là Thuyết minh THƯA ('VI.25'
+    -> _to_int ra 25 nên vẫn đếm là "ô số"). Bộ đọc phải chọn cột kề có NHIỀU
+    ô số hơn (c4, đủ 5/5 hàng) chứ không vồ ngay cột trái thưa.
+    """
+    return [
+        ["ChØ tiªu", "M· sè", "TM", "Kú nµy", None, "Kú tr\xadíc", None],
+        [1, 2, 3, 4, None, 5, None],
+        ["1. Doanh thu", "01", "VI.25", None, 52000000, 41000000, None],
+        ["2. Gi¶m trõ", "02", None, None, 1000, 2000, None],
+        ["3. Doanh thu thuÇn", "10", "VI.26", None, 51000000, 39000000, None],
+        ["4. Gi¸ vèn", "11", None, None, 31000000, 26000000, None],
+        ["5. Lîi nhuËn", "20", None, None, 20000000, 13000000, None],
+    ]
+
+
+def test_find_columns_hang_danh_so_marker_lech_trai_chon_cot_nhieu_so_hon():
+    rows = _rows_hang_danh_so_marker_lech_trai_canh_thuyet_minh()
+    found = G._find_columns(rows)
+    assert found is not None
+    hdr_row, code_col, cur_col, prior_col = found
+    assert (hdr_row, code_col) == (1, 1)
+    assert (cur_col, prior_col) == (4, 5), (
+        "cột kề phải (c4, 5/5 ô số) phải thắng cột Thuyết minh thưa bên trái "
+        "(c2, 2/5 ô số) nhưng dò được (%d, %d)" % (cur_col, prior_col)
+    )
+
+
+# ---------------------------------------------------------------------------
+# Defect 7 (Đợt 2): bảng 4 cột giá trị theo NHÓM header (Trong kỳ nay/trước +
+# Lũy kế nay/trước — file thật '18_Cty TNHH Ben Thanh Hoang Thanh_BCTC
+# Q2.2016_KQKD.xls'). Dự phòng hình học cũ lấy "2 cột nhiều số nhất" nên vồ
+# trúng 2 cột Năm-Trước (chúng có NHIỀU ô số hơn vì vài dòng chỉ có số năm
+# trước) -> key thành (prior, prior), 9 ô parser trích ĐÚNG bị chấm lệch.
+# Từ nay: khi nhãn còn đọc được và có cả cột năm-nay lẫn cột năm-trước trong
+# các ứng viên, phải ghép cặp THEO NHÃN (cột năm nay nhiều số nhất + cột năm
+# trước gần nó nhất — tức cùng nhóm), không lấy 2 cột nhiều số nhất xuyên nhóm.
+# ---------------------------------------------------------------------------
+def _rows_bon_cot_nhom_trong_ky_luy_ke():
+    """Mô phỏng thu nhỏ file BTHT: 2 nhóm (Trong kỳ | Lũy kế), mỗi nhóm 2 cột
+    Năm nay/Năm Trước; 2 dòng ('31', '40') chỉ có số năm trước nên 2 cột
+    Năm-Trước đếm được NHIỀU ô số hơn 2 cột Năm-nay."""
+    return [
+        ["CHỈ TIÊU", "Mã số", "Thuyết minh", "Trong kỳ", None,
+         "Lũy kế từ đầu năm", None],
+        [None, None, None, "Năm nay", "Năm Trước", "Năm nay", "Năm Trước"],
+        ["1. Doanh thu", "01", None, 8852241816, 7940375454, 8852241816, 7940375454],
+        ["3. Doanh thu thuần", "10", None, 8852241816, 7940375454, 8852241816, 7940375454],
+        ["4. Giá vốn", "11", None, 2148768000, 2148768000, 2148768000, 2148768000],
+        ["5. LN gộp", "20", None, 6703473816, 5791607454, 6703473816, 5791607454],
+        ["11. Thu nhập khác", "31", None, None, 10000000, None, 10000000],
+        ["13. LN khác", "40", None, None, 10000000, None, 10000000],
+        ["17. LN sau thuế", "60", None, 4938168598, 4295436466, 4938168598, 4295436466],
+    ]
+
+
+def test_find_columns_du_phong_bon_cot_ghep_cap_theo_nhom_header():
+    """2 cột nhiều số nhất là c4+c6 (đều 'Năm Trước') nhưng nhãn còn đọc được
+    -> phải ghép cặp (c3 năm nay, c4 năm trước) cùng nhóm Trong kỳ, và báo
+    column_order='labels'."""
+    rows = _rows_bon_cot_nhom_trong_ky_luy_ke()
+    found = G._find_columns_fallback(rows)
+    assert found is not None
+    hdr_row, code_col, cur_col, prior_col, column_order = found
+    assert (code_col, cur_col, prior_col) == (1, 3, 4), (
+        "kỳ vọng cặp (năm nay=3, năm trước=4) cùng nhóm 'Trong kỳ' nhưng dò "
+        "được cur=%d, prior=%d" % (cur_col, prior_col)
+    )
+    assert column_order == "labels"
+
+
+def test_find_columns_du_phong_bon_cot_khong_nhan_giu_duong_cu():
+    """Companion: cùng bố cục 4 cột nhưng nhãn mojibake (không đọc được) ->
+    giữ nguyên đường cũ '2 cột nhiều số nhất' + mặc định vị trí."""
+    rows = _rows_bon_cot_nhom_trong_ky_luy_ke()
+    rows[0][3] = "Trong kú"
+    rows[0][5] = "Lòy kÕ tõ ®Çu n¨m"
+    rows[1][3] = "N¨m nay"
+    rows[1][4] = "N¨m tr\xadíc"
+    rows[1][5] = "N¨m nay"
+    rows[1][6] = "N¨m tr\xadíc"
+    found = G._find_columns_fallback(rows)
+    assert found is not None
+    _, code_col, cur_col, prior_col, column_order = found
+    assert (code_col, cur_col, prior_col) == (1, 4, 6)
+    assert column_order == "positional"
+
+
+# ---------------------------------------------------------------------------
+# Đối chiếu Defect 6 + 7 trên đúng 4 file corpus thật đã chẩn đoán (giá trị
+# kỳ vọng chép tay từ xls thô — xem docs/superpowers/plans/chan-doan-dot-2.md
+# §3 và .superpowers/sdd/dot2-chan-doan-report.md §4). Tự skip nếu máy không
+# có corpus.
+# ---------------------------------------------------------------------------
+_KQKD_2023_REL_PATH = (
+    "BTG document/BCTC 5/2023/BCTC - tu lap 2023/"
+    "18_Cty CP Sai gon Mui Ne 2023/KQKD_2023.xls"
+)
+
+
+def test_statement_detail_kqkd_2023_marker_lech_van_doc_du_gia_tri(corpus_root):
+    """File thật KQKD_2023.xls: marker '4','5' ở c9/c11 (merge), giá trị ở
+    c8/c10. Trước khi sửa: key = 20 mã TOÀN (None, None) -> 14 ô "thừa" ảo."""
+    path = os.path.join(corpus_root, *_KQKD_2023_REL_PATH.split("/"))
+    if not os.path.isfile(path):
+        pytest.skip("Không có file corpus: %s" % _KQKD_2023_REL_PATH)
+    detail = G.statement_detail(path)
+    assert detail["strategy"] == "numbering"
+    vals = detail["values"]
+    assert len(vals) == 20
+    assert all(v != (None, None) for v in vals.values()), (
+        "key vẫn bị đọc rỗng: %d/%d mã toàn (None, None)"
+        % (sum(1 for v in vals.values() if v == (None, None)), len(vals))
+    )
+    assert vals["01"] == (41666012511, 30782937591)
+    assert vals["11"] == (29465782955, 26109045021)
+    assert vals["30"] == (5177679470, -1193467056)
+    assert vals["60"] == (4648769324, -1162942742)
+
+
+_CDKT_6T_2025_REL_PATH = (
+    "BTG document/BCTC 9/2025/Quy 2.2025/"
+    "18_Cty CP Sai gon Mui Ne 6Th_2025/cdkt_6t.xls"
+)
+
+
+def test_statement_detail_cdkt_6t_2025_khong_mat_cot_ky_truoc(corpus_root):
+    """File thật cdkt_6t.xls: marker '5' ở c12 RỖNG, cột Kỳ-trước thật ở c11.
+    Trước khi sửa: 115 mã chỉ còn giá trị năm nay (mất nguyên cột prior)."""
+    path = os.path.join(corpus_root, *_CDKT_6T_2025_REL_PATH.split("/"))
+    if not os.path.isfile(path):
+        pytest.skip("Không có file corpus: %s" % _CDKT_6T_2025_REL_PATH)
+    vals = G.read_statement(path)
+    assert len(vals) == 115
+    n_prior = sum(1 for v in vals.values() if v[1] is not None)
+    assert n_prior >= 110, (
+        "cột Kỳ-trước vẫn mất: chỉ %d/%d mã có giá trị năm trước"
+        % (n_prior, len(vals))
+    )
+    assert vals["100"] == (25469190675, 21062692235)
+    assert vals["111"] == (2637956528, 5020895989)
+    assert vals["131"] == (807840945, 902637569)
+    assert vals["137"] == (-35504700, -35504700)
+
+
+_CDKT_Q2_2022_REL_PATH = (
+    "BTG document/BCTC 4/2022/QUY II.2022/"
+    "18_CTCP Du lich KS Sai Gon Mui Ne/BCTC_Q2_SGMN/CDKT Q2.xls"
+)
+
+
+def test_statement_detail_cdkt_q2_2022_khong_mat_cot_ky_truoc(corpus_root):
+    """Cùng dạng lỗi với cdkt_6t.xls: marker '5' ở c9 rỗng, Kỳ-trước thật ở c8."""
+    path = os.path.join(corpus_root, *_CDKT_Q2_2022_REL_PATH.split("/"))
+    if not os.path.isfile(path):
+        pytest.skip("Không có file corpus: %s" % _CDKT_Q2_2022_REL_PATH)
+    vals = G.read_statement(path)
+    assert len(vals) == 115
+    n_prior = sum(1 for v in vals.values() if v[1] is not None)
+    assert n_prior >= 110, (
+        "cột Kỳ-trước vẫn mất: chỉ %d/%d mã có giá trị năm trước"
+        % (n_prior, len(vals))
+    )
+    assert vals["100"] == (13444369091, 8153516150)
+    assert vals["111"] == (3253695613, 3752217151)
+    assert vals["131"] == (2407157429, 2215724377)
+
+
+_BTHT_KQKD_REL_PATH = (
+    "BTG document/BCTC 4/2016/Quy 2.2016/18_Ben Thanh Hoang Thanh/"
+    "18_Cty TNHH Ben Thanh Hoang Thanh_BCTC Q2.2016_KQKD.xls"
+)
+
+
+def test_statement_detail_btht_kqkd_khong_lay_hai_cot_nam_truoc(corpus_root):
+    """File thật BTHT KQKD: 4 cột giá trị (Trong kỳ nay/trước + Lũy kế
+    nay/trước). Trước khi sửa: fallback vồ 2 cột Năm-Trước -> key '01' =
+    (7940375454, 7940375454); năm nay THẬT là 8852241816 (cột 3)."""
+    path = os.path.join(corpus_root, *_BTHT_KQKD_REL_PATH.split("/"))
+    if not os.path.isfile(path):
+        pytest.skip("Không có file corpus: %s" % _BTHT_KQKD_REL_PATH)
+    detail = G.statement_detail(path)
+    assert detail["strategy"] == "fallback"
+    assert detail["column_order"] == "labels"
+    vals = detail["values"]
+    assert vals["01"] == (8852241816, 7940375454)
+    assert vals["20"] == (6703473816, 5791607454)
+    assert vals["50"] == (6160168598, 5369295583)
+    assert vals["60"] == (4938168598, 4295436466)
+    # dòng '31' trong xls thô KHÔNG có số năm nay — key phải giữ đúng như thế
+    assert vals["31"] == (None, 10000000)
+
+
 def _rows_nhan_nhap_nhang_cuoi_ky_truoc_dau_ky():
     """
     Bảng giả lập kiểu bảng cân đối phát sinh: nhãn tiêu đề 'Số dư cuối kỳ
