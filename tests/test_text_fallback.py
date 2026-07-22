@@ -41,7 +41,7 @@ def _lap_fake(monkeypatch, res_text_fn, res_ocr_fn):
         dem["locate"] += 1
         return [(0, "CDKT")]
 
-    def fake_extract(doc, lang="vie", dpi=300, page_range=None,
+    def fake_extract(doc, lang="vie", dpi=300, page_range=None, digit_pass=False,
                      log=lambda *_: None, scope=None, workers=None):
         if getattr(doc, "_bctc_dung_lop_text", False):
             dem["extract_text"] += 1
