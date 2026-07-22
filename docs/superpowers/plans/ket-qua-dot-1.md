@@ -102,3 +102,25 @@ không phải fix chủ đích.
   trang 2 tiêu đề, QĐ15, B05/TCTD, mã ngoài khung).
 - Danh sách Minor tồn đọng: xem `.superpowers/sdd/progress.md` (đã được
   review tổng cuối nhánh phân loại giữ/sửa).
+
+## 8. Bổ sung sau khi hợp nhất với `main` (2026-07-22)
+
+Nhánh được rebase lên `origin/main` (28 commit song song: app desktop mới +
+cải tiến parser cột Quý). Giao nhau thật sự chỉ 3 file; pipeline CI Tkinter
+tách sang `build-tkinter.yml`, pipeline desktop của main giữ nguyên.
+
+Đo lại trên đúng mẫu cố định, sau hợp nhất ([sau-merge-main.json](sau-merge-main.json)):
+
+| Chỉ số | Đợt 1 (trước merge) | Sau merge | Diễn giải |
+|---|---:|---:|---|
+| CPU-giây | 536 | 539 | Mức giảm −50% GIỮ NGUYÊN sau merge |
+| Tầng 1 — sót | 350 | **308** | Parser cột Quý của main bóc được nhiều hơn |
+| Tầng 1 — lệch | 36 | **79** | Nhiều ô mới không khớp đáp án — nghi sai cặp cột Kỳ này/Lũy kế |
+| Tầng 1 — đúng | 58 | 57 | Ròng chưa đổi |
+| Độ phủ KQHDKD | 20,1% | 25,8% | |
+| Cân đối đạt | 81,5% | 83,9% | |
+
+Kết luận: hai dòng công việc bổ trợ nhau — main tăng ĐỘ PHỦ, Đợt 1 cung cấp
+THƯỚC ĐO cho thấy phần phủ thêm đang lệch đáp án ở đâu. Việc Đợt 2 cần làm
+đầu tiên: đối chiếu quy tắc chọn cặp cột (Kỳ này vs Lũy kế) với kỳ của file
+đáp án — 43 ô lệch mới nhiều khả năng cùng một nguyên nhân này.
