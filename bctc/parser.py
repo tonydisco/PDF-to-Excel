@@ -706,6 +706,110 @@ def fitz_rect(page, top_frac=0.34):
 
 
 # ----------------------------------------------------------------------
+# V2 Đợt 2: cứu OCR trang SẬP
+# ----------------------------------------------------------------------
+# Trang được ĐỊNH VỊ đúng nhưng OCR ra gần-không (BCTC 2023: thân bảng LCTT
+# thành ký tự ống, 0-1 token mã -> trọn 23 ô sót). Probe (.superpowers/sdd/
+# dot2-v2-cuu-ocr.md §1) cho thấy psm=4 GIỮ NGUYÊN DPI đọc lại được 16 mã,
+# còn DPI cao hơn với psm=4 lại TỆ đi; trang cuối run 0 mã là trang CHỮ KÝ,
+# mọi biến thể vẫn 0 mã -> cứu chỉ tốn CPU. Từ đó ba luật:
+#   1. SẬP = trang có < NGUONG_TRANG_SAP dòng chứa token mã khớp khung của
+#      nhãn trang. Chỉ cứu (a) trang TIÊU ĐỀ của run mà tổng mã cả run mỏng
+#      bất thường, (b) trang GIỮA run (lỗ hổng giữa bảng). KHÔNG cứu trang
+#      CUỐI run — không cứu tràn lan để chi phí không nổ.
+#   2. Tối đa 2 lượt OCR thêm mỗi trang: psm=4 giữ DPI (tái dùng ảnh đã
+#      render, khỏi render lại) rồi psm=6 ở min(DPI+100, TRAN_DPI_CUU).
+#   3. Chọn biến thể NHIỀU mã nhất và chỉ thay khi HƠN hẳn bản gốc; mọi
+#      quyết định đều được log (không bao giờ im lặng).
+NGUONG_TRANG_SAP = 2        # sập khi < 2 dòng có token mã của khung
+NGUONG_BAO_CAO_MONG = 8     # run "mỏng bất thường" khi tổng dòng-mã < 8
+TRAN_DPI_CUU = 330          # trần DPI cho lượt cứu render lại
+
+
+def _dem_ma_trang(lines, valid_codes):
+    """Số DÒNG chứa ít nhất một token mã khớp khung — tín hiệu sức khoẻ OCR."""
+    n = 0
+    for ln in lines:
+        if any(_token_code(wd, valid_codes) for wd in ln):
+            n += 1
+    return n
+
+
+def _trang_sap(scope, page_lines, valid):
+    """Danh sách (trang, nhãn) SẬP đáng cứu, theo luật ở khối chú thích trên.
+
+    Run = dãy trang LIỀN KỀ cùng nhãn trong scope (trang đầu run là trang
+    tiêu đề — cách _mo_rong_tiep_dien dựng scope bảo đảm điều đó).
+    """
+    ket = []
+    runs = []
+    for p, t in scope:
+        if runs and runs[-1][1] == t and runs[-1][0][-1] == p - 1:
+            runs[-1][0].append(p)
+        else:
+            runs.append(([p], t))
+    for pages_run, t in runs:
+        dem = {p: _dem_ma_trang(page_lines.get(p) or [], valid[t])
+               for p in pages_run}
+        tong = sum(dem.values())
+        for i, p in enumerate(pages_run):
+            if dem[p] >= NGUONG_TRANG_SAP:
+                continue
+            la_tieu_de = (i == 0)
+            la_giua = 0 < i < len(pages_run) - 1
+            if (la_tieu_de and tong < NGUONG_BAO_CAO_MONG) or la_giua:
+                ket.append((p, t))
+    return ket
+
+
+def _bien_the_tot_nhat(n_goc, ket_qua):
+    """Chọn biến thể cứu ra NHIỀU mã nhất trong ket_qua [(psm, dpi, lines,
+    n_ma)]. Trả None nếu không biến thể nào HƠN bản gốc (giữ nguyên, không
+    bao giờ thay bằng bản ngang/kém). Hoà giữa các biến thể -> lượt thử đầu."""
+    best = None
+    for bt in ket_qua:
+        if bt[3] > n_goc and (best is None or bt[3] > best[3]):
+            best = bt
+    return best
+
+
+def _cuu_trang_sap(doc, sap, page_lines, anh_trang, dpi, lang, valid, log):
+    """Cứu từng trang sập: tối đa 2 lượt OCR, thay page_lines[p] khi biến thể
+    thắng. Trả danh sách trang ĐÃ THAY (để dọn token pass-số cũ)."""
+    from PIL import Image
+    da_thay = []
+    for p, t in sap:
+        n_goc = _dem_ma_trang(page_lines.get(p) or [], valid[t])
+        bien_the = []
+        # Lượt 1: psm=4 (một cột, cỡ chữ thay đổi — hợp bảng hơn psm=6 trên
+        # trang scan xấu), tái dùng ảnh đã render ở DPI hiện tại.
+        img = anh_trang.get(p)
+        if img is not None:
+            _, _, lines1 = ocr.ocr_lines(ocr.preprocess(img), lang=lang,
+                                         psm=4, min_conf=25)
+            bien_the.append((4, dpi, lines1, _dem_ma_trang(lines1, valid[t])))
+        # Lượt 2: render lại ở DPI cao hơn (bị chặn trần), psm=6.
+        dpi_cao = min(dpi + 100, TRAN_DPI_CUU)
+        if dpi_cao > dpi:
+            pix = doc[p].get_pixmap(dpi=dpi_cao)
+            img2 = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+            _, _, lines2 = ocr.ocr_lines(ocr.preprocess(img2), lang=lang,
+                                         psm=6, min_conf=25)
+            bien_the.append((6, dpi_cao, lines2,
+                             _dem_ma_trang(lines2, valid[t])))
+        best = _bien_the_tot_nhat(n_goc, bien_the)
+        if best is not None:
+            psm_b, dpi_b, lines_b, n_b = best
+            page_lines[p] = lines_b
+            da_thay.append(p)
+            log("   ⛑ trang %d: OCR lại (psm=%d dpi=%d) — %d mã"
+                % (p + 1, psm_b, dpi_b, n_b))
+        else:
+            log("   ✕ trang %d: cứu OCR không cải thiện" % (p + 1))
+    return da_thay
+
+
+# ----------------------------------------------------------------------
 # Trích xuất đầy đủ 3 báo cáo
 # ----------------------------------------------------------------------
 def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
@@ -786,6 +890,15 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
                 return p, [wd for ln in dlines for wd in ln]
             with ThreadPoolExecutor(max_workers=nw) as ex:
                 page_digits = dict(ex.map(_ocr_digits, rendered))
+
+        # V2 Đợt 2: trang SẬP (định vị được nhưng OCR ra gần-không) — cứu
+        # bằng tối đa 2 biến thể OCR trước khi gán dòng, chỉ trên trang đáng
+        # cứu (xem _trang_sap). Trang khoẻ không bị đụng tới.
+        sap = _trang_sap(scope, page_lines, valid)
+        if sap:
+            for p in _cuu_trang_sap(doc, sap, page_lines, dict(rendered),
+                                    dpi, lang, valid, log):
+                page_digits[p] = []   # token pass-số của lượt OCR sập là rác
 
     # ---- Lượt 1: gán mỗi dòng vào đúng báo cáo ----
     # Mỗi trang đã được locate gán 1 báo cáo (đáng tin); dùng làm mốc đầu trang,
