@@ -155,14 +155,21 @@ Nếu **khớp**, Nhật ký báo **✓ OK** (dòng tiến độ màu Sage). N�
 
 ---
 
-## 6. Đóng gói thành .exe / .app (để chia sẻ cho máy khác)
+## 6. Đóng gói thành bộ cài / .app (để chia sẻ cho máy khác)
 
-> PyInstaller phải chạy **trên đúng hệ điều hành đích** (muốn có `.exe` thì build trên Windows; muốn `.app` thì build trên macOS).
+> PyInstaller phải chạy **trên đúng hệ điều hành đích**. Cách khuyến nghị:
+> đẩy code lên GitHub — **GitHub Actions tự build cả hai bản** (tab Actions
+> → chọn run → mục Artifacts).
 
-* **Windows:** nhấp đúp **`build_windows.bat`** → file `dist\BCTC_PDF_to_Excel.exe`
+* **Windows:** CI xuất **bộ cài `BCTC_PDF_to_Excel-Setup.exe`** (Inno Setup).
+  Cài một lần là chạy — *không* còn kiểu 1 file .exe tự giải nén mỗi lần mở
+  (nguyên nhân khiến bản cũ khởi động 30–90 giây trên máy HDD). Bộ cài đã
+  **kèm sẵn Tesseract rút gọn + gói tiếng Việt**, không cần cài gì thêm.
+  Không có quyền admin vẫn cài được (chọn "chỉ cho tôi").
+  Build tay trên máy Windows: `python -m PyInstaller pdf2excel.spec` rồi
+  `iscc /DAppVersion=<phiên bản> installer\BCTC_Setup.iss`.
 * **macOS:** chạy `bash build_macos.sh` → `dist/BCTC_PDF_to_Excel.app`
-
-Máy nhận bản đóng gói vẫn cần **cài Tesseract một lần** (mục 2A); gói tiếng Việt đã nằm trong app.
+  (máy nhận vẫn cần `brew install tesseract` một lần).
 
 ---
 
