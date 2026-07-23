@@ -35,7 +35,9 @@ def _lap_quet(monkeypatch, bang):
     """
     dem = {}
 
-    def fake(doc, i, lang, dpi):
+    def fake(doc, i, lang, dpi, nd=None):
+        # nd: V5 — vòng batch của locate render dải trên luồng chính rồi
+        # truyền vào; giả lập bỏ qua ảnh, chỉ tra bảng.
         dem[i] = dem.get(i, 0) + 1
         title, dau_hieu = bang.get(i, (None, None))
         return i, title, dau_hieu

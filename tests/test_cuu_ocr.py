@@ -223,7 +223,12 @@ def test_extract_cuu_that_bai_giu_ban_goc_va_bao(monkeypatch):
 
 
 def test_extract_dpi_tran_chi_mot_luot_cuu(monkeypatch):
-    """DPI chính đã >= trần 330 -> lượt cứu 2 (DPI cao hơn) bị bỏ, chỉ psm=4."""
+    """DPI chính đã >= trần 330 -> lượt cứu 2 (DPI cao hơn) bị bỏ, chỉ psm=4.
+
+    Nới trần điểm ảnh V5 riêng cho test này: A4 @ 330 = 10,5 MP vượt trần
+    render hàng loạt (6 MP) sẽ bị hạ DPI — ở đây ta chỉ kiểm luật TRẦN DPI
+    CỨU, không kiểm trần điểm ảnh (đã có tests/test_bo_nho.py lo)."""
+    monkeypatch.setattr(parser, "TRAN_MP_RENDER", 99.0)
     gia = _OcrGia(330, chinh=trang_sap(), cuu1=trang_sap(), cuu2=trang_sap())
     monkeypatch.setattr(parser.ocr, "ocr_lines", gia)
     doc = _doc_mot_trang()

@@ -11,6 +11,8 @@ Chiến lược:
 """
 import re
 import os
+import math
+import threading
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 
@@ -585,6 +587,181 @@ TRAN_TIEP_DIEN = 3          # trần số trang tiếp diễn cho MỖI báo cá
 _DUNG_THUYET_MINH = ("ban thuyet minh", "notes to the financial statements")
 
 
+# ----------------------------------------------------------------------
+# V5 Đợt 2: bộ nhớ — render XÁM tại nguồn, trần điểm ảnh, máy bơm
+# render→OCR có chặn, dọn kho cache ảnh của MuPDF (spec §8.1–8.3)
+# ----------------------------------------------------------------------
+# Ba nguồn chiếm RAM đo được trước V5 (RSS đỉnh ~1072 MB trên lượt n=30):
+#   1. extract giữ ảnh RGB của MỌI trang scope cùng lúc rồi mới OCR;
+#   2. mỗi ảnh RGB to gấp 3 ảnh xám (OCR chỉ cần xám);
+#   3. kho cache của MuPDF (fz store, trần mặc định 256 MB) giữ ảnh nhúng
+#      ĐÃ GIẢI MÃ của mọi trang từng render — file scan nặng (17–26 MB
+#      giải mã mỗi trang, đo trong .superpowers/sdd/dot2-v5-bo-nho.md) một
+#      mình đẩy RSS lên hàng trăm MB và KHÔNG tự nhả khi doc.close().
+# An toàn luồng: fitz.Document KHÔNG an toàn đa luồng — sau V5 mọi lời gọi
+# get_pixmap/textlayer nằm trên MỘT luồng (luồng gọi locate/extract); các
+# luồng pool chỉ đụng ảnh PIL + tesseract (tiến trình riêng).
+
+TRAN_MP_RENDER = 6.0   # triệu điểm ảnh: trần render hàng loạt. Phải nằm TRÊN
+                       # phong bì sản xuất A4@235 = 5,34 MP (đo 9 file corpus:
+                       # mọi trang đều A4) để kết quả bóc tách KHÔNG đổi —
+                       # spec §8.3 viết ~4 MP theo giả định 300 DPI, nhưng
+                       # 4 MP sẽ chặn cả A4@235 và làm đổi kết quả mọi file.
+TRAN_MP_CUU = 11.0     # trần cho lượt cứu DPI cao: A4@330 = 10,5 MP là hành
+                       # vi V2 sẵn có, chỉ render 1 ảnh một lúc trên luồng chính.
+NGUONG_KHO_ANH_MB = 64.0   # dọn fz store khi ước lượng ảnh giải mã vượt mức
+
+_MUPDF = None          # cache module mupdf tầng thấp (False = không có)
+
+
+def _mupdf_module():
+    """Tầng mupdf thấp, nạp TRỄ (không kéo fitz vào lúc import module).
+    TOOLS.store_shrink của PyMuPDF 1.28 HỎNG (luôn trả 0, không dọn gì) —
+    phải gọi thẳng mupdf.fz_shrink_store."""
+    global _MUPDF
+    if _MUPDF is None:
+        try:
+            from pymupdf import mupdf
+            _MUPDF = mupdf
+        except Exception:
+            _MUPDF = False
+    return _MUPDF if _MUPDF is not False else None
+
+
+class _KhoAnh(object):
+    """Kiểm soát kho cache ảnh giải mã của MuPDF (chỉ dùng từ luồng render).
+
+    Ước lượng dung lượng đã giải mã bằng METADATA ảnh nhúng (get_images —
+    không tốn giải mã), mỗi xref đếm một lần; vượt ngưỡng thì dọn trắng kho.
+    File thường không chạm ngưỡng nên cache giữa 2 lượt DPI còn nguyên;
+    file scan nặng bị dọn định kỳ thay vì phình tới trần 256 MB của kho."""
+
+    def __init__(self, nguong_mb=None):
+        self.nguong = nguong_mb
+        self.uoc_mb = 0.0
+        self.da_dem = set()
+
+    def ghi_nhan(self, page):
+        """Gọi ngay trước khi render một trang. Trả danh sách metadata ảnh
+        nhúng đọc được (None nếu lỗi) để nơi gọi tái dùng, khỏi đọc lần hai."""
+        try:
+            ims = page.get_images(full=False)
+        except Exception:
+            ims = None
+            self.uoc_mb += 8.0   # thiếu metadata: ước thô một trang scan
+        for im in (ims or []):
+            if im[0] in self.da_dem:
+                continue
+            self.da_dem.add(im[0])
+            kenh = 1 if "GRAY" in str(im[5]).upper() else 3
+            self.uoc_mb += im[2] * im[3] * kenh / 1e6
+        nguong = self.nguong if self.nguong is not None else NGUONG_KHO_ANH_MB
+        if self.uoc_mb >= nguong:
+            self.don()
+        return ims
+
+    def don(self):
+        """Dọn trắng kho — gọi khi vượt ngưỡng và khi xong một file."""
+        m = _mupdf_module()
+        if m is not None:
+            try:
+                m.fz_shrink_store(100)
+            except Exception:
+                pass             # bản PyMuPDF khác API: kho tự trần 256 MB
+        self.uoc_mb = 0.0
+        self.da_dem.clear()
+
+
+_KHO_ANH = _KhoAnh()
+
+
+def _dpi_theo_tran(w_pt, h_pt, dpi, tran_mp=None):
+    """DPI hiệu dụng sao cho render trang w×h (đơn vị pt) không vượt tran_mp
+    triệu điểm ảnh (§8.3). Trang lọt trần giữ NGUYÊN DPI."""
+    tran = (TRAN_MP_RENDER if tran_mp is None else tran_mp) * 1e6
+    w_in = max(1e-6, w_pt / 72.0)
+    h_in = max(1e-6, h_pt / 72.0)
+    if w_in * h_in * dpi * dpi <= tran:
+        return dpi
+    return max(1, int(math.sqrt(tran / (w_in * h_in))))
+
+
+def _anh_nhung_xam(ims):
+    """True nếu trang CHỈ chứa ảnh nhúng colorspace XÁM — khi đó render
+    GRAY trực tiếp cho điểm ảnh Y HỆT đường cũ RGB→xám Pillow (nguồn xám:
+    hai công thức trùng nhau từng byte — đo 0,0% khác trên corpus).
+
+    Trang có ảnh MÀU (DeviceRGB/ICC/Indexed), KHÔNG ảnh (vector) hay thiếu
+    metadata phải đi đường RGB→Pillow như trước V5: công thức trộn kênh của
+    MuPDF khác ITU-601 của Pillow tới ±vài chục mức xám trên nội dung màu
+    (mộc đỏ, nhiễu chroma scan màu) — đủ lật OCR trên scan xấu, làm ĐỔI
+    kết quả bóc tách (vi phạm ràng buộc cứng của V5)."""
+    if not ims:
+        return False
+    for im in ims:
+        if "GRAY" not in str(im[5]).upper():
+            return False
+    return True
+
+
+def _render_trang_xam(doc, p, dpi, tran_mp=None, log=None):
+    """Render trang p thành ảnh XÁM ("L") ở DPI bị chặn trần điểm ảnh.
+
+    §8.1: trang nguồn xám (đa số scan) đi pixmap GRAY — nhỏ bằng 1/3 RGB và
+    bỏ được lượt chuyển xám Pillow; trang có nội dung màu render RGB rồi
+    chuyển xám NGAY (ảnh RGB chỉ sống tạm thời từng trang một) để điểm ảnh
+    y hệt đường cũ. Trả (ảnh, DPI hiệu dụng). CHỈ gọi từ luồng render."""
+    from PIL import Image, ImageOps
+    page = doc[p]
+    ims = _KHO_ANH.ghi_nhan(page)
+    r = page.rect
+    dpi_hd = _dpi_theo_tran(r.width, r.height, dpi, tran_mp)
+    if dpi_hd < dpi and log is not None:
+        tran = TRAN_MP_RENDER if tran_mp is None else tran_mp
+        log("   ↓ trang %d: giới hạn %d MP (DPI %d->%d)"
+            % (p + 1, int(tran), dpi, dpi_hd))
+    if _anh_nhung_xam(ims):
+        pix = page.get_pixmap(dpi=dpi_hd, colorspace="GRAY")
+        anh = Image.frombytes("L", (pix.width, pix.height), pix.samples)
+    else:
+        pix = page.get_pixmap(dpi=dpi_hd)
+        anh = ImageOps.grayscale(
+            Image.frombytes("RGB", (pix.width, pix.height), pix.samples))
+    return anh, dpi_hd
+
+
+def _bom_ocr(pages, render_trang, ocr_trang, nw):
+    """Máy bơm §8.2: render TUẦN TỰ trên luồng gọi (fitz không an toàn đa
+    luồng) → nw luồng OCR tiêu thụ; semaphore nw+1 chặn số ảnh sống trong
+    RAM (trước V5: ảnh của TOÀN BỘ trang scope cùng lúc).
+
+    render_trang(p) -> ảnh;  ocr_trang(p, ảnh) -> kết quả.
+    Trả {trang: kết quả} — gom theo KHOÁ trang nên bất biến với thứ tự hoàn
+    thành của các luồng; lỗi ở luồng OCR lan lên nguyên vẹn, không bao giờ
+    nuốt lặng lẽ."""
+    ket = {}
+    if not pages:
+        return ket
+    nw = max(1, int(nw))
+    cho = threading.BoundedSemaphore(nw + 1)
+
+    def _mot_trang(p, anh):
+        try:
+            return p, ocr_trang(p, anh)
+        finally:
+            cho.release()
+
+    hen = []
+    with ThreadPoolExecutor(max_workers=nw) as ex:
+        for p in pages:
+            cho.acquire()            # chặn khi đã đủ nw+1 ảnh đang sống
+            hen.append(ex.submit(_mot_trang, p, render_trang(p)))
+        for h in hen:
+            p, kq = h.result()       # lỗi của luồng OCR lan lên tại đây
+            ket[p] = kq
+    return ket
+
+
 def _dau_hieu_dung(line_texts):
     """Dấu hiệu DỪNG mở rộng scope trên dải đầu trang.
 
@@ -606,24 +783,52 @@ def _dau_hieu_dung(line_texts):
     return None
 
 
-def _scan_strip(doc, i, lang, scan_dpi):
-    """OCR dải đầu 1 trang -> (i, tiêu đề báo cáo | None, dấu hiệu dừng | None)."""
+def _scan_strip_render(doc, i, scan_dpi):
+    """Phần ĐỤNG fitz của quét dải đầu — chỉ gọi từ luồng render duy nhất
+    (fitz không an toàn đa luồng). Trả ("text", các dòng chữ) khi có lớp
+    text tin cậy; ("anh", ảnh dải XÁM) khi phải OCR — trần điểm ảnh áp
+    trên diện tích DẢI đã cắt."""
     from PIL import Image
     page = doc[i]
-
     if getattr(doc, "_bctc_dung_lop_text", False):
         # Có lớp text tin cậy -> lấy chữ ở dải đầu trang, khỏi OCR.
         gioi_han = page.rect.y0 + (page.rect.y1 - page.rect.y0) * 0.42
-        line_texts = [" ".join(w["text"] for w in ln)
-                      for ln in textlayer.page_lines(page)
-                      if ln and ln[0]["top"] <= gioi_han]
-        return i, heading_in_lines(line_texts), _dau_hieu_dung(line_texts)
+        return "text", [" ".join(w["text"] for w in ln)
+                        for ln in textlayer.page_lines(page)
+                        if ln and ln[0]["top"] <= gioi_han]
+    ims = _KHO_ANH.ghi_nhan(page)
+    clip = fitz_rect(page, top_frac=0.42)
+    dpi_hd = _dpi_theo_tran(clip.width, clip.height, scan_dpi)
+    if _anh_nhung_xam(ims):
+        pix = page.get_pixmap(dpi=dpi_hd, colorspace="GRAY", clip=clip)
+        return "anh", Image.frombytes("L", (pix.width, pix.height), pix.samples)
+    from PIL import ImageOps
+    pix = page.get_pixmap(dpi=dpi_hd, clip=clip)
+    return "anh", ImageOps.grayscale(
+        Image.frombytes("RGB", (pix.width, pix.height), pix.samples))
 
-    pix = page.get_pixmap(dpi=scan_dpi, clip=fitz_rect(page, top_frac=0.42))
-    img = ocr.preprocess(Image.frombytes("RGB", (pix.width, pix.height), pix.samples))
-    _, _, lines = ocr.ocr_lines(img, lang=lang, psm=6, min_conf=20)
-    line_texts = [" ".join(w["text"] for w in ln) for ln in lines]
-    return i, heading_in_lines(line_texts), _dau_hieu_dung(line_texts)
+
+def _scan_strip_doc(nd, lang):
+    """Phần KHÔNG đụng fitz (OCR dải / đọc chữ) — an toàn chạy trong pool."""
+    kieu, du_lieu = nd
+    if kieu == "text":
+        line_texts = du_lieu
+    else:
+        _, _, lines = ocr.ocr_lines(ocr.preprocess(du_lieu), lang=lang,
+                                    psm=6, min_conf=20)
+        line_texts = [" ".join(w["text"] for w in ln) for ln in lines]
+    return heading_in_lines(line_texts), _dau_hieu_dung(line_texts)
+
+
+def _scan_strip(doc, i, lang, scan_dpi, nd=None):
+    """OCR dải đầu 1 trang -> (i, tiêu đề báo cáo | None, dấu hiệu dừng | None).
+
+    nd: kết quả _scan_strip_render có sẵn (vòng batch của locate render
+    trước trên luồng chính rồi mới đẩy phần OCR vào pool); None -> tự
+    render (đường tuần tự như _mo_rong_tiep_dien, vốn chạy luồng chính)."""
+    if nd is None:
+        nd = _scan_strip_render(doc, i, scan_dpi)
+    return (i,) + _scan_strip_doc(nd, lang)
 
 
 def _mo_rong_tiep_dien(doc, scope, quet, lang, scan_dpi, hi, log):
@@ -684,7 +889,14 @@ def locate_pages(doc, lang="vie", scan_dpi=135, page_range=None, log=lambda *_: 
     with ThreadPoolExecutor(max_workers=nw) as ex:
         for b in range(0, len(pages), nw):
             chunk = pages[b:b + nw]
-            res = sorted(ex.map(lambda i: _scan_strip(doc, i, lang, scan_dpi), chunk))
+            # V5: render dải trên LUỒNG CHÍNH (fitz không an toàn đa luồng —
+            # trước đây get_pixmap chạy ngay trong pool), pool chỉ nhận phần
+            # OCR thuần PIL/tesseract. Ảnh dải xám ~0,5 MB nên giữ nw dải
+            # một lúc không đáng kể.
+            nds = [_scan_strip_render(doc, i, scan_dpi) for i in chunk]
+            res = sorted(ex.map(
+                lambda cap: _scan_strip(doc, cap[0], lang, scan_dpi, nd=cap[1]),
+                zip(chunk, nds)))
             had_stmt = False
             for i, title, dau_hieu in res:
                 quet[i] = (title, dau_hieu)
@@ -773,30 +985,36 @@ def _bien_the_tot_nhat(n_goc, ket_qua):
     return best
 
 
-def _cuu_trang_sap(doc, sap, page_lines, anh_trang, dpi, lang, valid, log):
+def _cuu_trang_sap(doc, sap, page_lines, dpi, lang, valid, log):
     """Cứu từng trang sập: tối đa 2 lượt OCR, thay page_lines[p] khi biến thể
-    thắng. Trả danh sách trang ĐÃ THAY (để dọn token pass-số cũ)."""
-    from PIL import Image
+    thắng. Trả danh sách trang ĐÃ THAY (để dọn token pass-số cũ).
+
+    V5: máy bơm streaming không giữ ảnh trang nào trong RAM, nên lượt 1
+    render LẠI đúng ảnh của lượt chính (cùng DPI hiệu dụng, cùng nguồn xám
+    -> cùng điểm ảnh; render lại tốn vài chục ms, rẻ hơn hẳn giữ ảnh mọi
+    trang chỉ để có thể cứu 0–1 trang). Mọi render nằm trên luồng gọi."""
     da_thay = []
     for p, t in sap:
         n_goc = _dem_ma_trang(page_lines.get(p) or [], valid[t])
         bien_the = []
         # Lượt 1: psm=4 (một cột, cỡ chữ thay đổi — hợp bảng hơn psm=6 trên
-        # trang scan xấu), tái dùng ảnh đã render ở DPI hiện tại.
-        img = anh_trang.get(p)
-        if img is not None:
-            _, _, lines1 = ocr.ocr_lines(ocr.preprocess(img), lang=lang,
-                                         psm=4, min_conf=25)
-            bien_the.append((4, dpi, lines1, _dem_ma_trang(lines1, valid[t])))
-        # Lượt 2: render lại ở DPI cao hơn (bị chặn trần), psm=6.
+        # trang scan xấu), giữ DPI của lượt chính.
+        anh1, dpi1 = _render_trang_xam(doc, p, dpi)
+        _, _, lines1 = ocr.ocr_lines(ocr.preprocess(anh1), lang=lang,
+                                     psm=4, min_conf=25)
+        bien_the.append((4, dpi1, lines1, _dem_ma_trang(lines1, valid[t])))
+        anh1 = None
+        # Lượt 2: render lại ở DPI cao hơn (chặn trần DPI cứu), psm=6. Trần
+        # điểm ảnh dùng mức CỨU rộng hơn: A4@330 = 10,5 MP là hành vi V2
+        # sẵn có và chỉ có 1 ảnh sống một lúc.
         dpi_cao = min(dpi + 100, TRAN_DPI_CUU)
         if dpi_cao > dpi:
-            pix = doc[p].get_pixmap(dpi=dpi_cao)
-            img2 = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
-            _, _, lines2 = ocr.ocr_lines(ocr.preprocess(img2), lang=lang,
+            anh2, dpi2 = _render_trang_xam(doc, p, dpi_cao, tran_mp=TRAN_MP_CUU)
+            _, _, lines2 = ocr.ocr_lines(ocr.preprocess(anh2), lang=lang,
                                          psm=6, min_conf=25)
-            bien_the.append((6, dpi_cao, lines2,
+            bien_the.append((6, dpi2, lines2,
                              _dem_ma_trang(lines2, valid[t])))
+            anh2 = None
         best = _bien_the_tot_nhat(n_goc, bien_the)
         if best is not None:
             psm_b, dpi_b, lines_b, n_b = best
@@ -849,7 +1067,6 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
 
     page_meta = {}          # phục vụ kiểm tra/chẩn đoán
     current = None
-    from PIL import Image
 
     dung_lop_text = getattr(doc, "_bctc_dung_lop_text", None)
     if dung_lop_text is None:
@@ -866,38 +1083,37 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
         log("   ⚡ Dùng lớp text sẵn có (bỏ qua OCR)")
         page_lines = {p: textlayer.page_lines(doc[p]) for p in pages}
     else:
-        nw = workers or MAX_WORKERS
-        # render (tuần tự) rồi OCR (song song) các trang đã định vị
-        rendered = []
-        for p in pages:
-            pix = doc[p].get_pixmap(dpi=dpi)
-            rendered.append((p, Image.frombytes("RGB", (pix.width, pix.height), pix.samples)))
+        nw = max(1, workers or MAX_WORKERS)
 
-        def _ocr(item):
-            p, img = item
-            _, _, lines = ocr.ocr_lines(ocr.preprocess(img), lang=lang, psm=6, min_conf=25)
-            return p, lines
+        # V5 §8.1–8.2: render XÁM tuần tự trên luồng này → máy bơm OCR song
+        # song, tối đa nw+1 ảnh sống trong RAM — thay cho "render TẤT CẢ
+        # trang scope rồi mới OCR" (giữ mọi ảnh RGB cùng lúc).
+        def _render(p):
+            anh, _ = _render_trang_xam(doc, p, dpi, log=log)
+            return anh
 
-        with ThreadPoolExecutor(max_workers=nw) as ex:
-            page_lines = dict(ex.map(_ocr, rendered))
+        def _ocr_tron_trang(p, anh):
+            xam = ocr.preprocess(anh)
+            _, _, lines = ocr.ocr_lines(xam, lang=lang, psm=6, min_conf=25)
+            if not digit_pass:
+                return lines, []
+            # PASS CHỈ-CHỮ-SỐ (B-A1): OCR lại với whitelist số NGAY khi ảnh
+            # còn trên tay — khỏi giữ ảnh mọi trang cho một pool thứ hai.
+            _, _, dlines = ocr.ocr_lines(xam, lang=lang, psm=6,
+                                         min_conf=0, whitelist=DIGIT_WHITELIST)
+            return lines, [wd for ln in dlines for wd in ln]
 
-        # PASS CHỈ-CHỮ-SỐ (B-A1): OCR lại trang với whitelist số -> token số sạch hơn.
-        if digit_pass:
-            def _ocr_digits(item):
-                p, img = item
-                _, _, dlines = ocr.ocr_lines(ocr.preprocess(img), lang=lang, psm=6,
-                                             min_conf=0, whitelist=DIGIT_WHITELIST)
-                return p, [wd for ln in dlines for wd in ln]
-            with ThreadPoolExecutor(max_workers=nw) as ex:
-                page_digits = dict(ex.map(_ocr_digits, rendered))
+        ket_ocr = _bom_ocr(pages, _render, _ocr_tron_trang, nw)
+        page_lines = {p: ket_ocr[p][0] for p in pages}
+        page_digits = {p: ket_ocr[p][1] for p in pages}
 
         # V2 Đợt 2: trang SẬP (định vị được nhưng OCR ra gần-không) — cứu
         # bằng tối đa 2 biến thể OCR trước khi gán dòng, chỉ trên trang đáng
-        # cứu (xem _trang_sap). Trang khoẻ không bị đụng tới.
+        # cứu (xem _trang_sap). Trang khoẻ không bị đụng tới. V5: ảnh không
+        # còn giữ lại — lượt cứu tự render lại đúng trang cần (hiếm).
         sap = _trang_sap(scope, page_lines, valid)
         if sap:
-            for p in _cuu_trang_sap(doc, sap, page_lines, dict(rendered),
-                                    dpi, lang, valid, log):
+            for p in _cuu_trang_sap(doc, sap, page_lines, dpi, lang, valid, log):
                 page_digits[p] = []   # token pass-số của lượt OCR sập là rác
 
     # ---- Lượt 1: gán mỗi dòng vào đúng báo cáo ----
@@ -1018,22 +1234,27 @@ def extract_consensus(doc, lang="vie", dpis=(185, 240), page_range=None,
             on_pass(idx + 1, len(dpis))
         return merged, base_warnings, base_meta, conflicts
 
-    merged, base_warnings, base_meta, conflicts = _mot_luot()
-
-    # Lớp text tuy qua được bộ lọc chất lượng nhưng vẫn có thể không cho parser
-    # bóc ra giá trị nào (hình học dòng/cột lệch chuẩn, thậm chí không định vị
-    # nổi trang). Khi đó quay về OCR thay vì trả kết quả trống. Cấu trúc thẳng
-    # dòng (không đệ quy) nên chỉ thử lại ĐÚNG MỘT lần.
-    khong_co_gia_tri = not any(
-        v is not None
-        for bang in merged.values()
-        for cap in bang.values()
-        for v in cap)
-    if getattr(doc, "_bctc_dung_lop_text", False) and khong_co_gia_tri:
-        log("   ↻ Lớp text không cho ra số liệu — thử lại bằng OCR.")
-        try:
-            doc._bctc_dung_lop_text = False
-        except Exception:
-            pass
+    try:
         merged, base_warnings, base_meta, conflicts = _mot_luot()
-    return merged, base_warnings, base_meta, conflicts
+
+        # Lớp text tuy qua được bộ lọc chất lượng nhưng vẫn có thể không cho parser
+        # bóc ra giá trị nào (hình học dòng/cột lệch chuẩn, thậm chí không định vị
+        # nổi trang). Khi đó quay về OCR thay vì trả kết quả trống. Cấu trúc thẳng
+        # dòng (không đệ quy) nên chỉ thử lại ĐÚNG MỘT lần.
+        khong_co_gia_tri = not any(
+            v is not None
+            for bang in merged.values()
+            for cap in bang.values()
+            for v in cap)
+        if getattr(doc, "_bctc_dung_lop_text", False) and khong_co_gia_tri:
+            log("   ↻ Lớp text không cho ra số liệu — thử lại bằng OCR.")
+            try:
+                doc._bctc_dung_lop_text = False
+            except Exception:
+                pass
+            merged, base_warnings, base_meta, conflicts = _mot_luot()
+        return merged, base_warnings, base_meta, conflicts
+    finally:
+        # V5: xong một file thì dọn kho cache ảnh giải mã của MuPDF — kho
+        # KHÔNG tự nhả khi doc.close(), để nguyên sẽ cộng dồn RSS qua các file.
+        _KHO_ANH.don()

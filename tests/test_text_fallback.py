@@ -139,7 +139,7 @@ def test_khong_thu_lai_khi_ocr_rong(monkeypatch):
 # ----------------------------------------------------------------------
 def test_locate_pages_ton_trong_co_false_da_dat(monkeypatch):
     monkeypatch.setattr(parser, "_scan_strip",
-                        lambda doc, i, lang, dpi: (i, None, None))
+                        lambda doc, i, lang, dpi, nd=None: (i, None, None))
     monkeypatch.setattr(
         parser.textlayer, "is_usable",
         lambda d: pytest.fail("không được tính lại cờ đã đặt tường minh"))
@@ -153,7 +153,7 @@ def test_locate_pages_ton_trong_co_false_da_dat(monkeypatch):
 
 def test_locate_pages_van_tinh_co_khi_chua_dat(monkeypatch):
     monkeypatch.setattr(parser, "_scan_strip",
-                        lambda doc, i, lang, dpi: (i, None, None))
+                        lambda doc, i, lang, dpi, nd=None: (i, None, None))
     monkeypatch.setattr(parser.textlayer, "is_usable", lambda d: True)
 
     doc = _doc_rong()                     # chưa có thuộc tính cờ

@@ -137,15 +137,18 @@ def selftest():
 # 2. Render + tiền xử lý ảnh
 # ----------------------------------------------------------------------
 def render_page(doc, page_index, dpi=300):
+    """Render thẳng ảnh XÁM (V5 §8.1): pixmap GRAY nhỏ bằng 1/3 RGB và khỏi
+    tốn một lượt duyệt toàn ảnh để chuyển xám ở preprocess. OCR chỉ cần xám."""
     page = doc[page_index]
-    pix = page.get_pixmap(dpi=dpi)
-    img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+    pix = page.get_pixmap(dpi=dpi, colorspace="GRAY")
+    img = Image.frombytes("L", (pix.width, pix.height), pix.samples)
     return img
 
 
 def preprocess(img):
-    """Chuyển xám + tăng tương phản nhẹ. Giữ ảnh sạch để OCR ổn định."""
-    g = ImageOps.grayscale(img)
+    """Chuyển xám (bỏ qua nếu ảnh đã "L" — nguồn render xám V5) + tăng tương
+    phản nhẹ. Giữ ảnh sạch để OCR ổn định."""
+    g = img if img.mode == "L" else ImageOps.grayscale(img)
     g = ImageOps.autocontrast(g, cutoff=1)
     return g
 
