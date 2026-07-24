@@ -1,0 +1,11 @@
+# Tính năng TUỲ CHỌN "Diễn giải bằng AI" (BYOK — người dùng tự mang khoá API).
+# Thiếu các gói này thì ứng dụng vẫn chạy OCR/tỉ số bình thường; chỉ mục diễn
+# giải AI báo không khả dụng (bctc/llm_analysis.py import lười + find_spec).
+#
+# LƯU Ý SÀN PYTHON: google-genai yêu cầu Python >=3.10, cao hơn sàn 3.9 của
+# ứng dụng. Vì vậy file này tách riêng — cài thêm khi cần, không ép mọi máy.
+#   pip install -r requirements-ai.txt
+
+anthropic>=0.109     # SDK Claude (BYOK)
+google-genai>=2.8    # SDK Gemini (BYOK) — cần Python >=3.10
+keyring>=25.0        # lưu API key trong OS keychain (BYOK)

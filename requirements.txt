@@ -1,13 +1,14 @@
-# Thư viện cần thiết để chạy ứng dụng (Python 3.9+)
+# Thư viện BẮT BUỘC để chạy ứng dụng (Python 3.9+)
 PyMuPDF>=1.23.0      # render trang PDF scan -> ảnh
 pytesseract>=0.3.10  # cầu nối tới Tesseract OCR
 Pillow>=10.0.0       # xử lý ảnh
 openpyxl>=3.1.0      # ghi file Excel (.xlsx)
 
-# Tính năng "Diễn giải bằng AI" (tuỳ chọn — app vẫn chạy OCR/tỉ số nếu thiếu):
-anthropic>=0.109     # SDK Claude (BYOK)
-google-genai>=2.8    # SDK Gemini (BYOK)
-keyring>=25.0        # lưu API key trong OS keychain (BYOK)
+# Tính năng "Diễn giải bằng AI" là TUỲ CHỌN -> xem requirements-ai.txt.
+# Cố ý KHÔNG để chung file này: google-genai yêu cầu Python >=3.10, nếu để
+# chung sẽ kéo sàn của cả ứng dụng lên 3.10 và làm sai cam kết "3.9+" ở trên.
+# bctc/llm_analysis.py vốn đã import các SDK đó LƯỜI (bên trong hàm) và dùng
+# find_spec để kiểm tra sự tồn tại, nên thiếu chúng app vẫn chạy OCR bình thường.
 
 # Chỉ cần khi ĐÓNG GÓI thành .exe / .app (không bắt buộc để chạy):
 # pyinstaller>=6.0

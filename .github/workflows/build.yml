@@ -46,7 +46,7 @@ jobs:
       - name: Python deps (engine + AI SDK + pyinstaller)
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt pyinstaller
+          python -m pip install -r requirements.txt -r requirements-ai.txt pyinstaller
 
       # ---------------------------------------------------------- macOS
       - name: Nhúng Tesseract (macOS)
