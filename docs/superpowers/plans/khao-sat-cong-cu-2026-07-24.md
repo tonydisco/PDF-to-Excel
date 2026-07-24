@@ -140,18 +140,57 @@ Tổng mã cứu được: **0**.
 > (không phải "phần lớn"), khung QĐ15 (0 file — cùng mã với TT200), mojibake
 > (OCR rác chứ không phải lỗi bảng mã).
 
-### Đ2 — Thử img2table cho việc dò cột *(tác động cao, rủi ro trung bình)*
+### ~~Đ2 — img2table cho việc dò cột~~ → **ĐÃ THỬ, KHÔNG DÙNG (24/07/2026)**
 
-Thay heuristic dò cột bằng dựng lại cấu trúc bảng thật. Cách làm an toàn:
-chạy **song song** với heuristic hiện tại trên sweep 300, so số ô đúng, chỉ
-thay khi thắng rõ. OpenCV thêm ~60 MB vào bộ cài — chấp nhận được, nhưng phải
-đo lại thời gian khởi động (đã tốn công tối ưu ở Đợt 1).
+**Tiền đề sai.** Đề xuất này dựa trên khẳng định của chính tài liệu này rằng
+"dò cột là điểm yếu số 1" — đó là **suy đoán, không phải số đo**. Số đo nói
+ngược lại: lỗi tier-1 còn lại là **23/33 ô sót nằm ở BCTC 2023**, mà chẩn đoán
+V2 đã chỉ rõ là **OCR sập trên trang scan** (trang LCTT ra toàn ký tự ống), và
+7 ô lệch ở đó là rớt chữ số do OCR. Bài toán cột đã được giải ở fix cặp cột
+(Kỳ này/Lũy kế, +31 đúng); phần còn lại là **chất lượng OCR**, không phải hình
+học bảng.
 
-### Đ3 — Tiền xử lý thích ứng cho scan mờ *(tác động vừa, rủi ro thấp)*
+**Thử nghiệm thực tế cũng không thành.** Cài img2table + OpenCV + numpy =
+**183 MB** thêm vào bộ cài 70 MB. Kết quả: **0 bảng** trên cả 3 PDF tier-1 (6
+cấu hình tham số), **0 bảng** trên trang CĐKT thật render 200 DPI, và **0 bảng**
+ngay cả trên ảnh tổng hợp có kẻ viền đen dày. Phát hiện dọc đường: img2table
+cần `cv2.ximgproc.niBlackThreshold` (chỉ có trong **opencv-contrib**) — với
+OpenCV 5.0 nó âm thầm trả 0 bảng, với 4.13 nó ném lỗi rõ ràng. Sau khi cài
+đúng opencv-contrib vẫn 0 bảng.
 
-12,3% scan dưới 150 DPI. Thêm nhị phân hoá thích ứng (Sauvola/adaptive
-threshold) + khử nhiễu cho riêng nhóm DPI thấp, giữ nguyên đường xử lý cho
-file rõ. Có OpenCV rồi thì gần như miễn phí.
+Kết luận: không đủ cơ sở để thêm 183 MB phụ thuộc cho một công cụ (a) nhắm vào
+vấn đề **không phải** nút thắt hiện tại, và (b) chưa cho ra kết quả nào trong
+tay ta. Đã gỡ khỏi môi trường.
+
+### ~~Đ3 — Tiền xử lý thích ứng cho scan mờ~~ → **ĐÃ THỬ, ĐÃ HOÀN TÁC (24/07/2026)**
+
+**Thí nghiệm hẹp rất hứa hẹn.** Khử nhiễu bằng lọc trung vị 3×3 (chỉ cần
+Pillow, **không** thêm phụ thuộc) trên BCTC 2023 ở 200 DPI:
+
+| Trang | Hiện tại | Khử nhiễu |
+|---|---|---|
+| tr1 CĐKT | 33 mã / 66 số | **40 mã / 99 số** |
+| tr2 CĐKT | 35 mã / 73 số | **49 mã / 109 số** |
+| tr3 CĐKT | 18 mã / 36 số | **32 mã / 60 số** |
+
+**Thí nghiệm rộng dập tắt phương án đại trà.** A/B trên 18 trang báo cáo ngẫu
+nhiên: tổng mã số chỉ **+3%**, và **THUA ở 7/18 file** (thắng 4, hoà 7) — lọc
+trung vị làm mảnh nét chữ trên bản scan vốn đã sạch. Đổi `preprocess()` đại trà
+là hỏng 7 file để cứu 4.
+
+**Đã cài đặt đúng khuôn mẫu an toàn** (biến thể cứu hộ trong `_cuu_trang_sap`,
+nơi `_bien_the_tot_nhat` chỉ nhận biến thể ra nhiều mã hơn) — 5 test TDD, 306
+test xanh. Nhưng đo nghiệm thu: **tier-1 KHÔNG đổi một ô nào** (109/33/11/12),
+phủ +0,05% (nhiễu), **CPU +13%** (927 → 1047s).
+
+**Vì sao thất bại — sai lầm thiết kế của tôi:** đường cứu hộ chỉ chạy trên
+trang **đã sập (0 mã)**. Mà các trang khử nhiễu thắng đậm (tr1/tr2/tr3) **không
+hề sập** — chúng đã ra mã sẵn nên cứu hộ không bao giờ chạm tới. Còn trang sập
+thật (tr4/6/7/8) thì **mọi** biến thể đều ~0 mã — chúng hỏng thật.
+
+Muốn bắt cái lợi kia phải chạy khử nhiễu trên **mọi** trang rồi chọn bản tốt
+hơn → gấp đôi số lượt OCR (+100% CPU) trong dự án đã vượt ngân sách CPU 84%.
+**Đã hoàn tác toàn bộ.**
 
 ### Đ4 — Giải mã TCVN3 trong bộ đọc đáp án *(tác động thấp, rủi ro rất thấp)*
 
