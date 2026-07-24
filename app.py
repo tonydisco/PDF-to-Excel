@@ -28,6 +28,11 @@ from tkinter import font as tkfont
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from version import __version__ as APP_VERSION   # noqa: E402
 
+# bctc.workers CHỈ import os (bctc/__init__.py cũng rỗng) -> nạp thẳng ở đây
+# là an toàn, không phạm quy tắc "không kéo thư viện nặng lúc import app".
+# Nhờ vậy nhãn chế độ không bị chép lại thành hai bản dễ lệch nhau.
+from bctc import workers as W                    # noqa: E402
+
 # CỐ Ý KHÔNG import bctc.engine / bctc.ocr ở đây: chúng kéo theo fitz,
 # pytesseract và PIL (hàng chục MB) khiến cửa sổ chậm hiện ra. Nạp lười trong
 # _engine() ngay trước lúc thực sự cần.
@@ -56,6 +61,23 @@ EV_CONFIG = "<Configure>"
 LBL_PAUSE = "⏸  Tạm dừng"
 LBL_RETRY = "↻  Thử lại lỗi"
 CAP_TIME = "THỜI GIAN"
+
+# ---- chế độ hiệu năng OCR (số luồng): giải thích ngắn cho người dùng ----
+MODE_NOTE = {
+    W.MODE_ECO: "1 luồng, máy mát và êm, chạy chậm hơn",
+    W.MODE_BALANCED: "mặc định, cân bằng tốc độ và độ nóng",
+    W.MODE_MAX: "nhanh nhất, máy nóng và ồn hơn",
+}
+MODE_HINT = "Chế độ hiệu năng OCR (số luồng CPU dùng cùng lúc):\n" + "\n".join(
+    "  • %s — %s" % (W.MODE_LABELS[m], MODE_NOTE[m]) for m in W.MODES)
+
+
+def _mode_from_label(label):
+    """Nhãn tiếng Việt trên giao diện -> mã chế độ. Lạ thì về Cân bằng."""
+    for m in W.MODES:
+        if W.MODE_LABELS[m] == label:
+            return m
+    return W.MODE_BALANCED
 
 
 # ----------------------------------------------------------------------
@@ -637,6 +659,65 @@ class FileRow(tk.Frame):
 
 
 # ======================================================================
+# Chú thích nhỏ hiện khi rê chuột — giải thích mà KHÔNG chiếm chỗ màn hình
+# (app nhắm tới laptop nhỏ, phải gọn trong một màn hình).
+# ======================================================================
+class Tip:
+    DELAY = 400          # ms rê chuột trước khi hiện
+
+    def __init__(self, widget, text):
+        self.w = widget
+        self.text = text
+        self.tip = None
+        self._job = None
+        widget.bind("<Enter>", self._schedule, add="+")
+        widget.bind("<Leave>", self.hide, add="+")
+        widget.bind("<ButtonPress>", self.hide, add="+")
+
+    def _schedule(self, _=None):
+        self._cancel()
+        try:
+            self._job = self.w.after(self.DELAY, self._show)
+        except Exception:
+            self._job = None
+
+    def _cancel(self):
+        if self._job is not None:
+            try:
+                self.w.after_cancel(self._job)
+            except Exception:
+                pass
+            self._job = None
+
+    def _show(self):
+        self._job = None
+        if self.tip is not None or not self.text:
+            return
+        try:
+            tw = tk.Toplevel(self.w)
+            tw.wm_overrideredirect(True)
+            tw.wm_geometry("+%d+%d" % (self.w.winfo_rootx() + 10,
+                                       self.w.winfo_rooty()
+                                       + self.w.winfo_height() + 6))
+            tk.Label(tw, text=self.text, justify="left", bg=C["card"],
+                     fg=C["text"], font=_font(9), bd=0, padx=9, pady=6,
+                     highlightthickness=1, highlightbackground=C["border"]
+                     ).pack()
+            self.tip = tw
+        except Exception:
+            self.tip = None
+
+    def hide(self, _=None):
+        self._cancel()
+        if self.tip is not None:
+            try:
+                self.tip.destroy()
+            except Exception:
+                pass
+            self.tip = None
+
+
+# ======================================================================
 # Ứng dụng chính
 # ======================================================================
 class App(tk.Tk):
@@ -667,6 +748,11 @@ class App(tk.Tk):
         self._run_map = []       # ánh xạ chỉ số lượt chạy -> chỉ số file
         self.out_dir = tk.StringVar(value="")
         self.hi_quality = tk.BooleanVar(value=False)
+        # chế độ hiệu năng OCR: mode_var giữ MÃ ('eco'/'balanced'/'max'),
+        # mode_label giữ NHÃN tiếng Việt hiển thị trong ô chọn.
+        self.mode_var = tk.StringVar(value=W.MODE_BALANCED)
+        self.mode_label = tk.StringVar(value=W.MODE_LABELS[W.MODE_BALANCED])
+        self._tips = []
         self.msg_q = queue.Queue()
         self.running = False
 
@@ -769,6 +855,29 @@ class App(tk.Tk):
                      font=_font(10))
         st.map("Card.TCheckbutton", background=[("active", C["bg"])],
                foreground=[("active", C["text"])])
+        # ô chọn chế độ: phẳng, cùng tông với ô nhập đường dẫn bên cạnh
+        st.configure("Card.TCombobox", font=_font(10), padding=3, relief="flat",
+                     foreground=C["text"], arrowcolor=C["sub"],
+                     background=C["entry_bg"], fieldbackground=C["entry_bg"],
+                     bordercolor=C["border"], lightcolor=C["entry_bg"],
+                     darkcolor=C["entry_bg"], selectbackground=C["entry_bg"],
+                     selectforeground=C["text"])
+        st.map("Card.TCombobox",
+               foreground=[("readonly", C["text"]), ("disabled", C["disabled_fg"])],
+               background=[("readonly", C["entry_bg"]), ("active", C["entry_bg"]),
+                           ("disabled", C["disabled_bg"])],
+               fieldbackground=[("readonly", C["entry_bg"]),
+                                ("disabled", C["disabled_bg"])],
+               selectbackground=[("readonly", C["entry_bg"])],
+               selectforeground=[("readonly", C["text"])],
+               arrowcolor=[("active", C["ok"]), ("disabled", C["disabled_fg"])],
+               bordercolor=[("focus", C["ok"]), ("hover", C["ok"])])
+        # danh sách xổ xuống là Listbox thuần Tk -> chỉ tô màu được qua option db
+        self.option_add("*TCombobox*Listbox.background", C["entry_bg"])
+        self.option_add("*TCombobox*Listbox.foreground", C["text"])
+        self.option_add("*TCombobox*Listbox.selectBackground", C["ok"])
+        self.option_add("*TCombobox*Listbox.selectForeground", C["bg"])
+        self.option_add("*TCombobox*Listbox.borderWidth", 0)
 
     # ------------------------------------------------------ nút (viền/đặc)
     def _outline_btn(self, parent, text, cmd, color, width, height=44, font=None):
@@ -922,8 +1031,33 @@ class App(tk.Tk):
         self.out_entry.pack(fill="both", expand=True, padx=8)
         self._outline_btn(opt, "Chọn…", self.pick_out, C["sub"], 86,
                           height=36).pack(side="left")
-        ttk.Checkbutton(opt, text="Chất lượng cao (chậm hơn)", style="Card.TCheckbutton",
-                        variable=self.hi_quality).pack(side="left", padx=(14, 0))
+        # ---- hàng tuỳ chọn thứ hai: chất lượng + chế độ hiệu năng ----
+        #  Tách khỏi hàng đường dẫn: gộp chung một hàng thì tổng bề rộng đòi hỏi
+        #  vượt quá cửa sổ mặc định và ô chọn chế độ bị cắt cụt.
+        opt2 = tk.Frame(bottom, bg=C["bg"])
+        opt2.pack(fill="x", pady=(6, 0))
+        ttk.Checkbutton(opt2, text="Chất lượng cao (chậm hơn)",
+                        style="Card.TCheckbutton",
+                        variable=self.hi_quality).pack(side="left")
+
+        self._tips = []
+        mode_lbl = tk.Label(opt2, text="Chế độ:", bg=C["bg"], fg=C["text"],
+                            font=_font(10, "bold"))
+        mode_lbl.pack(side="left", padx=(18, 6))
+        self.mode_label.set(W.MODE_LABELS[self._selected_mode()])
+        self.mode_cb = ttk.Combobox(
+            opt2, style="Card.TCombobox", state="readonly", width=13,
+            textvariable=self.mode_label, exportselection=False,
+            values=[W.MODE_LABELS[m] for m in W.MODES])
+        self.mode_cb.pack(side="left")
+        self.mode_cb.bind("<<ComboboxSelected>>", self._on_mode_change)
+        # ghi chú đổi theo lựa chọn -> luôn thấy được cái giá phải trả
+        self.mode_note = tk.Label(opt2, text="", bg=C["bg"], fg=C["sub"],
+                                  font=_font(9), anchor="w")
+        self.mode_note.pack(side="left", padx=(8, 0))
+        for w in (mode_lbl, self.mode_cb, self.mode_note):
+            self._tips.append(Tip(w, MODE_HINT))
+        self._sync_mode_note()
 
         # ---- hàng nút: Chuyển đổi · Làm mới · Tạm dừng · Dừng hẳn ----
         runrow = tk.Frame(bottom, bg=C["bg"])
@@ -1021,6 +1155,51 @@ class App(tk.Tk):
         self.rows.clear()
         self.configure(bg=C["bg"])
         self._build()
+
+    # -------------------------------------------------- chế độ hiệu năng
+    def _selected_mode(self):
+        """Mã chế độ đang chọn. Giá trị lạ -> Cân bằng, và GHI LOG (không im lặng)."""
+        try:
+            m = self.mode_var.get()
+        except Exception as e:
+            m = ""
+            self._flog_warn("Không đọc được chế độ (%r)" % (e,))
+        if m in W.MODES:
+            return m
+        self._flog_warn("Chế độ không hợp lệ %r -> dùng %s"
+                        % (m, W.MODE_BALANCED))
+        return W.MODE_BALANCED
+
+    def _flog_warn(self, msg):
+        try:
+            self._flog.warning(msg)
+        except Exception:
+            pass
+
+    def _set_mode_enabled(self, on):
+        try:
+            self.mode_cb.configure(state="readonly" if on else "disabled")
+        except Exception:
+            pass
+
+    def _sync_mode_note(self):
+        """Ghi chú cạnh ô chọn luôn nói về chế độ ĐANG chọn."""
+        try:
+            self.mode_note.config(text="· " + MODE_NOTE[self._selected_mode()])
+        except Exception:
+            pass
+
+    def _on_mode_change(self, _=None):
+        """Người dùng đổi chế độ: cập nhật mã + nhắc đánh đổi ngay ở Lịch sử."""
+        self.mode_var.set(_mode_from_label(self.mode_label.get()))
+        try:
+            self.mode_cb.selection_clear()
+        except Exception:
+            pass
+        self._sync_mode_note()
+        m = self._selected_mode()
+        self._logln("⚙ Chế độ: %s — %s" % (W.MODE_LABELS[m], MODE_NOTE[m]),
+                    "muted")
 
     # ------------------------------------------------------------- helpers
     def _logln(self, text, tag=None):
@@ -1236,6 +1415,7 @@ class App(tk.Tk):
         self.btn_pause.set_text(LBL_PAUSE)
         self.btn_stop.set_enabled(True)
         self.btn_del_sel.set_enabled(False)        # khoá xoá khi đang chạy
+        self._set_mode_enabled(False)   # chế độ đọc 1 lần lúc bắt đầu -> khoá
         for r in self.rows:
             r.set_deletable(False)
         self.overall.set_frac(0)
@@ -1331,16 +1511,20 @@ class App(tk.Tk):
 
         try:
             dpis = (180, 220, 290) if self.hi_quality.get() else (180, 235)
+            mode = self._selected_mode()
             try:
-                self._flog.info("Bắt đầu convert %d file | dpis=%s | out=%s",
-                                len(files), dpis, out_dir)
+                self._flog.info(
+                    "Bắt đầu convert %d file | dpis=%s | chế độ=%s (%s, %d luồng) "
+                    "| out=%s", len(files), dpis, mode,
+                    W.MODE_LABELS.get(mode, mode), W.worker_count(mode), out_dir)
             except Exception:
                 pass
             results = _engine().convert_many(
                 files, out_dir, lang="vie", dpis=dpis, log=log, progress=prog,
                 on_file=on_file,
                 cancel=self._cancel.is_set,
-                pause_wait=self._resume.wait)
+                pause_wait=self._resume.wait,
+                mode=mode)
             self.msg_q.put(("done", results))
         except Exception as e:
             self.msg_q.put(("fatal", f"{e}\n{traceback.format_exc()}"))
@@ -1515,6 +1699,7 @@ class App(tk.Tk):
         self.btn_retry.set_enabled(bool(self.failed))
         self.btn_retry.set_text(f"{LBL_RETRY} ({len(self.failed)})"
                                 if self.failed else LBL_RETRY)
+        self._set_mode_enabled(True)
         for r in self.rows:                 # mở lại thao tác xoá
             r.set_deletable(True)
         self._on_row_select()
