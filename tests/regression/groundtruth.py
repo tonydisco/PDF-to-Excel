@@ -14,6 +14,17 @@ Bốn cạm bẫy đã xác nhận trên corpus thật:
      ĐỌC ĐƯỢC 'Kỳ trước' | 'Kỳ này' với cột TRÁI lại là Kỳ trước. Khi nhãn
      còn đọc được thì phải ưu tiên nhãn hơn vị trí, xem _find_columns_fallback
      và statement_detail().
+  5. Hàng đánh số '1..5' nằm trên Ô MERGE nên marker '4'/'5' có thể lệch 1
+     cột so với cột giá trị thật ('KQKD_2023.xls': marker ở c9/c11, giá trị
+     ở c8/c10 -> key toàn (None, None); 'cdkt_6t.xls'/'CDKT Q2.xls': marker
+     '5' ở cột rỗng, Kỳ-trước thật ở kề trái -> mất nguyên cột năm trước).
+     Cột neo theo hàng đánh số phải được XÁC MINH có ô số thật trên các hàng
+     có mã; cột rỗng thì dò 2 cột kề, xem _nudge_empty_value_col.
+  6. Bảng 4 cột giá trị theo NHÓM header (Trong kỳ nay/trước + Lũy kế
+     nay/trước — 'BTHT ..._KQKD.xls'): "2 cột nhiều số nhất" có thể là 2 cột
+     Năm-Trước của 2 nhóm khác nhau (vài dòng chỉ có số năm trước). Khi nhãn
+     còn đọc được và có cả cột năm-nay lẫn năm-trước trong các ứng viên thì
+     phải ghép cặp theo nhãn, xem _pair_by_group_labels.
 """
 import io
 import os
@@ -125,6 +136,82 @@ _MIN_CODE_HITS = 5
 _MIN_VALUE_ABS = 1000
 
 
+def _row_code(row, code_col):
+    """
+    Mã chỉ tiêu tại cột code_col của một hàng, hoặc None nếu hàng không có mã.
+
+    Đây là ĐỊNH NGHĨA DUY NHẤT về "hàng có mã": statement_detail() dùng nó để
+    bóc giá trị, _numeric_hits() dùng nó để xác minh cột giá trị — hai nơi
+    phải đồng nhất, nếu không bước xác minh sẽ đếm trên tập hàng khác với tập
+    hàng được bóc.
+    """
+    if code_col >= len(row):
+        return None
+    raw = row[code_col]
+    if isinstance(raw, (int, float)) and not isinstance(raw, bool):
+        return str(int(round(raw)))
+    m = _CODE_CELL.match(str(raw or ""))
+    if m:
+        return m.group(1)
+    return None
+
+
+def _numeric_hits(rows, hdr_row, code_col, col):
+    """Số hàng CÓ MÃ (dưới hàng tiêu đề) mà ô tại cột `col` là số.
+
+    Chỉ đếm trên hàng có mã để các ô số lạc ngoài bảng (ngày tháng ở dòng ký
+    tên 'Lập, ngày... năm 2023', số hiệu thông tư ở đầu trang...) không làm
+    một cột rỗng trông như có dữ liệu.
+    """
+    n = 0
+    for row in rows[hdr_row + 1:]:
+        if _row_code(row, code_col) is None:
+            continue
+        if col < len(row) and _to_int(row[col]) is not None:
+            n += 1
+    return n
+
+
+# Ngưỡng cho _nudge_empty_value_col, tính theo TỶ LỆ trên số hàng có mã (số
+# tuyệt đối không dùng được: bảng CDKT 115 hàng và bảng KQKD 20 hàng cùng một
+# dạng lỗi). "Rỗng" không có nghĩa là 0 ô tuyệt đối: 'CDKT Q2.xls' có đúng 1 ô
+# số lạc trong cột marker (hàng '270', c9=248197922) trên 115 hàng có mã —
+# vẫn phải coi là rỗng. Cột thay thế thì ngược lại phải DÀY thật sự: các bản
+# in phần mềm kế toán thuộc gia đình lỗi này in số (kể cả 0) trên gần như mọi
+# hàng, nên cột kề thưa (vd. Thuyết minh 'VI.25' -> _to_int ra 25) không đạt
+# ngưỡng dày và không bao giờ được chọn thay.
+_EMPTY_COL_FRAC = 0.05   # <= 5% hàng có mã có ô số -> coi như cột rỗng
+_DENSE_COL_FRAC = 0.5    # >= 50% hàng có mã có ô số -> mới đáng tin để thay
+
+
+def _nudge_empty_value_col(rows, hdr_row, code_col, col, taken):
+    """
+    Xác minh cột giá trị `col` neo theo hàng đánh số; trả về cột nên dùng.
+
+    Cạm bẫy 5 (đầu file): hàng đánh số nằm trên ô merge nên marker '4'/'5' có
+    thể lệch 1 cột so với cột giá trị thật — cột được neo khi đó RỖNG (theo
+    _EMPTY_COL_FRAC) trên các hàng có mã. Cột không rỗng thì giữ nguyên
+    (không đụng vào file lành). Cột rỗng thì dò đúng 2 cột kề (lệch-1 do
+    merge, không dò xa hơn), bỏ qua cột mã số và các cột đã bị chiếm
+    (`taken`), chỉ nhận cột kề DÀY thật sự (theo _DENSE_COL_FRAC), chọn cột
+    nhiều ô số hơn; hoà thì ưu tiên TRÁI — cả ba file lỗi đã xác nhận
+    (KQKD_2023, cdkt_6t, CDKT Q2) đều có marker nằm bên PHẢI cột giá trị
+    thật. Không cột kề nào đạt thì giữ nguyên `col` (không đoán xa).
+    """
+    n_coded = sum(1 for row in rows[hdr_row + 1:]
+                  if _row_code(row, code_col) is not None)
+    if _numeric_hits(rows, hdr_row, code_col, col) > n_coded * _EMPTY_COL_FRAC:
+        return col
+    best, best_hits = col, 0
+    for cand in (col - 1, col + 1):
+        if cand < 0 or cand == code_col or cand in taken:
+            continue
+        hits = _numeric_hits(rows, hdr_row, code_col, cand)
+        if hits >= max(n_coded * _DENSE_COL_FRAC, 1) and hits > best_hits:
+            best, best_hits = cand, hits
+    return best
+
+
 def _find_columns_detail(rows):
     """
     Dò đầy đủ nguồn gốc: (hàng tiêu đề, cột mã số, cột năm nay, cột năm
@@ -155,6 +242,14 @@ def _find_columns_detail(rows):
             code_col = cols[1]
             cur_col = cols[3]
             prior_col = cols[4] if len(cols) >= 5 else cols[3] + 1
+            # Cạm bẫy 5: marker '4'/'5' trên ô merge có thể lệch 1 cột so với
+            # cột giá trị thật -> xác minh từng cột, cột rỗng thì dò cột kề.
+            # Chỉnh cur trước rồi mới tới prior; cột đối phương (theo trạng
+            # thái mới nhất) bị loại khỏi ứng viên để hai cột không trùng nhau.
+            cur_col = _nudge_empty_value_col(rows, r, code_col, cur_col,
+                                             (prior_col,))
+            prior_col = _nudge_empty_value_col(rows, r, code_col, prior_col,
+                                               (cur_col,))
             return r, code_col, cur_col, prior_col, "numbering", "positional"
 
     fb = _find_columns_fallback(rows)
@@ -296,6 +391,48 @@ def _order_by_header_labels(rows, hdr_row, col_a, col_b):
     return None
 
 
+def _column_year_marker(rows, hdr_row, col):
+    """Nhãn năm nay/năm trước của MỘT cột trong cửa sổ tiêu đề, hoặc None.
+
+    Quét từ hdr_row ngược lên (cùng cửa sổ _LABEL_SCAN_ABOVE với
+    _order_by_header_labels), lấy nhãn ở hàng GẦN dữ liệu nhất: với bảng
+    2 tầng header ('Trong kỳ' đè trên 'Năm nay'/'Năm Trước'), tầng dưới mới
+    nói cột này là năm nào — tầng trên ('Lũy kế từ ĐẦU NĂM' chứa mốc 'đầu
+    năm') mà thắng thì cột năm-nay của nhóm Lũy kế bị dán nhầm nhãn prior.
+    """
+    lo = max(hdr_row - _LABEL_SCAN_ABOVE, 0)
+    for r in range(hdr_row, lo - 1, -1):
+        row = rows[r]
+        marker = _year_marker(row[col] if col < len(row) else None)
+        if marker is not None:
+            return marker
+    return None
+
+
+def _pair_by_group_labels(rows, hdr_row, value_cols, value_counts):
+    """
+    Ghép cặp (cột năm nay, cột năm trước) THEO NHÃN giữa các cột ứng viên,
+    dùng cho bảng có nhiều hơn 2 cột giá trị chia NHÓM header (cạm bẫy 6 —
+    'BTHT ..._KQKD.xls': Trong kỳ nay/trước + Lũy kế nay/trước; 2 cột nhiều
+    số nhất là 2 cột Năm-Trước của 2 nhóm khác nhau).
+
+    Chỉ quyết định khi đọc được CẢ HAI phía trong các ứng viên: cột năm nay =
+    cột mang nhãn năm-nay có nhiều ô số nhất (hoà thì lấy trái nhất); cột năm
+    trước = cột mang nhãn năm-trước GẦN cột năm nay nhất — cùng nhóm header
+    thì đứng cạnh nhau, nên "gần nhất" chính là "cùng nhóm" mà không phải
+    đoán ranh giới nhóm từ ô merge. Thiếu một phía (nhãn mojibake/thiếu/nhập
+    nhằng) thì trả về None để bên gọi giữ nguyên đường cũ.
+    """
+    markers = {c: _column_year_marker(rows, hdr_row, c) for c in value_cols}
+    cur_cands = [c for c in value_cols if markers[c] == "current"]
+    prior_cands = [c for c in value_cols if markers[c] == "prior"]
+    if not cur_cands or not prior_cands:
+        return None
+    cur_col = max(cur_cands, key=lambda c: (value_counts[c], -c))
+    prior_col = min(prior_cands, key=lambda c: (abs(c - cur_col), c))
+    return cur_col, prior_col
+
+
 def _find_columns_fallback(rows):
     """
     Dự phòng khi không có hàng đánh số cột — chỉ dùng khi chiến lược chính ở
@@ -306,19 +443,21 @@ def _find_columns_fallback(rows):
          bảng. Cần >= _MIN_CODE_HITS ô mới coi là đáng tin, nếu không thất
          bại (trả về None, bên gọi tự raise ValueError).
       2. Cột giá trị: trong các cột nằm BÊN PHẢI cột mã số, đếm ô số có
-         |giá trị| >= _MIN_VALUE_ABS. Lấy 2 cột nhiều ô nhất — đây là 2 cột
-         ỨNG VIÊN năm nay/năm trước, chưa xác định thứ tự. Cột "Thuyết minh"
-         (vd. 'VI.25') thường nằm xen giữa nhưng không phải số lớn nên không
-         lẫn vào đây — ngưỡng độ lớn mới là chốt chặn thật, không dựa vào
-         việc đoán đúng vị trí cột Thuyết minh. Nếu có dưới 2 cột như vậy,
-         thất bại.
+         |giá trị| >= _MIN_VALUE_ABS; mọi cột có ít nhất 1 ô như vậy là ỨNG
+         VIÊN. Cột "Thuyết minh" (vd. 'VI.25') thường nằm xen giữa nhưng
+         không phải số lớn nên không lẫn vào đây — ngưỡng độ lớn mới là chốt
+         chặn thật, không dựa vào việc đoán đúng vị trí cột Thuyết minh. Nếu
+         có dưới 2 ứng viên, thất bại.
       3. Hàng tiêu đề: hàng ngay TRƯỚC hàng đầu tiên chứa mã số đã dò được
          (không âm), để read_statement bắt đầu quét đúng chỗ.
-      4. Thứ tự (năm nay, năm trước) giữa 2 cột ứng viên: ưu tiên NHÃN tiêu
-         đề nếu đọc được và xác định rõ (_order_by_header_labels) — nhãn LUÔN
-         thắng vị trí vì đây là căn cứ chắc chắn nhất khi có. Nếu không (nhãn
-         mojibake / thiếu / mơ hồ), GIỮ mặc định đã dùng từ trước: cột trái =
-         năm nay, cột phải = năm trước.
+      4. Chọn cặp + thứ tự (năm nay, năm trước): nếu nhãn tiêu đề đọc được
+         CẢ hai phía trong các ứng viên thì ghép cặp theo nhãn
+         (_pair_by_group_labels) — nhãn LUÔN thắng vị trí vì đây là căn cứ
+         chắc chắn nhất khi có, và với bảng >2 cột chia nhóm header (cạm bẫy
+         6) "2 cột nhiều số nhất" có thể là 2 cột Năm-Trước xuyên nhóm. Nếu
+         nhãn không đủ (mojibake / thiếu / mơ hồ): lấy 2 cột nhiều ô số
+         nhất, thử _order_by_header_labels trên đúng 2 cột đó, còn không thì
+         GIỮ mặc định đã dùng từ trước: cột trái = năm nay, phải = năm trước.
 
     Trả về (hàng tiêu đề, cột mã số, cột năm nay, cột năm trước,
     column_order) — column_order là "labels" hoặc "positional", cho biết
@@ -354,10 +493,20 @@ def _find_columns_fallback(rows):
     value_cols = [c for c in range(code_col + 1, ncols) if value_counts[c] > 0]
     if len(value_cols) < 2:
         return None
-    value_cols.sort(key=lambda c: value_counts[c], reverse=True)
-    col_a, col_b = value_cols[:2]
 
     hdr_row = max(first_code_row[code_col] - 1, 0)
+
+    # Cạm bẫy 6: khi nhãn đọc được cả 2 phía, ghép cặp theo nhãn TRƯỚC khi
+    # đếm số — "2 cột nhiều số nhất" có thể là 2 cột Năm-Trước xuyên nhóm.
+    # Với bảng 2 cột thường gặp, đường này chọn đúng 2 cột đó theo đúng thứ
+    # tự nhãn — trùng kết quả đường cũ (top-2 + _order_by_header_labels).
+    paired = _pair_by_group_labels(rows, hdr_row, value_cols, value_counts)
+    if paired is not None:
+        cur_col, prior_col = paired
+        return hdr_row, code_col, cur_col, prior_col, "labels"
+
+    value_cols.sort(key=lambda c: value_counts[c], reverse=True)
+    col_a, col_b = value_cols[:2]
 
     labeled = _order_by_header_labels(rows, hdr_row, col_a, col_b)
     if labeled is not None:
@@ -399,16 +548,7 @@ def statement_detail(path):
 
     values = {}
     for row in rows[hdr_row + 1:]:
-        if code_col >= len(row):
-            continue
-        raw = row[code_col]
-        code = None
-        if isinstance(raw, (int, float)) and not isinstance(raw, bool):
-            code = str(int(round(raw)))
-        else:
-            m = _CODE_CELL.match(str(raw or ""))
-            if m:
-                code = m.group(1)
+        code = _row_code(row, code_col)
         if not code:
             continue
         cur = _to_int(row[cur_col]) if cur_col < len(row) else None

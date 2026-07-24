@@ -1,0 +1,4523 @@
+{
+  "meta": {
+    "corpus": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents",
+    "tier2_sample": 300
+  },
+  "tier2": {
+    "n_files": 300,
+    "coverage_avg": {
+      "CDKT": 0.18821839080459765,
+      "KQHDKD": 0.3495652173913045,
+      "LCTT": 0.2599099099099098
+    },
+    "balance_pass_rate": 0.8270509977827051,
+    "per_file": [
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BCTC Q2.2025/18. Công ty Cổ phần Du Lịch Huế.pdf",
+        "coverage": {
+          "CDKT": 0.08620689655172414,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.146675109863281,
+        "cpu": 13.786306,
+        "rss_mb": 323.71875
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2016/Quy 2.2016/02-Cty CP TMDV Ben Thanh_BCTC Rieng soat xet 6T2016.pdf",
+        "coverage": {
+          "CDKT": 0.3448275862068966,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.7027027027027027
+        },
+        "balance": [
+          2,
+          2
+        ],
+        "wall": 8.67264723777771,
+        "cpu": 23.625689,
+        "rss_mb": 402.703125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2019/Nam 2019_Chua KT/27. Cty CP SXKD hang XK Tan Binh BCTC 2019_chua kt.pdf",
+        "coverage": {
+          "CDKT": 0.04310344827586207,
+          "KQHDKD": 0.0,
+          "LCTT": 0.2972972972972973
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 9.042120933532715,
+        "cpu": 19.566001000000007,
+        "rss_mb": 541.5625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2020/Da kiem toan 2020/01_CTCP DVTH Sai Gon/Savico-FS2020-Separate-VN.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.140163898468018,
+        "cpu": 17.316753000000006,
+        "rss_mb": 541.5625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2017/Quy 1.2017/09_Cty CP DV Sai Gon O to_BCTC Q1.2017 (Rieng).pdf",
+        "coverage": {
+          "CDKT": 0.06896551724137931,
+          "KQHDKD": 0.043478260869565216,
+          "LCTT": 0.16216216216216217
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.432409048080444,
+        "cpu": 13.056066999999999,
+        "rss_mb": 541.5625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2010/32_bctc ld ks saigon riverside da kt 2010_v1.pdf",
+        "coverage": {
+          "CDKT": 0.28448275862068967,
+          "KQHDKD": 0.21739130434782608,
+          "LCTT": 0.2702702702702703
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 8.802636623382568,
+        "cpu": 22.676419999999993,
+        "rss_mb": 541.5625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 10/2016/BCTC kiem toan 2016/01_Cty CP DVTH Sai Gon_BCTC 2016 kiem toan/SVC.BCTC Rieng kiem toan 2016.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.043478260869565216,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 0.40071702003479004,
+        "cpu": 0.37690800000000024,
+        "rss_mb": 541.5625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2013/BC 2013 da Kiem toan/01_BCTC 2013 Cty CP DVTH Sai Gon (da kt)/SVC_BCTC_Rieng_2013.pdf",
+        "coverage": {
+          "CDKT": 0.017241379310344827,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 9.742141246795654,
+        "cpu": 21.796466999999993,
+        "rss_mb": 541.5625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2023/BCTC - tu lap 2023/21_Cty CP KS DL Thang Muoi 2023.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.30434782608695654,
+          "LCTT": 0.32432432432432434
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 19.870334148406982,
+        "cpu": 48.686087000000015,
+        "rss_mb": 541.5625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2024/BCTC - tu lap 2024/31_Cty TNHH Nhom dinh hinh Sapa Ben Thanh 2024.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 2.440516948699951,
+        "cpu": 3.0528260000000103,
+        "rss_mb": 541.5625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 10/2020/Da kiem toan 2020/04_CTCP TM Hoc Mon/Rieng/kqkd (me) (6)_1615964670.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.782608695652174,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 2.8362491130828857,
+        "cpu": 2.7712319999999977,
+        "rss_mb": 541.5625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 6/2024/Quý 2/23_Cty LD Căn hộ & Văn phòng Sài Gòn.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 0.5255742073059082,
+        "cpu": 1.2880240000000356,
+        "rss_mb": 541.5625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2013/QI-2013/NHOM DICH VU THUONG MAI/SVC_BCTT_Rieng_Q1_2013.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 10.480270862579346,
+        "cpu": 19.578730999999976,
+        "rss_mb": 541.5625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2013/Quy III-2013/04_Cty CP TM Hoc Mon_BCTC 9 thang 2013 - Cty Cho.pdf",
+        "coverage": {
+          "CDKT": 0.12931034482758622,
+          "KQHDKD": 0.5217391304347826,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 9.46117901802063,
+        "cpu": 22.965501999999958,
+        "rss_mb": 541.5625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 6/2025/Quy 2.2025/02_CTCP TMDV Ben Thanh 6Th_2025 (Rieng).pdf",
+        "coverage": {
+          "CDKT": 0.07758620689655173,
+          "KQHDKD": 0.4782608695652174,
+          "LCTT": 0.08108108108108109
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.398483037948608,
+        "cpu": 13.567151000000024,
+        "rss_mb": 541.5625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2013/Quy III-2013/02_Cty CP TM Ben Thanh BC quyet toan Q3 2013.pdf",
+        "coverage": {
+          "CDKT": 0.4224137931034483,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.5945945945945946
+        },
+        "balance": [
+          4,
+          6
+        ],
+        "wall": 8.406574010848999,
+        "cpu": 24.444810000000018,
+        "rss_mb": 690.625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2017/Quy 4.2017/13_Cty LD KS SG Riverside_BCTC 2017_8 Trang.pdf",
+        "coverage": {
+          "CDKT": 0.07758620689655173,
+          "KQHDKD": 0.30434782608695654,
+          "LCTT": 0.1891891891891892
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.076488256454468,
+        "cpu": 12.392431000000045,
+        "rss_mb": 690.625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 6/2017/BCTC da kiem toan 2017/Maxim_s Club/thuyetminhbctcmx2017/TM BCTC MX 2017.3.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 0.44884490966796875,
+        "cpu": 0.4424020000000155,
+        "rss_mb": 690.625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2024/BCTC - tu lap 2024/13_Cty LDKS Riverside 2024.pdf",
+        "coverage": {
+          "CDKT": 0.07758620689655173,
+          "KQHDKD": 0.0,
+          "LCTT": 0.21621621621621623
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.113710880279541,
+        "cpu": 8.605542999999898,
+        "rss_mb": 690.625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2020/Nam 2020_Chua KT/28_CTCP XNk Giay dep Nam A/Bang_can_doi_tai_khoan 14-1-21.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 0.5585358142852783,
+        "cpu": 0.8152960000000462,
+        "rss_mb": 690.625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2013/QI-2013/05_BCTC Cty CP TM Phu Nhuan Q1.2013.pdf",
+        "coverage": {
+          "CDKT": 0.09482758620689655,
+          "KQHDKD": 0.0,
+          "LCTT": 0.2972972972972973
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 7.269457817077637,
+        "cpu": 15.525943999999981,
+        "rss_mb": 690.625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2016/Quy 2.2016/08_Cty CP VBDQ Ben Thanh - BCTC quy 2.2016 kiem toan.pdf",
+        "coverage": {
+          "CDKT": 0.5086206896551724,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.4864864864864865
+        },
+        "balance": [
+          0,
+          1
+        ],
+        "wall": 6.027827024459839,
+        "cpu": 18.67575000000005,
+        "rss_mb": 690.625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2020/Quy III.2020/25_CTCP PT va DV Nha Ben Thanh_BCTC Quy III.pdf",
+        "coverage": {
+          "CDKT": 0.07758620689655173,
+          "KQHDKD": 0.4782608695652174,
+          "LCTT": 0.10810810810810811
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.440726041793823,
+        "cpu": 14.58318700000001,
+        "rss_mb": 690.625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2019/Nam2019_Da kiem toan/09_CTCP Dich vu Sai gon O to_BCTC HN.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.017352819442749,
+        "cpu": 17.106822000000022,
+        "rss_mb": 690.625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BCTC 2025 (Kiểm toán)/16_Cty CP DL Ben Thanh Non Nuoc 2025.pdf",
+        "coverage": {
+          "CDKT": 0.3879310344827586,
+          "KQHDKD": 0.7391304347826086,
+          "LCTT": 0.5945945945945946
+        },
+        "balance": [
+          5,
+          6
+        ],
+        "wall": 8.309462070465088,
+        "cpu": 24.093590000000006,
+        "rss_mb": 690.625
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/Tổng Công ty/2019.pdf",
+        "coverage": {
+          "CDKT": 0.4224137931034483,
+          "KQHDKD": 0.4782608695652174,
+          "LCTT": 0.40540540540540543
+        },
+        "balance": [
+          3,
+          4
+        ],
+        "wall": 9.988659143447876,
+        "cpu": 28.206687999999986,
+        "rss_mb": 707.109375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2014/Quy 1.2014/05_BCTC QI.2014 Cty CP VHTH Ben Thanh.pdf",
+        "coverage": {
+          "CDKT": 0.08620689655172414,
+          "KQHDKD": 0.17391304347826086,
+          "LCTT": 0.1891891891891892
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.328021049499512,
+        "cpu": 13.86113899999998,
+        "rss_mb": 707.109375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2022/BCTC 2022 chưa kiểm toán/21_Cty CP KS DL Thang Muoi.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.4782608695652174,
+          "LCTT": 0.32432432432432434
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 18.632270097732544,
+        "cpu": 52.54227300000002,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2017/BCTC da kiem toan 2017/14_Cty TNHH KS Ben Thanh - Norfolk_BCTC 2017_Kiem toan.pdf",
+        "coverage": {
+          "CDKT": 0.3706896551724138,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.16216216216216217
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 7.651381015777588,
+        "cpu": 21.086974000000055,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2020/BCTC 2020 da kiem toan/Da kiem toan/04_CTCP TM Hoc Mon/Hop nhat/3.bc hdqt (hn)_1615965001.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 1.1634750366210938,
+        "cpu": 2.5935879999998974,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2013/QII-2013/25-Benthanh Land-BCTC 6th 2013.pdf",
+        "coverage": {
+          "CDKT": 0.02586206896551724,
+          "KQHDKD": 0.0,
+          "LCTT": 0.5945945945945946
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 8.165464162826538,
+        "cpu": 18.744659000000127,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2021/QUY 2.2021/04_CTCP TM Hoc Mon_BCTC Quy II/Rieng/kqkd (me)_1629181087.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 3.1504321098327637,
+        "cpu": 3.128998000000024,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 10/2019/Nam 2019_Chua KT/20_Cty CP Sai Gon Quang Binh_BCTC 2019_Da ky/20_Cty CP Sai Gon Quang Binh_BCDKT 2019_Da ky.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 0.5261361598968506,
+        "cpu": 1.303156999999942,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2018/Nam 2018/2018 (Da kiem toan)/Da kiem toan/10_BCTC kiem toan Bac Au (signed) - 2018.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.380620002746582,
+        "cpu": 11.66682000000003,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2013/Quy III-2013/BCTC - 2013 - Quy 3 - Cty CP SG Mui Ne.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.043478260869565216,
+          "LCTT": 0.13513513513513514
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.722477197647095,
+        "cpu": 9.282831999999985,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2011/QI-2011/33-CTy CP XNK Khanh Hoi BCTC hop nhat (Q1_2011).pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 3.617098808288574,
+        "cpu": 10.162015999999994,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2016/Quy 3.2016/01_Cty CP DVTH SG_BCTC Q3.2016 (HN).pdf",
+        "coverage": {
+          "CDKT": 0.23275862068965517,
+          "KQHDKD": 0.6086956521739131,
+          "LCTT": 0.2702702702702703
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.388008117675781,
+        "cpu": 17.60178899999994,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2020/Da kiem toan 2020/05_CTCP VHTH Ben Thanh/BCTC 31 12 2020 trang den.pdf",
+        "coverage": {
+          "CDKT": 0.3879310344827586,
+          "KQHDKD": 0.6086956521739131,
+          "LCTT": 0.5945945945945946
+        },
+        "balance": [
+          4,
+          4
+        ],
+        "wall": 6.823889255523682,
+        "cpu": 17.476835999999935,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2017/BCTC da kiem toan 2017/Maxim_s Club/thuyetminhbctcmx2017/TM BCTC MX 2017.2.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 0.4700479507446289,
+        "cpu": 0.46585499999991953,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2015/BCTC nam 2015/Cty TNHH Cho CK Moc Bai - BCTC nam 2015 (kiem toan).pdf",
+        "coverage": {
+          "CDKT": 0.23275862068965517,
+          "KQHDKD": 0.2608695652173913,
+          "LCTT": 0.32432432432432434
+        },
+        "balance": [
+          4,
+          4
+        ],
+        "wall": 4.883877754211426,
+        "cpu": 14.62617200000011,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2015/BCTC nam 2015 2/11-Cty LD KS Plaza-BCTC kiem toan nam 2015.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.5945945945945946
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.960125923156738,
+        "cpu": 15.024281000000087,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2017/BCTC da kiem toan 2017/29_Cty CP XNK Giay dep Nam A _ BCTC Kiem toan rieng 2017.pdf",
+        "coverage": {
+          "CDKT": 0.4482758620689655,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.10810810810810811
+        },
+        "balance": [
+          2,
+          2
+        ],
+        "wall": 7.974961280822754,
+        "cpu": 20.91962699999999,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2020/BCTC 2020 da kiem toan/Da kiem toan/23_Cty LD Can ho va Van phong Sai Gon _BCTC kiem toan 2020.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 3.6060872077941895,
+        "cpu": 10.680415999999923,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 6/2023/BCTC - Da kiem toan 2023/21_Cty CP KS DL Thang Muoi 2023.pdf",
+        "coverage": {
+          "CDKT": 0.3879310344827586,
+          "KQHDKD": 0.5652173913043478,
+          "LCTT": 0.40540540540540543
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 9.85152292251587,
+        "cpu": 27.61657700000012,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 6/2024/BCTC - Da kiem toan 2024/19_Cty CP Du lich SG Ninh Chu 2024.pdf",
+        "coverage": {
+          "CDKT": 0.39655172413793105,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.0
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 7.321622133255005,
+        "cpu": 19.734060999999883,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2011/QIV-2011/08_BCTC 2011 Cty CP VBDQ Ben Thanh/BTJ BCTC 2011.pdf",
+        "coverage": {
+          "CDKT": 0.4482758620689655,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.6216216216216216
+        },
+        "balance": [
+          0,
+          1
+        ],
+        "wall": 3.629426956176758,
+        "cpu": 11.941424999999981,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2014/Quy 2.2014/01_Cty CP DVTH Sai Gon_BCTC soat xet quy 2.2014 (Cty me).pdf",
+        "coverage": {
+          "CDKT": 0.008620689655172414,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 8.274425745010376,
+        "cpu": 22.671543000000042,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2020/Nam 2020_Chua KT/04_CTCP TM Hoc Mon/Hop nhat/lctt (hn)_1611803745.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.5675675675675675
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.104171991348267,
+        "cpu": 4.081767999999897,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2024/BCTC - tu lap 2024/30_Cty TNHH Ben Thanh - Sao Thuy 2024 (tu lap).pdf",
+        "coverage": {
+          "CDKT": 0.06896551724137931,
+          "KQHDKD": 0.0,
+          "LCTT": 0.08108108108108109
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.421309947967529,
+        "cpu": 14.07800599999996,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2025/Quy 1.2025/11_Cty CP DV DL Ben Thanh Q1.2025 - me.pdf",
+        "coverage": {
+          "CDKT": 0.23275862068965517,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.6216216216216216
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.987112045288086,
+        "cpu": 14.915635999999836,
+        "rss_mb": 742.3125
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2011/QII-2011/42_CT CP XNK Binh Thanh - BCTC Quy 2-2011_Cty Me (ngay 17.08.2011).pdf",
+        "coverage": {
+          "CDKT": 0.4051724137931034,
+          "KQHDKD": 0.08695652173913043,
+          "LCTT": 0.02702702702702703
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 8.206546068191528,
+        "cpu": 23.048007000000098,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 6/2023/BCTC - Da kiem toan 2023/07_CTCP Vat tu Ben Thanh 2023 (kiem toan).pdf",
+        "coverage": {
+          "CDKT": 0.33620689655172414,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.43243243243243246
+        },
+        "balance": [
+          1,
+          3
+        ],
+        "wall": 8.304813861846924,
+        "cpu": 23.49917300000004,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2018/Quy 2.2018/SÀI GÒN QUẢNG BÌNH - 7TH.2018/Bao cao ket qua kinh doanh sai gon quang binh.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 3.7860660552978516,
+        "cpu": 5.453455000000076,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2023/BCTC - tu lap 2023/12_Cty LD KS  PLAZA 2023.pdf",
+        "coverage": {
+          "CDKT": 0.1724137931034483,
+          "KQHDKD": 0.2608695652173913,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 7.244824171066284,
+        "cpu": 17.864864999999895,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2016/BCTC kiem toan 2016/34_Cty TNHH Maxim_s Club/BCTC2016.1.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 0.41261792182922363,
+        "cpu": 0.4084810000001653,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2016/BCTC kiem toan 2016/04_Cty CP TM Hoc Mon_BCTC Kiem toan 2016 (HN)/02_BC Kiem toan doc lap_HN.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 0.7479550838470459,
+        "cpu": 1.2027020000000448,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2014/BCTC 2014 da kiem toan/CTCP KS DL Thang muoi - BCTC 2014 (da KT).pdf",
+        "coverage": {
+          "CDKT": 0.11206896551724138,
+          "KQHDKD": 0.5217391304347826,
+          "LCTT": 0.3783783783783784
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.345990180969238,
+        "cpu": 16.802580000000034,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2011/QIV-2011/19_BCTC 2011 Cty CP Co khi Tan Binh (23.3.2012).pdf",
+        "coverage": {
+          "CDKT": 0.02586206896551724,
+          "KQHDKD": 0.08695652173913043,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.502971887588501,
+        "cpu": 9.079177999999956,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2019/Nam2019_Da kiem toan/24_Cong ty TNHH Ben Thanh - RSC_BCTC da kiem toan 2019.pdf",
+        "coverage": {
+          "CDKT": 0.31896551724137934,
+          "KQHDKD": 0.4782608695652174,
+          "LCTT": 0.43243243243243246
+        },
+        "balance": [
+          4,
+          4
+        ],
+        "wall": 6.146944046020508,
+        "cpu": 16.90177099999994,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BCTC 2025 (Kiểm toán)/13_Cty LDKS Riverside 2025 (vi).pdf",
+        "coverage": {
+          "CDKT": 0.28448275862068967,
+          "KQHDKD": 0.391304347826087,
+          "LCTT": 0.43243243243243246
+        },
+        "balance": [
+          5,
+          6
+        ],
+        "wall": 6.197758913040161,
+        "cpu": 16.95733000000007,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2020/Nam 2020_Chua KT/08_CTCP Vang bac da quy Ben Thanh_BCTC 2020.pdf",
+        "coverage": {
+          "CDKT": 0.02586206896551724,
+          "KQHDKD": 0.13043478260869565,
+          "LCTT": 0.08108108108108109
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.505615234375,
+        "cpu": 12.408636999999885,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2022/BCTC 2022 đã kiểm toán/24_Cty TNHH Ben Thanh - RSC 2022.pdf",
+        "coverage": {
+          "CDKT": 0.41379310344827586,
+          "KQHDKD": 0.7391304347826086,
+          "LCTT": 0.1891891891891892
+        },
+        "balance": [
+          5,
+          6
+        ],
+        "wall": 7.391218900680542,
+        "cpu": 19.33170400000006,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2025/BCTC Q2.2025/1. Công ty Cổ phần Dịch vụ Tổng hợp Sài Gòn.pdf",
+        "coverage": {
+          "CDKT": 0.5431034482758621,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.6756756756756757
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 5.135443210601807,
+        "cpu": 15.939743999999905,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2012/Quy IV-2012/BCTC 2012 Cty TNHH Maxim Club (da dong dau).pdf",
+        "coverage": {
+          "CDKT": 0.017241379310344827,
+          "KQHDKD": 0.13043478260869565,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 3.5307021141052246,
+        "cpu": 6.985742000000073,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2014/Quy 2.2014/23_Cty TNHH MTV Phat trien nha Ben Thanh (27.11).pdf",
+        "coverage": {
+          "CDKT": 0.034482758620689655,
+          "KQHDKD": 0.5652173913043478,
+          "LCTT": 0.02702702702702703
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.614850997924805,
+        "cpu": 10.522743999999989,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2020/BCTC 2020 da kiem toan/Da kiem toan/30.Cty TNHH Ben Thanh - Sao Thuy_BCTC 2020 - đa KT.pdf",
+        "coverage": {
+          "CDKT": 0.15517241379310345,
+          "KQHDKD": 0.34782608695652173,
+          "LCTT": 0.3783783783783784
+        },
+        "balance": [
+          2,
+          2
+        ],
+        "wall": 5.796356201171875,
+        "cpu": 15.217523000000142,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2018/Nam 2018/2018 (Da kiem toan)/Da kiem toan/35_Cty CP Sai Gon Da Lat_BCTC 2018 _KT.pdf",
+        "coverage": {
+          "CDKT": 0.3275862068965517,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          2
+        ],
+        "wall": 7.644930839538574,
+        "cpu": 21.117188000000056,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2019/Nam2019_Da kiem toan/35_NH TMCP Phuong Dong_BCTC 2019_Hop nhat_Kiem toan.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 19.410452127456665,
+        "cpu": 55.208565999999905,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2013/Quy III-2013/00_Cty me - BCTC Q3.2013.pdf",
+        "coverage": {
+          "CDKT": 0.02586206896551724,
+          "KQHDKD": 0.2608695652173913,
+          "LCTT": 0.02702702702702703
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.994625091552734,
+        "cpu": 16.42657300000019,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2020/Nam 2020_Chua KT/16_CTCP DL Ben Thanh Non Nuoc_chua kt nam 2020 (04.03.2021).pdf",
+        "coverage": {
+          "CDKT": 0.05172413793103448,
+          "KQHDKD": 0.2608695652173913,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 9.182018995285034,
+        "cpu": 19.273975999999948,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2012/BC 2012 DA KT/22_BCTC 2012 Cty TNHH Ben Thanh RSC (da KT).pdf",
+        "coverage": {
+          "CDKT": 0.3793103448275862,
+          "KQHDKD": 0.4782608695652174,
+          "LCTT": 0.4594594594594595
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 8.984890222549438,
+        "cpu": 22.060567999999876,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2017/BCTC da kiem toan 2017/20_Cty CP DL Sai Gon Quang Binh-BCTC2017-KT.pdf",
+        "coverage": {
+          "CDKT": 0.20689655172413793,
+          "KQHDKD": 0.0,
+          "LCTT": 0.4864864864864865
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 7.073638200759888,
+        "cpu": 17.47589099999982,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2020/Quy III.2020/04_CTCP TM Hoc Mon_BCTC Quy III/Hop nhat/BC LCTT.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.5675675675675675
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 3.9728822708129883,
+        "cpu": 3.9391310000000885,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2016/BCTC kiem toan 2016/04_Cty CP TM Hoc Mon_BCTC Kiem toan 2016 (HN)/03_Bang CDKT 2016_Me.pdf",
+        "coverage": {
+          "CDKT": 0.5948275862068966,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          3,
+          4
+        ],
+        "wall": 4.153620958328247,
+        "cpu": 7.035045999999738,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2013/QI-2013/02_BCTC Cty CP TMDV Ben Thanh Q1.2013.pdf",
+        "coverage": {
+          "CDKT": 0.39655172413793105,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.7027027027027027
+        },
+        "balance": [
+          4,
+          6
+        ],
+        "wall": 23.904549837112427,
+        "cpu": 68.71159500000022,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2013/QI-2013/NHOM DICH VU THUONG MAI/BCTC quy 1.2013 - Cty CP Vat Tu Ben Thanh.pdf",
+        "coverage": {
+          "CDKT": 0.1810344827586207,
+          "KQHDKD": 0.0,
+          "LCTT": 0.13513513513513514
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 24.088446855545044,
+        "cpu": 67.51581399999986,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BCTC 2025 (Kiểm toán)/02_CTCP TMDV Ben Thanh 2025 - Hợp nhất.pdf",
+        "coverage": {
+          "CDKT": 0.5,
+          "KQHDKD": 0.9130434782608695,
+          "LCTT": 0.5405405405405406
+        },
+        "balance": [
+          4,
+          6
+        ],
+        "wall": 10.915422916412354,
+        "cpu": 28.060237000000143,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2021/BCTC 2021/Đơn vị lập/B1.3_Cty CP DV DL Ben Thanh.pdf",
+        "coverage": {
+          "CDKT": 0.19827586206896552,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.4864864864864865
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.473496198654175,
+        "cpu": 14.543295999999827,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2014/Quy 3.2014/01_Cty CP DVTH Sai Gon - BCTC quy 3.2014 (Cty me).pdf",
+        "coverage": {
+          "CDKT": 0.07758620689655173,
+          "KQHDKD": 0.5652173913043478,
+          "LCTT": 0.3783783783783784
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.629154205322266,
+        "cpu": 14.863879999999881,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2014/Quy 4.2014/23.Cty PTNHa Ben Thanh - BCTC 2014 (7.4.2015).pdf",
+        "coverage": {
+          "CDKT": 0.05172413793103448,
+          "KQHDKD": 0.17391304347826086,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.82804012298584,
+        "cpu": 11.304873000000043,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2014/BCTC 2014 da kiem toan/09_Cty CP Dich vu Sai Gon Oto - BCTC Rieng 2014 (KT).pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 8.281211853027344,
+        "cpu": 20.699424000000135,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2015/Quy 3.2015/02.Cty CP TMDV Ben Thanh Q3.2015 (rieng).pdf",
+        "coverage": {
+          "CDKT": 0.11206896551724138,
+          "KQHDKD": 0.6086956521739131,
+          "LCTT": 0.5405405405405406
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.603597164154053,
+        "cpu": 14.423716000000013,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2020/BCTC 2020 da kiem toan/Da kiem toan/BCTC 2020 Da kiem toan (Lan 1)/06_CTCP TM Phu Nhuan_BCTC 2020/PNCO_Báo cáo hợp nhất_2020/PNCO_Bao cao kiem toan hop nhat_2020_09 Mar. 21.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.02702702702702703
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 0.33118295669555664,
+        "cpu": 0.32579099999998107,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2014/Quy 3.2014/15_BCTC - 2014 - Quy 3 - Cty CP BT Non Nuoc.pdf",
+        "coverage": {
+          "CDKT": 0.1206896551724138,
+          "KQHDKD": 0.043478260869565216,
+          "LCTT": 0.13513513513513514
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.3873209953308105,
+        "cpu": 13.380652000000055,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2025/Quy 2.2025/05_CTCP VHTH BT_CĐKT HC- BEN THANH GCC- 6 THANG DAU NAM 2025_Cty mẹ.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 2.8823301792144775,
+        "cpu": 4.092572999999902,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 6/2020/Quy II.2020/07_CTCP VAT TU BEN THANH_BCTC QUY II.2020.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.391304347826087,
+          "LCTT": 0.02702702702702703
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 9.831028938293457,
+        "cpu": 27.570588000000043,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2017/Quy 2.2017/01_Cty CP DVTH Sai Gon_BCTC Q2.2017 (HN).pdf",
+        "coverage": {
+          "CDKT": 0.09482758620689655,
+          "KQHDKD": 0.4782608695652174,
+          "LCTT": 0.16216216216216217
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.758785009384155,
+        "cpu": 14.04223799999977,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2015/BCTC nam 2015/37_Cty CP DL Sai Gon Dalat (kiem toan) - 2015.pdf",
+        "coverage": {
+          "CDKT": 0.3620689655172414,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.4864864864864865
+        },
+        "balance": [
+          0,
+          1
+        ],
+        "wall": 5.08410906791687,
+        "cpu": 15.14821400000028,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2020/Quy II.2020/09_CTCP Dich vu Sai Gon O to_BCTC Quy II.2020 RiengG.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.21621621621621623
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.466052293777466,
+        "cpu": 8.167312999999922,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2014/Quy 3.2014/18_BCTC - 2014 - Quy 3 - Cty CP SG Mui Ne.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 2.1964111328125,
+        "cpu": 6.371996999999965,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2017/BCTC da kiem toan 2017/Maxim_s Club/scanbctc2017maxims/BCDKT MX 2017.2.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 0.45201778411865234,
+        "cpu": 0.40845500000000357,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2025/BCTC 2025 (Tự lập)/10_CTCP O TO BAC AU 2025.pdf",
+        "coverage": {
+          "CDKT": 0.28448275862068967,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.5675675675675675
+        },
+        "balance": [
+          2,
+          2
+        ],
+        "wall": 3.386826992034912,
+        "cpu": 8.891573000000335,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2014/BCTC 2014 da kiem toan/19_BCTC - 2014 - Cty CP Co khi TB (kiem toan).pdf",
+        "coverage": {
+          "CDKT": 0.33620689655172414,
+          "KQHDKD": 0.7391304347826086,
+          "LCTT": 0.21621621621621623
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 7.6772401332855225,
+        "cpu": 21.174657000000025,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/Quy 2.2025/25_CTCP PT va DV Nha Ben Thanh 6Th_2025.pdf",
+        "coverage": {
+          "CDKT": 0.05172413793103448,
+          "KQHDKD": 0.6086956521739131,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 3.613386869430542,
+        "cpu": 8.60784899999976,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2012/Quy II-2012/01_CTy CP SVC_BCTC_Quy 02_2012/svc_bctt_ss_06thang_2012/svc_bctt_ss_06thang_2012/BCTC-RSS-06Thang-2012.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 7.068191051483154,
+        "cpu": 19.41690500000027,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2021/BCTC 2021/Đơn vị lập/B2.1_Cty LD KS  PLAZA.pdf",
+        "coverage": {
+          "CDKT": 0.14655172413793102,
+          "KQHDKD": 0.21739130434782608,
+          "LCTT": 0.5675675675675675
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 7.646559000015259,
+        "cpu": 16.358357999999953,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2020/BCTC 2020 da kiem toan/Da kiem toan/BCTC 2020 Da kiem toan (Lan 1)/04_CTCP TM Hoc Mon/Hop nhat/8. thuyet minh (hn)_1615965087.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 7.956740856170654,
+        "cpu": 26.39845799999989,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2011/BCTC da KT/26_BCTC 2011 Cty CP Dau tu XDKD Nha Ben Thanh (da KT).pdf",
+        "coverage": {
+          "CDKT": 0.3620689655172414,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.6216216216216216
+        },
+        "balance": [
+          1,
+          1
+        ],
+        "wall": 6.43737006187439,
+        "cpu": 18.97033800000031,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2022/BCTC 2022 chưa kiểm toán/24_Cty TNHH Ben Thanh - RSC.pdf",
+        "coverage": {
+          "CDKT": 0.034482758620689655,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.544940948486328,
+        "cpu": 13.393802999999934,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2022/BCTC 2022 đã kiểm toán/01_ CTCP DVTH Sai Gon_ Bao cao tai chinh hop nhat nam 2022.pdf",
+        "coverage": {
+          "CDKT": 0.6637931034482759,
+          "KQHDKD": 0.9130434782608695,
+          "LCTT": 0.6216216216216216
+        },
+        "balance": [
+          4,
+          4
+        ],
+        "wall": 9.665172100067139,
+        "cpu": 25.664768000000095,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2025/BCTC 2025 (Kiểm toán)/27_Cty CP SXKD Hàng XK Tân Bình 2025.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.043478260869565216,
+          "LCTT": 0.2702702702702703
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 8.800040006637573,
+        "cpu": 19.73594600000024,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2020/BCTC 2020 da kiem toan/Da kiem toan/20_CTCP du lich SG Quang Binh_BCTC kiem toan.pdf",
+        "coverage": {
+          "CDKT": 0.15517241379310345,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.0
+        },
+        "balance": [
+          1,
+          2
+        ],
+        "wall": 6.357690095901489,
+        "cpu": 16.251574999999775,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2024/BCTC - Da kiem toan 2024/00- BCTC TCT.pdf",
+        "coverage": {
+          "CDKT": 0.5689655172413793,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.8108108108108109
+        },
+        "balance": [
+          5,
+          6
+        ],
+        "wall": 7.719819068908691,
+        "cpu": 21.260706000000027,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2018/Nam 2018/Da kiem toan 2017/BTJ Audited Separate Financial Statements 2018_EN.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.4446001052856445,
+        "cpu": 11.985772000000225,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 6/2020/Da kiem toan 2020/12_CTy LD KS Riverside_BCTC 2020 da kiem toan.pdf",
+        "coverage": {
+          "CDKT": 0.3103448275862069,
+          "KQHDKD": 0.43478260869565216,
+          "LCTT": 0.35135135135135137
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 6.099971055984497,
+        "cpu": 16.81301099999996,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2014/Quy 3.2014/25_Cty CP XNK Khanh Hoi (Hop nhat).pdf",
+        "coverage": {
+          "CDKT": 0.27586206896551724,
+          "KQHDKD": 0.17391304347826086,
+          "LCTT": 0.3783783783783784
+        },
+        "balance": [
+          0,
+          1
+        ],
+        "wall": 6.056110143661499,
+        "cpu": 16.089688999999908,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 6/2020/BCTC 2020 da kiem toan/Da kiem toan/BCTC 2020 Da kiem toan (Lan 1)/04_CTCP TM Hoc Mon/Hop nhat/5.bcdkt (hn)_1615965050.pdf",
+        "coverage": {
+          "CDKT": 0.5862068965517241,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          1,
+          3
+        ],
+        "wall": 4.560158967971802,
+        "cpu": 7.652620999999726,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2024/Quý 2/19_Cty CP Du lich SG Ninh Chu Q2.2024.pdf",
+        "coverage": {
+          "CDKT": 0.06896551724137931,
+          "KQHDKD": 0.0,
+          "LCTT": 0.1891891891891892
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 11.578749895095825,
+        "cpu": 30.920741000000135,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2012/Quy III-2012/BCTC - 2012 - Quy 3 - Cty CP BT Mui Ne (chua ky).pdf",
+        "coverage": {
+          "CDKT": 0.1896551724137931,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 3.993393898010254,
+        "cpu": 9.323661999999786,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2017/BCTC da kiem toan 2017/10_Cty CP O to Bac Au_BCTC 2017_Kiem toan.pdf",
+        "coverage": {
+          "CDKT": 0.4396551724137931,
+          "KQHDKD": 0.782608695652174,
+          "LCTT": 0.6216216216216216
+        },
+        "balance": [
+          1,
+          5
+        ],
+        "wall": 9.181995153427124,
+        "cpu": 22.602902000000086,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2014/Quy 1.2014/01_BCTC QI.2014 Cty CP DVTH Sai Gon/SVC.BCTC.2014.Q1.RIENG.pdf",
+        "coverage": {
+          "CDKT": 0.14655172413793102,
+          "KQHDKD": 0.391304347826087,
+          "LCTT": 0.10810810810810811
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.855907201766968,
+        "cpu": 13.7814249999999,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2017/Quy 2.2017/OCB.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 12.893747806549072,
+        "cpu": 36.98887700000023,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2022/BCTC 2022 đã kiểm toán/27_CTCP SX KD Hang XK Tan Binh_BCTC2022 Melisa Da KT.pdf",
+        "coverage": {
+          "CDKT": 0.3620689655172414,
+          "KQHDKD": 0.5652173913043478,
+          "LCTT": 0.08108108108108109
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 8.155148983001709,
+        "cpu": 21.89903699999968,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2012/Quy II-2012/01_CTy CP SVC_BCTC_Quy 02_2012/BCTC-TomTat-Quy02-2012.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.13043478260869565,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 2.7633228302001953,
+        "cpu": 4.4852920000003,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2023/BCTC - tu lap 2023/04_CTCP TM Hoc Mon Q4.2023/04_CTCP TM Hoc Mon Q4.2023 (rieng).pdf",
+        "coverage": {
+          "CDKT": 0.27586206896551724,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.5135135135135135
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 7.308064937591553,
+        "cpu": 21.615859,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BCTC 2025 (Tự lập)/31_Cty TNHH Nhom dinh hinh Sapa Ben Thanh 2025.pdf",
+        "coverage": {
+          "CDKT": 0.3620689655172414,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.7567567567567568
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 5.018275737762451,
+        "cpu": 13.468147999999928,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2017/Quy 3.2017/04_Cty CP TM Hoc Mon_BCTC Q3.2017/bcdkt (hn).pdf",
+        "coverage": {
+          "CDKT": 0.28448275862068967,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.836022138595581,
+        "cpu": 5.315490000000182,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2021/BCTC 2021/Đơn vị lập/B1.19_Cty CP SXKD Hàng XK Tân Bình.pdf",
+        "coverage": {
+          "CDKT": 0.3620689655172414,
+          "KQHDKD": 0.6086956521739131,
+          "LCTT": 0.5405405405405406
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 7.315546035766602,
+        "cpu": 21.99189299999989,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2020/BCTC 2020 da kiem toan/Da kiem toan/BCTC 2020 Da kiem toan (Lan 2)/31_Cty TNHH Nhom dinh hinh Sapa Ben Thanh BCTC 2020.pdf",
+        "coverage": {
+          "CDKT": 0.1206896551724138,
+          "KQHDKD": 0.782608695652174,
+          "LCTT": 0.7297297297297297
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.874149799346924,
+        "cpu": 20.602669000000105,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2021/BCTC 2021/Đã kiểm toán 2021/27_Cty CP SXKD Hàng XK Tân Bình 2021.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.7684550285339355,
+        "cpu": 11.123219999999947,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2019/Nam2019_Da kiem toan/34_Cty CP Sai Gon Da Lat_BCTC 2019 _KT.pdf",
+        "coverage": {
+          "CDKT": 0.33620689655172414,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.43243243243243246
+        },
+        "balance": [
+          0,
+          2
+        ],
+        "wall": 6.786152124404907,
+        "cpu": 16.07684099999983,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2015/Quy 2.2015/05-Cty CP VHTH BT- BCTC Q2.2015 me (17.08.2015).pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.5405405405405406
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.045422792434692,
+        "cpu": 12.026341000000002,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2021/QUY 2.2021/04_CTCP TM Hoc Mon_BCTC Quy II/Rieng/bcdkt (me)_1629181073.pdf",
+        "coverage": {
+          "CDKT": 0.5689655172413793,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          2,
+          2
+        ],
+        "wall": 4.622129201889038,
+        "cpu": 7.926566999999977,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2014/BCTC 2014 da kiem toan/02_Cty CP TMDV Ben Thanh - BC HN 2014 (KT).pdf",
+        "coverage": {
+          "CDKT": 0.21551724137931033,
+          "KQHDKD": 0.782608695652174,
+          "LCTT": 0.7027027027027027
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 10.862687826156616,
+        "cpu": 26.59668499999998,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2017/BCTC da kiem toan 2017/00_Cong  ty me 2017_BCTC da kiem toan.pdf",
+        "coverage": {
+          "CDKT": 0.4396551724137931,
+          "KQHDKD": 0.4782608695652174,
+          "LCTT": 0.5135135135135135
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 6.813072919845581,
+        "cpu": 19.31072099999983,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2023/BCTC - Da kiem toan 2023/01_CTCP DVTH Saigon (kiem toan - rieng).pdf",
+        "coverage": {
+          "CDKT": 0.5344827586206896,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.5945945945945946
+        },
+        "balance": [
+          5,
+          6
+        ],
+        "wall": 7.5829918384552,
+        "cpu": 19.368714000000182,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2010/08_bctc bt hoang thanh 2010-001.pdf",
+        "coverage": {
+          "CDKT": 0.017241379310344827,
+          "KQHDKD": 0.21739130434782608,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.919108152389526,
+        "cpu": 17.513644999999997,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2015/Quy 3.2015/10 - BCTC quy 3 2015 - DL BEN THANH.pdf",
+        "coverage": {
+          "CDKT": 0.008620689655172414,
+          "KQHDKD": 0.34782608695652173,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 12.420551061630249,
+        "cpu": 35.55669099999977,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2015/Quy 2.2015/16_Cty CP BT Mui Ne - BCTC 6T.2015 (06.08.2015).pdf",
+        "coverage": {
+          "CDKT": 0.3793103448275862,
+          "KQHDKD": 0.7391304347826086,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          2
+        ],
+        "wall": 10.133125305175781,
+        "cpu": 30.21243500000037,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2016/Quy 3.2016/25_Cty CP Dau tu & Dich vu Khanh Hoi_BCTC cty me.pdf",
+        "coverage": {
+          "CDKT": 0.5086206896551724,
+          "KQHDKD": 0.6086956521739131,
+          "LCTT": 0.5135135135135135
+        },
+        "balance": [
+          0,
+          2
+        ],
+        "wall": 6.82172417640686,
+        "cpu": 18.000311999999667,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2013/QII-2013/30-BCTC Cty TITCO 6thang 2013.pdf",
+        "coverage": {
+          "CDKT": 0.02586206896551724,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.2702702702702703
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.081351041793823,
+        "cpu": 13.76994300000024,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2015/Quy 2.2015/29_Cty CP XNK Giay dep Nam A - BC quy 2.pdf",
+        "coverage": {
+          "CDKT": 0.1896551724137931,
+          "KQHDKD": 0.7391304347826086,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 3.494457960128784,
+        "cpu": 7.3205699999998615,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2020/Nam 2020_Chua KT/03_CTCP Dich vu Ben Thanh/BAO CAO TAI CHINH QUY 4_2020.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.17391304347826086,
+          "LCTT": 0.1891891891891892
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 7.335535049438477,
+        "cpu": 18.82969899999989,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2018/Quy 2.2018/03.Cty CP Dich Vu Ben Thanh_BCTC Q2.2018/BCTC Q2 2018 BTSC HN.pdf",
+        "coverage": {
+          "CDKT": 0.3103448275862069,
+          "KQHDKD": 0.13043478260869565,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.608295917510986,
+        "cpu": 15.833274999999958,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2013/BC 2013 da Kiem toan/26_BCTC 2013 Cty CP Dau tu XDKD Nha Ben Thanh (da KT).pdf",
+        "coverage": {
+          "CDKT": 0.3793103448275862,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.7027027027027027
+        },
+        "balance": [
+          0,
+          1
+        ],
+        "wall": 7.435937881469727,
+        "cpu": 21.118808000000172,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2025/BCTC 2025 (Kiểm toán)/03_CTCP DV Ben Thanh 2025.pdf",
+        "coverage": {
+          "CDKT": 0.4482758620689655,
+          "KQHDKD": 0.6086956521739131,
+          "LCTT": 0.13513513513513514
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 8.282998085021973,
+        "cpu": 22.00451699999985,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/Quy 1.2025/11_Cty CP DV DL Ben Thanh Q1.2025 - HN.pdf",
+        "coverage": {
+          "CDKT": 0.11206896551724138,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.5945945945945946
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.806746244430542,
+        "cpu": 15.78265300000021,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/30.Cty TNHH Ben Thanh - Sao Thuy 2022.pdf",
+        "coverage": {
+          "CDKT": 0.3879310344827586,
+          "KQHDKD": 0.30434782608695654,
+          "LCTT": 0.4864864864864865
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 6.604190826416016,
+        "cpu": 18.410811000000194,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2025/BCTC 2025 (Kiểm toán)/12_Cty LD KS  PLAZA 2025 (en).pdf",
+        "coverage": {
+          "CDKT": 0.4482758620689655,
+          "KQHDKD": 0.4782608695652174,
+          "LCTT": 0.6486486486486487
+        },
+        "balance": [
+          5,
+          6
+        ],
+        "wall": 7.173180103302002,
+        "cpu": 17.174509999999827,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2024/Quý 2/06_CTCP TM Phu Nhuan_BCTC TT200 Q02-2024_30.07.2024.pdf",
+        "coverage": {
+          "CDKT": 0.3879310344827586,
+          "KQHDKD": 0.0,
+          "LCTT": 0.16216216216216217
+        },
+        "balance": [
+          2,
+          2
+        ],
+        "wall": 7.240994215011597,
+        "cpu": 20.597168999999667,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2017/BCTC da kiem toan 2017/Maxim_s Club/scanbctc2017maxims/BCDKT MX 2017.3.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 0.33641815185546875,
+        "cpu": 0.33095900000034817,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2015/BCTC nam 2015 2/04_Cty CP TM Hoc Mon - BCTC kiem toan 2015 (HN).pdf",
+        "coverage": {
+          "CDKT": 0.1724137931034483,
+          "KQHDKD": 0.5652173913043478,
+          "LCTT": 0.43243243243243246
+        },
+        "balance": [
+          0,
+          2
+        ],
+        "wall": 6.625646114349365,
+        "cpu": 18.896108999999797,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2022/BCTC 2022 đã kiểm toán/16_Cty Bến Thành Non Nước 2022.pdf",
+        "coverage": {
+          "CDKT": 0.43103448275862066,
+          "KQHDKD": 0.782608695652174,
+          "LCTT": 0.6216216216216216
+        },
+        "balance": [
+          4,
+          4
+        ],
+        "wall": 8.931470155715942,
+        "cpu": 25.464702999999645,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 6/2023/BCTC - Da kiem toan 2023/28_CTCP XNK Giay dep Nam A 2023 (HN) - Copy.pdf",
+        "coverage": {
+          "CDKT": 0.49137931034482757,
+          "KQHDKD": 0.9565217391304348,
+          "LCTT": 0.1891891891891892
+        },
+        "balance": [
+          4,
+          4
+        ],
+        "wall": 10.486494064331055,
+        "cpu": 26.954686000000493,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2017/Quy 4.2017/17_Cty CP ben Thanh Mui Ne/CDKT 1.2017.pdf",
+        "coverage": {
+          "CDKT": 0.2672413793103448,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          2,
+          2
+        ],
+        "wall": 2.775744676589966,
+        "cpu": 2.7392229999995834,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2019/Nam2019_Da kiem toan/17_CTCP Ben Thanh Mui Ne-BCTC da kiem toan 2019.pdf",
+        "coverage": {
+          "CDKT": 0.43103448275862066,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.43243243243243246
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 6.211475372314453,
+        "cpu": 18.39855799999941,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2011/QI-2011/39_CT Sai Gon Postel BCTC Q 1-2011.pdf",
+        "coverage": {
+          "CDKT": 0.22413793103448276,
+          "KQHDKD": 0.6086956521739131,
+          "LCTT": 0.5405405405405406
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.269098997116089,
+        "cpu": 18.419681000000764,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2015/BCTC nam 2015/10_Cty CP DVDL Ben Thanh_BCTC Kiem toan 2015.pdf",
+        "coverage": {
+          "CDKT": 0.5258620689655172,
+          "KQHDKD": 0.0,
+          "LCTT": 0.5405405405405406
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 15.206142902374268,
+        "cpu": 43.823368999999275,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2015/Quy 3.2015/09_Cty CP Dich vu Sai Gon O To - BCTC quy 3.2015.pdf",
+        "coverage": {
+          "CDKT": 0.04310344827586207,
+          "KQHDKD": 0.21739130434782608,
+          "LCTT": 0.08108108108108109
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.559876203536987,
+        "cpu": 13.94990400000006,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2015/BCTC nam 2015/06_Cty CP TM Phu Nhuan_BCTC kiem toan 2015 (Rieng).pdf",
+        "coverage": {
+          "CDKT": 0.5344827586206896,
+          "KQHDKD": 0.7391304347826086,
+          "LCTT": 0.2972972972972973
+        },
+        "balance": [
+          0,
+          2
+        ],
+        "wall": 5.85686182975769,
+        "cpu": 17.11015900000075,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2019/Quy 2.2019/09_Cty CP DV Sai Gon O to_BCTC Q2.2019.pdf",
+        "coverage": {
+          "CDKT": 0.11206896551724138,
+          "KQHDKD": 0.0,
+          "LCTT": 0.24324324324324326
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.178153991699219,
+        "cpu": 11.637605999999778,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2011/QIV-2011/27_BCTC 2011 Cty CP Tan Cang Ben Thanh.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.516624927520752,
+        "cpu": 12.091943000000356,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2011/QII-2011/10_CT CP TM Hoc Mon - BCTC Quy 2-2011_Cty Me  (ngay 22.07.2011).pdf",
+        "coverage": {
+          "CDKT": 0.10344827586206896,
+          "KQHDKD": 0.6086956521739131,
+          "LCTT": 0.40540540540540543
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.456128835678101,
+        "cpu": 13.713983000000098,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2019/Quy 2.2019/03_ Cong ty CP Dich vu ben Thanh_BCTC HN BTSC Q2 2019.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.122157096862793,
+        "cpu": 10.231577999999445,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2017/Quy 4.2017/17_Cty CP ben Thanh Mui Ne/full - chua KT.pdf",
+        "coverage": {
+          "CDKT": 0.4224137931034483,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.3783783783783784
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 6.026937961578369,
+        "cpu": 17.276452000000518,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2024/Quý 3/35_NH TMCP Phuong Dong - Q3.2024 (BC rieng).pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.02702702702702703
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 10.48342514038086,
+        "cpu": 30.192213999999694,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 10/2020/Da kiem toan 2020/04_CTCP TM Hoc Mon/Hop nhat/6.kqkd (hn)_1615965062.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.8695652173913043,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 3.2232158184051514,
+        "cpu": 3.2017660000001342,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2013/BC 2013 da Kiem toan/ORS_BC_TN_2013.pdf",
+        "coverage": {
+          "CDKT": 0.21551724137931033,
+          "KQHDKD": 0.5217391304347826,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          1
+        ],
+        "wall": 10.177781820297241,
+        "cpu": 28.354333000000224,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2016/Quy 4.2016/15_Cty CP Du lich Hue_BCTC Q4.2016.pdf",
+        "coverage": {
+          "CDKT": 0.034482758620689655,
+          "KQHDKD": 0.13043478260869565,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.78382420539856,
+        "cpu": 12.621806999999535,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2024/BCTC - tu lap 2024/25_CTCP PT va DV Nha Ben Thanh 2024.pdf",
+        "coverage": {
+          "CDKT": 0.07758620689655173,
+          "KQHDKD": 0.34782608695652173,
+          "LCTT": 0.2972972972972973
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 3.79134202003479,
+        "cpu": 8.681073000000197,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2018/Nam 2018/2018 (Da kiem toan)/Da kiem toan/05_VHTH Ben Thanh_BCTC 2018 da kiem toan/BCTC VHTH RIENG 2018.pdf",
+        "coverage": {
+          "CDKT": 0.4396551724137931,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.7297297297297297
+        },
+        "balance": [
+          1,
+          1
+        ],
+        "wall": 8.918401002883911,
+        "cpu": 26.187015999999403,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 6/2023/BCTC - Da kiem toan 2023/17_CTCP Ben Thanh Mui Ne.pdf",
+        "coverage": {
+          "CDKT": 0.43103448275862066,
+          "KQHDKD": 0.7391304347826086,
+          "LCTT": 0.5135135135135135
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 6.392107009887695,
+        "cpu": 19.490184000000227,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2023/Quý 2/35_NH TMCP Phuong Dong (riêng).pdf",
+        "coverage": {
+          "CDKT": 0.008620689655172414,
+          "KQHDKD": 0.0,
+          "LCTT": 0.02702702702702703
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 10.119690895080566,
+        "cpu": 30.905161000000135,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2024/Quý 3/00-TCT.pdf",
+        "coverage": {
+          "CDKT": 0.29310344827586204,
+          "KQHDKD": 0.13043478260869565,
+          "LCTT": 0.2702702702702703
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 7.214216947555542,
+        "cpu": 19.369522999999845,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2017/Quy 3.2017/36_Cty CP Du lich DakLak_BCTC Quy 3.2017.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.403791904449463,
+        "cpu": 14.703972000000249,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2012/Quy IV-2012/CONG TY GUI NH/New Folder (4)/27_ BCTC 2012 Cty CP TITCO (Da Kiem Toan).pdf",
+        "coverage": {
+          "CDKT": 0.3879310344827586,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.6216216216216216
+        },
+        "balance": [
+          2,
+          2
+        ],
+        "wall": 7.333157300949097,
+        "cpu": 19.85286000000042,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2021/BCTC 2021/Đã kiểm toán 2021/07_CTCP Vat tu Ben Thanh 2021.pdf",
+        "coverage": {
+          "CDKT": 0.3448275862068966,
+          "KQHDKD": 0.7391304347826086,
+          "LCTT": 0.0
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 10.306997060775757,
+        "cpu": 27.001596999999947,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2013/BC 2013 da Kiem toan/14_BCTC 2013 Cty CP Du lich Hue (da KT).pdf",
+        "coverage": {
+          "CDKT": 0.16379310344827586,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          2,
+          2
+        ],
+        "wall": 6.732644081115723,
+        "cpu": 14.329149999999572,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 6/2020/Da kiem toan 2020/BCTC KIỂM TOÁN BTG 2020.pdf",
+        "coverage": {
+          "CDKT": 0.08620689655172414,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 8.973559141159058,
+        "cpu": 24.32284000000027,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2017/Quy 1.2017/04_Cty CP TM Hoc Mon/04_Cty CP TM Hoc Mon_Thuyet minh Q1.2017 (Me).pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.69201922416687,
+        "cpu": 12.711487000000034,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2020/BCTC 2020 da kiem toan/Da kiem toan/BCTC 2020 Da kiem toan (Lan 2)/32_CTCP CN va TM Lidovit_BCTC 2020.pdf",
+        "coverage": {
+          "CDKT": 0.3275862068965517,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.5405405405405406
+        },
+        "balance": [
+          2,
+          3
+        ],
+        "wall": 7.674422025680542,
+        "cpu": 22.24951299999975,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2024/Quý 2/01_CTCP DVTH Saigon Q2.2024 (HN).pdf",
+        "coverage": {
+          "CDKT": 0.6896551724137931,
+          "KQHDKD": 0.9130434782608695,
+          "LCTT": 0.8378378378378378
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 6.7645628452301025,
+        "cpu": 22.26569299999983,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2017/Quy 4.2017/23_Cty LD Can ho va VP SG_BCTC 2017_Da kiem toan.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 3.326617956161499,
+        "cpu": 10.201751000000058,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2021/BCTC 2021/Đã kiểm toán 2021/08_CTCP VBDQ Ben Thanh 2021.pdf",
+        "coverage": {
+          "CDKT": 0.15517241379310345,
+          "KQHDKD": 0.5652173913043478,
+          "LCTT": 0.43243243243243246
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 7.412653923034668,
+        "cpu": 20.20642500000031,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2011/QIV-2011/11_BCTC 2011 Cty TNHH LDKS Plaza.pdf",
+        "coverage": {
+          "CDKT": 0.3706896551724138,
+          "KQHDKD": 0.34782608695652173,
+          "LCTT": 0.0
+        },
+        "balance": [
+          5,
+          6
+        ],
+        "wall": 5.797533988952637,
+        "cpu": 15.18125800000007,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 6/2020/Da kiem toan 2020/25_CTCP Phat trien va dich vu nha Ben Thanh_BCTC 2020_Kiem toan.pdf",
+        "coverage": {
+          "CDKT": 0.4396551724137931,
+          "KQHDKD": 0.391304347826087,
+          "LCTT": 0.3783783783783784
+        },
+        "balance": [
+          2,
+          3
+        ],
+        "wall": 8.832519054412842,
+        "cpu": 23.097821999999724,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2021/BCTC 2021/Đơn vị lập/B1.6_Cty CP DL Ben Thanh Non Nuoc.pdf",
+        "coverage": {
+          "CDKT": 0.008620689655172414,
+          "KQHDKD": 0.21739130434782608,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 7.1690380573272705,
+        "cpu": 12.483954000000267,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2017/Quy 3.2017/29_Cty CP XNK Giay dep Nam A_Q3.2017.pdf",
+        "coverage": {
+          "CDKT": 0.3275862068965517,
+          "KQHDKD": 0.5652173913043478,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.614267826080322,
+        "cpu": 11.110374999999749,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2017/Quy 2.2017/11_Cty CP DVDL Ben Thanh_BCTC 6T2017 (HN_Kiem toan).pdf",
+        "coverage": {
+          "CDKT": 0.5258620689655172,
+          "KQHDKD": 0.8695652173913043,
+          "LCTT": 0.7297297297297297
+        },
+        "balance": [
+          2,
+          2
+        ],
+        "wall": 7.269680738449097,
+        "cpu": 20.37306000000035,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2016/BCTC kiem toan 2016/37_Cty CP Sai Gon Da Lat_BCTC Kiem toan 2016.pdf",
+        "coverage": {
+          "CDKT": 0.11206896551724138,
+          "KQHDKD": 0.6086956521739131,
+          "LCTT": 0.0
+        },
+        "balance": [
+          1,
+          2
+        ],
+        "wall": 6.770866870880127,
+        "cpu": 16.262432000000445,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2019/Nam2019_Da kiem toan/18_Cty CP DL KS Sai Gon Mui Ne_BCTC2019_KT.pdf",
+        "coverage": {
+          "CDKT": 0.4051724137931034,
+          "KQHDKD": 0.7391304347826086,
+          "LCTT": 0.5405405405405406
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 6.650429964065552,
+        "cpu": 17.736441999999442,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2022/BCTC 2022 chưa kiểm toán/35_NH TMCP Phuong Dong.pdf",
+        "coverage": {
+          "CDKT": 0.008620689655172414,
+          "KQHDKD": 0.0,
+          "LCTT": 0.02702702702702703
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 10.022395133972168,
+        "cpu": 30.82278600000018,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2017/Quy 2.2017/11_Cty CP DVDL Ben Thanh_BCTC Quy 2.2017 - RIENG.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.7027027027027027
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.203410863876343,
+        "cpu": 16.921222999999827,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2020/Quy II.2020/32_CTCP CN va TM Lidovit_BCDKT 6T.2020.pdf",
+        "coverage": {
+          "CDKT": 0.034482758620689655,
+          "KQHDKD": 0.5217391304347826,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          1
+        ],
+        "wall": 4.728169202804565,
+        "cpu": 8.566809000000376,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2018/Quy 1.2018/03_BTSC_Rieng_BCTC Quy I.2018.pdf",
+        "coverage": {
+          "CDKT": 0.4396551724137931,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.02702702702702703
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.519289970397949,
+        "cpu": 15.46538099999998,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2020/Quy II.2020/04_CTCP TM Hoc Mon_BCTC Quy II/Rieng/LCTT.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.5135135135135135
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 3.9742419719696045,
+        "cpu": 3.945858000000044,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 10/2020/BCTC 2020 da kiem toan/Da kiem toan/01_CTCP DVTH Sai Gon/Savico-FS2020-Separate-VN.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.721041917800903,
+        "cpu": 16.915158999999676,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2019/Nam2019_Da kiem toan/28_CTCP XNK Giay dep Nam A_BCTC 2019_Hop nhat_Kiem toan.pdf",
+        "coverage": {
+          "CDKT": 0.47413793103448276,
+          "KQHDKD": 0.9130434782608695,
+          "LCTT": 0.7027027027027027
+        },
+        "balance": [
+          1,
+          1
+        ],
+        "wall": 9.356151103973389,
+        "cpu": 24.114501999999902,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2019/Quy 4.2019/04_CTCP TM Hoc Mon_BCTC/BCTC HN/BCDKT.pdf",
+        "coverage": {
+          "CDKT": 0.27586206896551724,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 3.938994884490967,
+        "cpu": 4.39859400000023,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2024/Quý 4/11_BTV - Q4.2024.pdf",
+        "coverage": {
+          "CDKT": 0.28448275862068967,
+          "KQHDKD": 0.5652173913043478,
+          "LCTT": 0.0
+        },
+        "balance": [
+          1,
+          1
+        ],
+        "wall": 6.341824054718018,
+        "cpu": 14.522005000000263,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 6/2015/Quy 3.2015/08_Cty Vang bac Da quy BT_BCTC Q3.2015.pdf",
+        "coverage": {
+          "CDKT": 0.13793103448275862,
+          "KQHDKD": 0.43478260869565216,
+          "LCTT": 0.16216216216216217
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.799273252487183,
+        "cpu": 18.609268000000156,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2011/QI-2011/CTy CP SPT BCTC Quy 1-2011.pdf",
+        "coverage": {
+          "CDKT": 0.22413793103448276,
+          "KQHDKD": 0.6086956521739131,
+          "LCTT": 0.5405405405405406
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.617647171020508,
+        "cpu": 16.53850599999987,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2010/25_bctc da kt cty vat tu bt 2010.pdf",
+        "coverage": {
+          "CDKT": 0.41379310344827586,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.5675675675675675
+        },
+        "balance": [
+          3,
+          6
+        ],
+        "wall": 5.472898721694946,
+        "cpu": 16.461696000000302,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BCTC 2025 (Kiểm toán)/18_Cty CP Sai gon Mui Ne 2025 - Casino.pdf",
+        "coverage": {
+          "CDKT": 0.10344827586206896,
+          "KQHDKD": 0.43478260869565216,
+          "LCTT": 0.2702702702702703
+        },
+        "balance": [
+          1,
+          1
+        ],
+        "wall": 4.526214838027954,
+        "cpu": 11.95744599999989,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2022/BCTC 2022 chưa kiểm toán/BCTC 2022BTMN.pdf",
+        "coverage": {
+          "CDKT": 0.4396551724137931,
+          "KQHDKD": 0.6086956521739131,
+          "LCTT": 0.43243243243243246
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 7.23364782333374,
+        "cpu": 21.235172000000148,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2011/QIII-2011/29_CTy LD Sosa BCTC 9Th-2011.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 1.5333292484283447,
+        "cpu": 3.706640999999763,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2018/Nam 2018/2018 (Da kiem toan)/Da kiem toan/27.Cty CP SXKD Hang XK Tan Binh_BCTC 2018.pdf",
+        "coverage": {
+          "CDKT": 0.39655172413793105,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.6486486486486487
+        },
+        "balance": [
+          1,
+          6
+        ],
+        "wall": 7.712946176528931,
+        "cpu": 23.21653599999945,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2023/BCTC - tu lap 2023/19_Cty CP Du lich SG Ninh Chu 2023 (kiem toan).pdf",
+        "coverage": {
+          "CDKT": 0.4051724137931034,
+          "KQHDKD": 0.5652173913043478,
+          "LCTT": 0.4594594594594595
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 9.074083089828491,
+        "cpu": 23.6297569999997,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2017/Quy 1.2017/07_Cty CP Vat tu Ben Thanh_BCTC Q1.2017.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.02702702702702703
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 7.834836959838867,
+        "cpu": 18.242849999999635,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2013/Quy III-2013/29_Cty XNK Nam A_BCTC QIII 2013.pdf",
+        "coverage": {
+          "CDKT": 0.21551724137931033,
+          "KQHDKD": 0.6086956521739131,
+          "LCTT": 0.5945945945945946
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.063494920730591,
+        "cpu": 11.047567000000072,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2014/Quy 2.2014/15_BCTC QII.2014 Cty CP DL BT Non Nuoc.pdf",
+        "coverage": {
+          "CDKT": 0.0603448275862069,
+          "KQHDKD": 0.0,
+          "LCTT": 0.16216216216216217
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.547206878662109,
+        "cpu": 13.460007000000587,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2017/Quy 1.2017/02_Cty CP TMDV BT_BCTC Q1.2017/02_Cty CP TMDV BT_BCTC Q1.2017 (HN).pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.34782608695652173,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.33710789680481,
+        "cpu": 13.314912000000277,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2015/Quy 3.2015/09_Cty CP Dich vu Sai Gon O To - BCTC quy 3.2015 (Hop nhat).pdf",
+        "coverage": {
+          "CDKT": 0.034482758620689655,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 7.068488121032715,
+        "cpu": 13.480467000000317,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 6/2024/BCTC - Da kiem toan 2024/35_OCB-2024 kt - hn.pdf",
+        "coverage": {
+          "CDKT": 0.008620689655172414,
+          "KQHDKD": 0.043478260869565216,
+          "LCTT": 0.02702702702702703
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 20.204265356063843,
+        "cpu": 60.18975100000034,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2024/Quý 3/03_CTCP DV Ben Thanh - 2024.Q3.pdf",
+        "coverage": {
+          "CDKT": 0.08620689655172414,
+          "KQHDKD": 0.43478260869565216,
+          "LCTT": 0.02702702702702703
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.518460273742676,
+        "cpu": 12.297220999999809,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2025/BCTC 2025 (Kiểm toán)/24_Cty TNHH Ben Thanh - RSC 2025.pdf",
+        "coverage": {
+          "CDKT": 0.3017241379310345,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.6216216216216216
+        },
+        "balance": [
+          4,
+          4
+        ],
+        "wall": 7.615893602371216,
+        "cpu": 19.618167000000085,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2016/Quy 2.2016/17_Cty CP DL KS Sai Gon Mui Ne_BCTC Q2.2016 (da kiem toan).pdf",
+        "coverage": {
+          "CDKT": 0.4224137931034483,
+          "KQHDKD": 0.6086956521739131,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          2
+        ],
+        "wall": 11.489786863327026,
+        "cpu": 35.52632399999948,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2015/Quy 1.2015/18_Cty CP DLKS SG Mui Ne - BCTC QI.2015.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.16216216216216217
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.7393879890441895,
+        "cpu": 9.139766000000236,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2020/Quy III.2020/04_CTCP TM Hoc Mon_BCTC Quy III/Rieng/BCDKT.pdf",
+        "coverage": {
+          "CDKT": 0.27586206896551724,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.004617929458618,
+        "cpu": 4.477511999999479,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2018/Quy 3.2018/06_Cty CP TM Phu Nhuan_BCTC quy 3.2018 (23.10.2018).pdf",
+        "coverage": {
+          "CDKT": 0.4482758620689655,
+          "KQHDKD": 0.5652173913043478,
+          "LCTT": 0.5945945945945946
+        },
+        "balance": [
+          2,
+          2
+        ],
+        "wall": 8.668199062347412,
+        "cpu": 23.493998999999803,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2024/Quý 1/Sapa BS_Q1.2024.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 3.33933424949646,
+        "cpu": 3.778375000000324,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2017/Quy 3.2017/11_Cty CP DVDL Ben Thanh_BCTC Quy 3.2017.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.7297297297297297
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.186842918395996,
+        "cpu": 16.90328000000045,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2015/BCTC nam 2015/38_BCTC Kiem toan 2015 Ngan hang Phuong Dong (ban day du).pdf",
+        "coverage": {
+          "CDKT": 0.05172413793103448,
+          "KQHDKD": 0.043478260869565216,
+          "LCTT": 0.05405405405405406
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.62758207321167,
+        "cpu": 19.967101000000184,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2013/Quy IV-2013/Cty TNHH Maxim_s Club_BCTC 2013 da ky.pdf",
+        "coverage": {
+          "CDKT": 0.05172413793103448,
+          "KQHDKD": 0.21739130434782608,
+          "LCTT": 0.02702702702702703
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.3529887199401855,
+        "cpu": 13.916430999999648,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2013/Quy IV-2013/04_BCTC 2013 CTy CP TM Hoc Mon Hop nhat/LCTT_signed.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.4594594594594595
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 3.8082971572875977,
+        "cpu": 3.7821210000001884,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2014/Quy 3.2014/09_Cty TNHH Sai Gon O To - BCTC quy 3.2014 (Cty me).pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.13043478260869565,
+          "LCTT": 0.2702702702702703
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 8.185135841369629,
+        "cpu": 19.21779499999957,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2016/QUY 1.2016/28_Cty CP XNK Giay dep Nam A.pdf",
+        "coverage": {
+          "CDKT": 0.13793103448275862,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 3.142879009246826,
+        "cpu": 6.7623170000001664,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2019/Nam2019_Da kiem toan/03_CTCP Dich vu Ben Thanh_BCTC Rieng 2019 Da KT.pdf",
+        "coverage": {
+          "CDKT": 0.5,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.6486486486486487
+        },
+        "balance": [
+          1,
+          4
+        ],
+        "wall": 6.138965845108032,
+        "cpu": 17.56532500000003,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2020/BCTC 2020 da kiem toan/Da kiem toan/BCTC 2020 Da kiem toan (Lan 1)/04_CTCP TM Hoc Mon/Rieng/thuyet minh (me) (8)_1615964698.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 9.66371774673462,
+        "cpu": 25.80769199999986,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BCTC 2025 (Tự lập)/19-BTV_VI_Baocaotaichinh_Q4_2025_sign.pdf",
+        "coverage": {
+          "CDKT": 0.2413793103448276,
+          "KQHDKD": 0.43478260869565216,
+          "LCTT": 0.7297297297297297
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.496032953262329,
+        "cpu": 14.349474000000555,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2020/BCTC 2020 da kiem toan/Da kiem toan/BCTC 2020 Da kiem toan (Lan 1)/04_CTCP TM Hoc Mon/Hop nhat/4.bc kiem toan (hn)_1615965033.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 0.562110185623169,
+        "cpu": 0.9305009999998219,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2012/BC 2012 DA KT/25_BCTC 2012 Cty CP XNK Khanh Hoi Hop nhat (da KT).pdf",
+        "coverage": {
+          "CDKT": 0.49137931034482757,
+          "KQHDKD": 0.782608695652174,
+          "LCTT": 0.6756756756756757
+        },
+        "balance": [
+          4,
+          6
+        ],
+        "wall": 6.733681917190552,
+        "cpu": 20.736353999999665,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2013/BC 2013 da Kiem toan/06_BCTC 2013 Cty CP TM Phu Nhuan va cac cty con (da kt).pdf",
+        "coverage": {
+          "CDKT": 0.5,
+          "KQHDKD": 0.782608695652174,
+          "LCTT": 0.5945945945945946
+        },
+        "balance": [
+          0,
+          2
+        ],
+        "wall": 11.251033067703247,
+        "cpu": 29.733353999999963,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2020/Da kiem toan 2020/13.Cty Plaza_BCTC 2020 _kiem toan draf(30.3.2021).pdf",
+        "coverage": {
+          "CDKT": 0.4051724137931034,
+          "KQHDKD": 0.5652173913043478,
+          "LCTT": 0.5675675675675675
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 6.599332809448242,
+        "cpu": 17.698333000000275,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2020/Nam 2020_Chua KT/25_CTCP PT va dich vu nha Ben Thanh/Bảng cân đối kế toán năm 2020 BTH (DỰ THẢO).pdf",
+        "coverage": {
+          "CDKT": 0.008620689655172414,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.6630682945251465,
+        "cpu": 6.105861999999888,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2011/QII-2011/38_CTy CP CK Phuong Dong -  BCTC Quy 2-2011 (ngay 17.08.2011).pdf",
+        "coverage": {
+          "CDKT": 0.31896551724137934,
+          "KQHDKD": 0.2608695652173913,
+          "LCTT": 0.5135135135135135
+        },
+        "balance": [
+          5,
+          5
+        ],
+        "wall": 5.805734872817993,
+        "cpu": 16.969887999999628,
+        "rss_mb": 805.234375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2020/Nam 2020_Chua KT/02_CTCP TMDV Ben Thanh/BCTC-CTM-QUY4-2020.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.21621621621621623
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 10.019001007080078,
+        "cpu": 19.535753000000568,
+        "rss_mb": 858.984375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2025/Quy 1.2025/11_Cty CP DV DL Ben Thanh Q1.2025 - HN.pdf",
+        "coverage": {
+          "CDKT": 0.11206896551724138,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.5945945945945946
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.684319972991943,
+        "cpu": 15.519514000000072,
+        "rss_mb": 858.984375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2014/Quy 2.2014/25_Cty CP XNK Khanh Hoi (HN).pdf",
+        "coverage": {
+          "CDKT": 0.47413793103448276,
+          "KQHDKD": 0.8260869565217391,
+          "LCTT": 0.6486486486486487
+        },
+        "balance": [
+          5,
+          6
+        ],
+        "wall": 7.305983066558838,
+        "cpu": 18.74276699999973,
+        "rss_mb": 858.984375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2012/Quy I-2012/CTy CP DVTHSG (SVC) BCTC_QI_2012/BCTC-Rieng-Quy01-2012.pdf",
+        "coverage": {
+          "CDKT": 0.0603448275862069,
+          "KQHDKD": 0.0,
+          "LCTT": 0.40540540540540543
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.6814491748809814,
+        "cpu": 13.917390999999952,
+        "rss_mb": 858.984375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2016/BCTC kiem toan 2016/04_Cty CP TM Hoc Mon_BCTC Kiem toan 2016 (HN)/07_Giai Trinh BCTC 01_Me.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 0.6095349788665771,
+        "cpu": 1.3669230000000425,
+        "rss_mb": 858.984375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2021/QUY 2.2021/00.Cty Mẹ BCTC Q2.2021.pdf",
+        "coverage": {
+          "CDKT": 0.07758620689655173,
+          "KQHDKD": 0.21739130434782608,
+          "LCTT": 0.02702702702702703
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.016829967498779,
+        "cpu": 13.738244999999552,
+        "rss_mb": 858.984375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2020/Quy II.2020/01_SVC_BCTC HN Quy II.2020.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.35135135135135137
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.391865968704224,
+        "cpu": 14.640311999999994,
+        "rss_mb": 858.984375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 6/2023/BCTC - Da kiem toan 2023/06_CTCP TM Phu Nhuan 2023 (rieng -kt).pdf",
+        "coverage": {
+          "CDKT": 0.4396551724137931,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.7297297297297297
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 8.45674180984497,
+        "cpu": 23.42051900000024,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2010/20_SVC - Baocaotaichinh_2010_Hopnhat_kiemtoan.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.351988077163696,
+        "cpu": 16.084741000000122,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2015/Quy 2.2015/03_Cty CP DICH VU BT - BCTC Q2.2015 (20.7.2015).pdf",
+        "coverage": {
+          "CDKT": 0.04310344827586207,
+          "KQHDKD": 0.2608695652173913,
+          "LCTT": 0.08108108108108109
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.046309232711792,
+        "cpu": 14.585662999999386,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2018/Nam 2018/2018 (Da kiem toan)/Da kiem toan/OCB_BCTC 2018_KT (hop nhat).pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 18.139171838760376,
+        "cpu": 50.81550299999981,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2012/Quy III-2012/BCTC - 2012 - Quy 3 - Cty CP SG Da Lat/BCTC - 2012 - Quy 3 - Cty CP SG Da Lat (chua ky).pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 0.4843459129333496,
+        "cpu": 1.2795139999998355,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2015/BCTC nam 2015 2/31_Cty TNHH Nhom dinh hinh Sapa Ben Thanh.pdf",
+        "coverage": {
+          "CDKT": 0.11206896551724138,
+          "KQHDKD": 0.5217391304347826,
+          "LCTT": 0.5135135135135135
+        },
+        "balance": [
+          1,
+          2
+        ],
+        "wall": 6.994856834411621,
+        "cpu": 18.093079000000216,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2020/Quy II.2020/01_SVC_BCTC Rieng Quy II.2020.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.34782608695652173,
+          "LCTT": 0.2972972972972973
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 7.470942974090576,
+        "cpu": 15.617795999999998,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2023/BCTC - tu lap 2023/02_CTCP TMDV Ben Thanh 2023/02_CTCP TMDV Ben Thanh 2022 (me).pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.21621621621621623
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 8.844386100769043,
+        "cpu": 18.34888000000001,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2016/Quy 2.2016/25_Cty CP Dau tu & Dich vu Khanh Hoi_BCTC hop nhat (soat xet).pdf",
+        "coverage": {
+          "CDKT": 0.5517241379310345,
+          "KQHDKD": 0.8695652173913043,
+          "LCTT": 0.6756756756756757
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 6.415662050247192,
+        "cpu": 19.076644000000215,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2019/Quy 1.2019/S01_VC.2019. BCTC rieng Q1.2019.pdf",
+        "coverage": {
+          "CDKT": 0.15517241379310345,
+          "KQHDKD": 0.043478260869565216,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.702045202255249,
+        "cpu": 13.301468999999543,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2014/Quy 2.2014/05_Cty CP VHTH Ben Thanh_BCTC quy 2.2014.pdf",
+        "coverage": {
+          "CDKT": 0.12931034482758622,
+          "KQHDKD": 0.13043478260869565,
+          "LCTT": 0.1891891891891892
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.229557037353516,
+        "cpu": 13.469678999999815,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2010/BC DA KT/21_BCTC 2010 Cty LD Can ho VP SG (da KT).pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.043478260869565216,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.203554153442383,
+        "cpu": 10.84310000000005,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 5/2024/BCTC - tu lap 2024/17_CTCP Ben Thanh Mui Ne_BCTC 2024.pdf",
+        "coverage": {
+          "CDKT": 0.39655172413793105,
+          "KQHDKD": 0.6086956521739131,
+          "LCTT": 0.43243243243243246
+        },
+        "balance": [
+          2,
+          2
+        ],
+        "wall": 7.044148921966553,
+        "cpu": 22.425522999999885,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 6/2016/Quy 2.2016/10_DVDL Ben Thanh/10_Cty CP DVDL Ben Thanh_BCTC Q2.2016 (KT Rieng).pdf",
+        "coverage": {
+          "CDKT": 0.5344827586206896,
+          "KQHDKD": 0.7391304347826086,
+          "LCTT": 0.7297297297297297
+        },
+        "balance": [
+          1,
+          1
+        ],
+        "wall": 6.990471839904785,
+        "cpu": 19.951124999999593,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 6/2024/Quý 1/07_CTCP Vat tu Ben Thanh - Q1.2024.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.08108108108108109
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 7.76242995262146,
+        "cpu": 20.06912800000009,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2014/Quy 3.2014/04_Cty CP TM Hoc Mon - BCTC quy 3.2014 (Hop nhat).pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.7391304347826086,
+          "LCTT": 0.43243243243243246
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 7.100203037261963,
+        "cpu": 16.405674999999974,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 10/2020/Quy II.2020/04_CTCP TM Hoc Mon_BCTC Quy II/Rieng/TM.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.043478260869565216,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 7.454629182815552,
+        "cpu": 15.886257000000114,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2013/QII-2013/29-CTCP Nhu Ngoc-BCTC q2.2013.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.2702702702702703
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.838756084442139,
+        "cpu": 8.583036000000902,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2017/Quy 1.2017/09_Cty CP DV Sai Gon O to_BCTC Q1.2017 (HN).pdf",
+        "coverage": {
+          "CDKT": 0.08620689655172414,
+          "KQHDKD": 0.13043478260869565,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.176313877105713,
+        "cpu": 9.198628999999528,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2018/Nam 2018/Da kiem toan 2017/BTG Audited Financial Statement 2018_VN.pdf",
+        "coverage": {
+          "CDKT": 0.39655172413793105,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.5135135135135135
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 4.464348793029785,
+        "cpu": 14.070760999999948,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2014/Quy 4.2014/Cty CP Sai Gon Da Lat - BCTC 2014.pdf",
+        "coverage": {
+          "CDKT": 0.19827586206896552,
+          "KQHDKD": 0.6086956521739131,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.5144970417022705,
+        "cpu": 9.835291000000325,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2013/Quy IV-2013/03_CBTT ve CTy CP Xe May BT Cty CP DV BT.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 0.3611772060394287,
+        "cpu": 0.6631790000001274,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2016/Quy 2.2016/02-TSC BCTC HN Q2.2016.pdf",
+        "coverage": {
+          "CDKT": 0.4482758620689655,
+          "KQHDKD": 0.8260869565217391,
+          "LCTT": 0.5135135135135135
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 6.970447778701782,
+        "cpu": 20.258483999999953,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 6/2022/BCTC 2022 chưa kiểm toán/03_CTCP DV Ben Thanh.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.5652173913043478,
+          "LCTT": 0.10810810810810811
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.232928037643433,
+        "cpu": 8.022535000000062,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2016/BCTC kiem toan 2016/04_Cty CP TM Hoc Mon_BCTC Kiem toan 2016 (HN)/07_Giai Trinh BCTC 01_HN.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 0.539700984954834,
+        "cpu": 1.1579279999996288,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BCTC 2025 (Kiểm toán)/28_CTCP XNK Giay dep Nam A 2025 - Hợp nhất.pdf",
+        "coverage": {
+          "CDKT": 0.49137931034482757,
+          "KQHDKD": 1.0,
+          "LCTT": 0.7837837837837838
+        },
+        "balance": [
+          2,
+          4
+        ],
+        "wall": 6.672173023223877,
+        "cpu": 18.225985000000037,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2016/BCTC kiem toan 2016/04_Cty CP TM Hoc Mon_BCTC Kiem toan 2016 (HN)/02_BC Kiem toan doc lap_Me.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 0.7456490993499756,
+        "cpu": 1.1830580000005284,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2013/BC 2013 da Kiem toan/01_BCTC 2013 Cty CP DVTH Sai Gon (da kt)/SVC_GiaiTrinh_BCTC_HopNhat.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 0.37106776237487793,
+        "cpu": 0.3685800000002928,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2012/Quy IV-2012/03_BCTC QIV 2012 Cty CP DV Ben Thanh (2).pdf",
+        "coverage": {
+          "CDKT": 0.05172413793103448,
+          "KQHDKD": 0.2608695652173913,
+          "LCTT": 0.05405405405405406
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.053745746612549,
+        "cpu": 13.107362000000649,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2018/Nam 2018/2018 (Da kiem toan)/Da kiem toan/07_Cty CP Vat tu Ben Thanh_BCTC kiem toan 2018.pdf",
+        "coverage": {
+          "CDKT": 0.43103448275862066,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.4594594594594595
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 7.38633394241333,
+        "cpu": 20.219186000000263,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2020/Quy III.2020/01_SVC_BCTC Quy III_Hop nhat.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.43478260869565216,
+          "LCTT": 0.32432432432432434
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 7.032708168029785,
+        "cpu": 16.038069000000178,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2016/Quy 2.2016/09_O to Bac Au-BCTC Q2-2016.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.13043478260869565,
+          "LCTT": 0.21621621621621623
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.789758920669556,
+        "cpu": 14.600750999999946,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2020/Da kiem toan 2020/31_Cty TNHH Nhom dinh hinh Sapa Ben Thanh Draft2.pdf",
+        "coverage": {
+          "CDKT": 0.10344827586206896,
+          "KQHDKD": 0.7391304347826086,
+          "LCTT": 0.1891891891891892
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.858499050140381,
+        "cpu": 16.351426999999603,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2010/09_bctc da kt bt tan binh 2010.pdf",
+        "coverage": {
+          "CDKT": 0.1810344827586207,
+          "KQHDKD": 0.5217391304347826,
+          "LCTT": 0.13513513513513514
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.470743179321289,
+        "cpu": 13.473622000000432,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2015/BCTC nam 2015 2/01.Cty CP DVTH SG_BC kiem toan2015/SVC.BCTC HN kiem toan 2015.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.043478260869565216,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 0.45916008949279785,
+        "cpu": 0.45565699999951903,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2025/BCTC 2025 (Kiểm toán)/25_CTCP PT va DV Nha Ben Thanh 2025.pdf",
+        "coverage": {
+          "CDKT": 0.49137931034482757,
+          "KQHDKD": 0.7391304347826086,
+          "LCTT": 0.0
+        },
+        "balance": [
+          3,
+          4
+        ],
+        "wall": 8.261945962905884,
+        "cpu": 22.224624999999833,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2014/BCTC 2014 da kiem toan/05_Cty CP VHTH BenThanh - BC HN 2014.pdf",
+        "coverage": {
+          "CDKT": 0.43103448275862066,
+          "KQHDKD": 0.8260869565217391,
+          "LCTT": 0.8378378378378378
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 7.888365030288696,
+        "cpu": 22.972459999999955,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2019/Nam2019_Da kiem toan/09_CTCP Dich vu Sai gon O to_BCTC 2019_Rieng_Kiem toan.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 8.207217931747437,
+        "cpu": 20.48940700000003,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 6/2025/Quy 2.2025/06_CTCP TM Phu Nhuan 6Th_2025.pdf",
+        "coverage": {
+          "CDKT": 0.46551724137931033,
+          "KQHDKD": 0.0,
+          "LCTT": 0.6216216216216216
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 9.561484813690186,
+        "cpu": 25.085770000000593,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2022/BCTC 2022 đã kiểm toán/26_Cty CP DTXD KD Nha Bến Thành 2022.pdf",
+        "coverage": {
+          "CDKT": 0.41379310344827586,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.6486486486486487
+        },
+        "balance": [
+          1,
+          2
+        ],
+        "wall": 6.517958879470825,
+        "cpu": 18.258511,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2017/Quy 4.2017/Cty TNHH Maxim Club/LCTT MX 2017.2.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 0.4004781246185303,
+        "cpu": 0.39861200000086683,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2012/BC 2012 DA KT/25_BCTC 2012 Cty CP XNK Khanh Hoi Cty me (da KT).pdf",
+        "coverage": {
+          "CDKT": 0.47413793103448276,
+          "KQHDKD": 0.7391304347826086,
+          "LCTT": 0.43243243243243246
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 8.539766073226929,
+        "cpu": 25.03830199999902,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2018/Quy 1.2018/18_Cty CP DL KS Sai Gon Mui Ne-BCTC Quy1.2018.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.2972972972972973
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 8.293064832687378,
+        "cpu": 18.964514000000236,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2021/BCTC 2021/Đơn vị lập/B1.4_CTCP Dich vu Ben Thanh_BCTC kiem toan nam 2021.pdf",
+        "coverage": {
+          "CDKT": 0.4396551724137931,
+          "KQHDKD": 0.5652173913043478,
+          "LCTT": 0.5675675675675675
+        },
+        "balance": [
+          4,
+          6
+        ],
+        "wall": 6.779300928115845,
+        "cpu": 19.991645000000972,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/30.Cty TNHH Ben Thanh - Sao Thuy 2024.pdf",
+        "coverage": {
+          "CDKT": 0.3620689655172414,
+          "KQHDKD": 0.21739130434782608,
+          "LCTT": 0.0
+        },
+        "balance": [
+          6,
+          6
+        ],
+        "wall": 7.310374021530151,
+        "cpu": 19.320669999998245,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/Tổng Công ty/2010 (rieng).pdf",
+        "coverage": {
+          "CDKT": 0.49137931034482757,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.02702702702702703
+        },
+        "balance": [
+          2,
+          4
+        ],
+        "wall": 5.902714014053345,
+        "cpu": 17.12533500000154,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2015/BCTC nam 2015/04_Cty CP TM Hoc Mon - BCTC kiem toan 2015 (Rieng).pdf",
+        "coverage": {
+          "CDKT": 0.5431034482758621,
+          "KQHDKD": 0.6086956521739131,
+          "LCTT": 0.5135135135135135
+        },
+        "balance": [
+          1,
+          1
+        ],
+        "wall": 6.931179046630859,
+        "cpu": 21.23279100000036,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2013/Quy III-2013/08_Cty TNHH Sai Gon Ford BCTC Q3 2013 - Hop nhat.pdf",
+        "coverage": {
+          "CDKT": 0.11206896551724138,
+          "KQHDKD": 0.08695652173913043,
+          "LCTT": 0.2972972972972973
+        },
+        "balance": [
+          1,
+          1
+        ],
+        "wall": 6.297220706939697,
+        "cpu": 15.789421999999831,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BCTC 2025 (Tự lập)/19-BTV_VI_Baocaotaichinhhopnhat_Q4_2025_sign.pdf",
+        "coverage": {
+          "CDKT": 0.27586206896551724,
+          "KQHDKD": 0.08695652173913043,
+          "LCTT": 0.7027027027027027
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.727006912231445,
+        "cpu": 14.963294999999562,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 6/2020/Da kiem toan 2020/31_Cty TNHH Nhom dinh hinh Sapa Ben Thanh BCTC 2020.pdf",
+        "coverage": {
+          "CDKT": 0.1206896551724138,
+          "KQHDKD": 0.782608695652174,
+          "LCTT": 0.7297297297297297
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 6.641802072525024,
+        "cpu": 19.815152000000126,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2014/Quy 2.2014/04_Cty CP TM Hoc Mon_BCTC soat xet quy 2.2014( Hop nhat).pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.43478260869565216,
+          "LCTT": 0.5945945945945946
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 10.414070129394531,
+        "cpu": 30.08015500000056,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2017/Quy 2.2017/11_Cty CP DVDL Ben Thanh_BCTC 6T2017 (Rieng_Kiem toan).pdf",
+        "coverage": {
+          "CDKT": 0.5258620689655172,
+          "KQHDKD": 0.7391304347826086,
+          "LCTT": 0.7567567567567568
+        },
+        "balance": [
+          2,
+          2
+        ],
+        "wall": 6.779979705810547,
+        "cpu": 19.927254999999604,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2020/Quy I.2020/30. Cty TNHH Ben Thanh Sao Thuy_BCTC Quy 1.2020.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.13043478260869565,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.533937931060791,
+        "cpu": 8.197349000000031,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 6/2024/BCTC - Da kiem toan 2024/21_Cty CP KS DL Thang Muoi 2024.pdf",
+        "coverage": {
+          "CDKT": 0.3706896551724138,
+          "KQHDKD": 0.5652173913043478,
+          "LCTT": 0.43243243243243246
+        },
+        "balance": [
+          5,
+          6
+        ],
+        "wall": 8.027753829956055,
+        "cpu": 22.70038100000056,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2019/Nam 2019_Chua KT/16_Cty CP Ben Thanh Non Nuoc_BCTC 2019_ chua kt 07.02.2020.pdf",
+        "coverage": {
+          "CDKT": 0.05172413793103448,
+          "KQHDKD": 0.17391304347826086,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          1
+        ],
+        "wall": 12.350647211074829,
+        "cpu": 32.7502029999996,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2023/34_Cty Sài Gòn Đà Lạt (kiem toan).pdf",
+        "coverage": {
+          "CDKT": 0.35344827586206895,
+          "KQHDKD": 0.6956521739130435,
+          "LCTT": 0.40540540540540543
+        },
+        "balance": [
+          4,
+          6
+        ],
+        "wall": 5.965895175933838,
+        "cpu": 15.282952000000478,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2024/Quý 2/34_Cty CP Sai Gon Da Lat Q2.2024 (lũy kế).pdf",
+        "coverage": {
+          "CDKT": 0.23275862068965517,
+          "KQHDKD": 0.5652173913043478,
+          "LCTT": 0.5405405405405406
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.285117149353027,
+        "cpu": 11.072588999999425,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2025/BCTC 2025 (Kiểm toán)/16_Cty CP DL Ben Thanh Non Nuoc 2025.pdf",
+        "coverage": {
+          "CDKT": 0.3879310344827586,
+          "KQHDKD": 0.7391304347826086,
+          "LCTT": 0.5945945945945946
+        },
+        "balance": [
+          5,
+          6
+        ],
+        "wall": 7.873977899551392,
+        "cpu": 22.97083300000122,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 3/2017/Quy 4.2017/05_Cty CP VHTH Ben Thanh_BCTC 2017 (29-01-2018).pdf",
+        "coverage": {
+          "CDKT": 0.06896551724137931,
+          "KQHDKD": 0.391304347826087,
+          "LCTT": 0.32432432432432434
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.181475877761841,
+        "cpu": 13.725040999998782,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2024/Quý 2/04_CTCP TM Hoc Mon Q2.2024 (mẹ)_05.08.2024.pdf",
+        "coverage": {
+          "CDKT": 0.28448275862068967,
+          "KQHDKD": 0.6521739130434783,
+          "LCTT": 0.4864864864864865
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 7.150765895843506,
+        "cpu": 20.860207000000628,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2021/BCTC 2021/Chưa kiểm toán/B2.1_Cty LD KS  PLAZA.pdf",
+        "coverage": {
+          "CDKT": 0.14655172413793102,
+          "KQHDKD": 0.21739130434782608,
+          "LCTT": 0.5675675675675675
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 7.455995082855225,
+        "cpu": 15.960980000000745,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 9/2018/Nam 2018/05_Cty CP VHTH Bến Thành_BCTC 2018/BCTC Rieng 2018 co chu ky.pdf",
+        "coverage": {
+          "CDKT": 0.10344827586206896,
+          "KQHDKD": 0.391304347826087,
+          "LCTT": 0.35135135135135137
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 4.482375860214233,
+        "cpu": 10.470055999999204,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC/2007/SVC_07CN_BCTC_HNKT.pdf",
+        "coverage": {
+          "CDKT": 0.0,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.5262510776519775,
+        "cpu": 14.975884999999835,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 8/2010/BC DA KT/24_BCTC 2010 Cty CP DT Dia oc BT (da KT).pdf",
+        "coverage": {
+          "CDKT": 0.46551724137931033,
+          "KQHDKD": 0.7391304347826086,
+          "LCTT": 0.7027027027027027
+        },
+        "balance": [
+          5,
+          5
+        ],
+        "wall": 4.7868428230285645,
+        "cpu": 13.844351000000643,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 7/2015/Quy 1.2015/05-Cty CP VHTH BT- BCTC Q1.2015 hop nhat.pdf",
+        "coverage": {
+          "CDKT": 0.05172413793103448,
+          "KQHDKD": 0.08695652173913043,
+          "LCTT": 0.2972972972972973
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 5.72997784614563,
+        "cpu": 15.602406999999403,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 11/2022/BCTC 2022 chưa kiểm toán/18_Cty CP Sai gon Mui Ne/BANG CAN DOI KE TOAN 22 SG MN (1).pdf",
+        "coverage": {
+          "CDKT": 0.12931034482758622,
+          "KQHDKD": 0.0,
+          "LCTT": 0.0
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 3.0563480854034424,
+        "cpu": 4.114020999999411,
+        "rss_mb": 991.734375
+      },
+      {
+        "pdf": "/Users/motmi/Documents/DAYS/Y-NHI/BTG/Documents/BTG document/BCTC 4/2014/BCTC 2014 da kiem toan/C1_Cty CP Co khi TB - BCTC 2014 (kiem toan).pdf",
+        "coverage": {
+          "CDKT": 0.33620689655172414,
+          "KQHDKD": 0.7391304347826086,
+          "LCTT": 0.21621621621621623
+        },
+        "balance": [
+          0,
+          0
+        ],
+        "wall": 7.450484991073608,
+        "cpu": 20.585810000000492,
+        "rss_mb": 991.734375
+      }
+    ],
+    "loi_trung_ma": 0
+  },
+  "tier3": {
+    "wall": 1939.7547760009766,
+    "cpu": 4986.781737,
+    "peak_rss_mb": 991.734375
+  }
+}

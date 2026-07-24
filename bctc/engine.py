@@ -20,6 +20,33 @@ class Cancelled(Exception):
     """Người dùng yêu cầu dừng giữa chừng."""
 
 
+class LoiFileKhongHopLe(Exception):
+    """File đầu vào không phải PDF hợp lệ (rỗng / hỏng / mã hoá / sai định dạng).
+    Ném ra để convert_many báo lỗi TỬ TẾ theo từng file và chạy tiếp cả mẻ,
+    thay vì để fitz ném traceback thô làm chết mẻ."""
+
+
+def _kiem_tra_pdf(pdf_path):
+    """§7.9: chặn file hỏng TRƯỚC khi mở. Dò MAGIC BYTES (không suy loại file
+    từ đuôi — '.PDF' hoa, 'BCTC.jpeg.jpeg'): 0 byte / không có chữ ký '%PDF' /
+    không đọc được -> LoiFileKhongHopLe kèm thông báo tiếng Việt rõ ràng."""
+    try:
+        size = os.path.getsize(pdf_path)
+    except OSError:
+        raise LoiFileKhongHopLe(
+            "Không đọc được file (không tồn tại hoặc không có quyền đọc).")
+    if size == 0:
+        raise LoiFileKhongHopLe("File rỗng (0 byte) — không phải PDF.")
+    try:
+        with open(pdf_path, "rb") as fh:
+            head = fh.read(1024)
+    except OSError:
+        raise LoiFileKhongHopLe("Không đọc được nội dung file.")
+    if b"%PDF" not in head:
+        raise LoiFileKhongHopLe(
+            "File không phải PDF hợp lệ (không thấy chữ ký '%PDF' ở đầu file).")
+
+
 def _check_balance(cdkt):
     """Trả về danh sách (mô tả, đạt?) kiểm tra tính cân đối của BCĐKT."""
     out = []
@@ -51,8 +78,16 @@ def convert_pdf(pdf_path, out_dir, lang="vie", dpis=(180, 235), log=lambda *_: N
     log(f"▶ {name}")
     if cancel():
         raise Cancelled()
+    _kiem_tra_pdf(pdf_path)          # §7.9: chặn file rỗng/hỏng với thông báo rõ
     file_progress(0.03)
-    doc = fitz.open(pdf_path)
+    try:
+        doc = fitz.open(pdf_path)
+    except Exception as e:
+        raise LoiFileKhongHopLe("Không mở được PDF (file có thể bị hỏng): %s" % e)
+    if doc.needs_pass:
+        doc.close()
+        raise LoiFileKhongHopLe(
+            "File PDF được mã hoá (cần mật khẩu) — không đọc được nội dung.")
 
     # mỗi lượt đọc (1 độ phân giải) là một mốc tiến độ -> lấp dần 0.05 → 0.93
     def _on_pass(done, total):
@@ -60,14 +95,20 @@ def convert_pdf(pdf_path, out_dir, lang="vie", dpis=(180, 235), log=lambda *_: N
             raise Cancelled()
         file_progress(0.05 + 0.88 * done / max(1, total))
 
-    results, warnings, _, conflicts = parser.extract_consensus(
+    results, warnings, meta, conflicts = parser.extract_consensus(
         doc, lang=lang, dpis=dpis, log=log, on_pass=_on_pass,
         workers=W.worker_count(mode))
     doc.close()
     file_progress(0.95)
 
+    # §7.3: đơn vị tính phát hiện được -> ghi vào A2 (parser đã tự cảnh báo khi
+    # khác VND). §7.6/G2: mã ngoài khung -> thêm cảnh báo (excel_writer cũng
+    # ghi ra sheet) để KHÔNG mất dữ liệu âm thầm.
+    unit = (meta or {}).get("unit")
+    warnings = list(warnings) + excel_writer.out_of_framework_warnings(results)
+
     out_path = os.path.join(out_dir, name + ".xlsx")
-    excel_writer.save(name, results, out_path, conflicts=conflicts)
+    excel_writer.save(name, results, out_path, conflicts=conflicts, unit=unit)
     file_progress(1.0)
 
     n_rows = {k: len(v) for k, v in results.items()}
@@ -78,16 +119,22 @@ def convert_pdf(pdf_path, out_dir, lang="vie", dpis=(180, 235), log=lambda *_: N
         "pdf": pdf_path, "name": name, "out_path": out_path,
         "rows": n_rows, "warnings": warnings, "checks": checks,
         "conflicts": conflicts,
+        "unit": unit,                # <-- V8 §D: bản sao phải ghi ĐÚNG đơn vị
         "results": results,          # <-- THÊM: phục vụ bộ đo hồi quy
     }
 
 
 def _luu_ban_sao(pdf_path, out_dir, ket_qua_goc, log):
-    """Ghi lại kết quả của file gốc dưới tên của file trùng nội dung."""
+    """Ghi lại kết quả của file gốc dưới tên của file trùng nội dung.
+
+    V8 §D: phải chuyền cả `unit`. Thiếu nó thì file trùng nội dung của một báo
+    cáo 'triệu đồng' bị ghi 'Đơn vị tính: VND' — sai đơn vị 10^6 một cách âm
+    thầm, lại còn MÂU THUẪN với cảnh báo đơn vị vốn được chép sang."""
     name = os.path.splitext(os.path.basename(pdf_path))[0]
     out_path = os.path.join(out_dir, name + ".xlsx")
     excel_writer.save(name, ket_qua_goc["results"], out_path,
-                      conflicts=ket_qua_goc.get("conflicts"))
+                      conflicts=ket_qua_goc.get("conflicts"),
+                      unit=ket_qua_goc.get("unit"))
     log("↩ %s — trùng nội dung với %s, dùng lại kết quả."
         % (name, ket_qua_goc["name"]))
     r = dict(ket_qua_goc)
@@ -154,6 +201,14 @@ def convert_many(pdf_paths, out_dir, lang="vie", dpis=(180, 235),
             on_file(i, "cancelled", None)
             log("⏹ Đã dừng theo yêu cầu.")
             break
+        except LoiFileKhongHopLe as e:
+            # Lỗi ĐÃ BIẾT (file rỗng/hỏng/mã hoá): thông báo tử tế, KHÔNG dump
+            # traceback, và chạy tiếp cả mẻ.
+            log(f"   ✖ {e}")
+            r = {"pdf": p, "name": os.path.basename(p),
+                 "error": str(e), "out_path": None}
+            on_file(i, "error", str(e))
+            out.append(r)
         except Exception as e:
             log(f"   ✖ Lỗi: {e}")
             log("   ⋯ chi tiết:\n   " + traceback.format_exc().replace("\n", "\n   "))

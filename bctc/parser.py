@@ -11,6 +11,8 @@ Chiến lược:
 """
 import re
 import os
+import math
+import threading
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 
@@ -132,6 +134,82 @@ def detect_period(line_texts):
 
 
 # ----------------------------------------------------------------------
+# §7.3: nhận diện ĐƠN VỊ TÍNH (KHÔNG tự quy đổi — chỉ ghi nhận + cảnh báo)
+# ----------------------------------------------------------------------
+# excel_writer ghi cứng 'Đơn vị tính: VND'; báo cáo ghi 'nghìn/triệu/tỷ đồng'
+# lệch 10^3..10^9. Tự nhân giá trị là BỊA ĐỘ CHÍNH XÁC không có trong nguồn ->
+# CHỈ ghi đúng đơn vị phát hiện vào ô A2 và CẢNH BÁO khi khác VND, để người
+# dùng tự nhân hệ số khi đối chiếu.
+_DVT_BASE_RE = re.compile(r"\b(dong|vnd)\b")
+# V8 §E: nhãn 'Đơn vị tính' cũng hay viết TẮT là 'ĐVT:' / 'Đvt:' (rất phổ biến
+# trên bản in Việt) -> trước đây không nhận, trả None và mất luôn cảnh báo.
+_DVT_NHAN_RE = re.compile(r"don vi(?:\s*tinh)?|\bdvt\b")
+# V8 §E: hệ số viết bằng SỐ ('Đơn vị tính: 1.000 đồng') là cách ghi nghìn phổ
+# biến NHẤT ở Việt Nam, trước đây bị đọc thành 'VND' -> lệch 10^3 mà KHÔNG có
+# cảnh báo nào. Số mũ 10 (số chữ số 0) -> nhãn đơn vị.
+_DVT_HE_SO = {3: "nghìn đồng", 6: "triệu đồng", 9: "tỷ đồng"}
+_DVT_SO_RE = re.compile(r"\d[\d.,]*")
+
+
+def _he_so_bang_so(window):
+    """Hệ số dạng SỐ đứng TRƯỚC gốc tiền tệ trong cửa sổ: '1.000 đồng' ->
+    'nghìn đồng', '1.000.000 đồng' -> 'triệu đồng', '1.000.000.000' -> 'tỷ'.
+    Nhận cả '1000' và '1,000' (dấu phẩy kiểu Anh). Hệ số LẠ (vd '10.000
+    đồng') KHÔNG im lặng coi là VND mà trả nguyên văn theo nguồn để
+    unit_warning vẫn cảnh báo. None nếu không có hệ số bằng số."""
+    m = _DVT_BASE_RE.search(window)
+    if not m:
+        return None
+    for sm in _DVT_SO_RE.finditer(window[:m.start()]):
+        so = sm.group(0).rstrip(".,")
+        digits = re.sub(r"\D", "", so)
+        # chỉ nhận dạng 1 rồi toàn số 0 (1.000 / 1000000...), không nhận ngày
+        # tháng hay số hiệu ('31/12/2024', 'B01-DN')
+        if len(digits) < 2 or digits[0] != "1" or set(digits[1:]) != {"0"}:
+            continue
+        return _DVT_HE_SO.get(len(digits) - 1) or ("%s đồng" % so)
+    return None
+
+
+def detect_unit(line_texts):
+    """Quét dòng các trang báo cáo tìm 'Đơn vị tính: ...' (hoặc 'ĐVT:'). Trả:
+      'VND'  — đồng/VND trơn (mặc định, không cảnh báo);
+      'nghìn đồng' / 'triệu đồng' / 'tỷ đồng' — có hệ số (cần cảnh báo),
+      dù hệ số ghi bằng CHỮ ('nghìn đồng') hay bằng SỐ ('1.000 đồng');
+      None   — không thấy dòng đơn vị tính.
+    CHỈ nhận khi trong ~24 ký tự sau cụm nhãn có gốc tiền tệ (đồng/VND) ->
+    tránh dính chữ 'đơn vị' trong ngữ cảnh khác."""
+    joined = " ".join(norm(t) for t in line_texts)
+    for m in _DVT_NHAN_RE.finditer(joined):
+        window = joined[m.end():m.end() + 24]
+        if not _DVT_BASE_RE.search(window):
+            continue
+        # hệ số bằng SỐ xét TRƯỚC: '1.000 đồng' không chứa chữ nghìn/triệu nào
+        # nên đường chữ bên dưới sẽ trả nhầm 'VND'.
+        he_so = _he_so_bang_so(window)
+        if he_so:
+            return he_so
+        if "trieu" in window:
+            return "triệu đồng"
+        if "nghin" in window or "ngan" in window:
+            return "nghìn đồng"
+        if re.search(r"\bty\b", window):
+            return "tỷ đồng"
+        return "VND"
+    return None
+
+
+def unit_warning(unit):
+    """Cảnh báo (tiếng Việt) khi đơn vị KHÁC VND; None nếu VND/không rõ.
+    Tách riêng để test được và để extract dùng chung."""
+    if unit and unit != "VND":
+        return ("Đơn vị tính phát hiện: '%s' (KHÁC VND). Số liệu GIỮ NGUYÊN "
+                "theo nguồn, KHÔNG tự quy đổi — cần nhân hệ số khi đối chiếu."
+                % unit)
+    return None
+
+
+# ----------------------------------------------------------------------
 # Phân tích con số kiểu Việt Nam:  1.234.567  (1.234)  -   =>  int / None
 # ----------------------------------------------------------------------
 # Chấp nhận cả dấu CHẤM (Việt: 1.234.567) lẫn dấu PHẨY (Anh: 1,234,567) phân cách nghìn.
@@ -220,13 +298,37 @@ def detect_code_column(section_lines, valid_codes, order_index):
     return best_center
 
 
+def _canon_ma_mot_chu_so(text, valid_codes):
+    """Mã in dạng '1' quy về khung '01' — CHỈ mã 1 chữ số và chỉ khi dạng đệm
+    0 có trong khung. Trả None nếu không áp dụng.
+
+    §7.1 (thu hẹp): báo cáo in mã số '1','2' còn template ghi '01','02', nên
+    so khớp CHUỖI CHÍNH XÁC trong _token_code trượt -> MẤT trọn dòng 01-09 ở
+    KQHDKD/LCTT (mã 01 = Doanh thu, dòng đầu KQKD). Chỉ dùng trong find_code_at
+    TẠI cột mã đã dò; KHÔNG đụng detect_code_column (chẩn đoán chứng minh nới ở
+    đó bắt nhầm cột SỐ THỨ TỰ '1|2|3')."""
+    t = text.strip().rstrip(".")
+    if len(t) == 1 and t.isdigit():
+        padded = "0" + t
+        if padded in valid_codes:
+            return padded
+    return None
+
+
 def find_code_at(words, valid_codes, col_center, tol=0.07):
     """Lấy mã số ở đúng cột đã dò (gần col_center nhất)."""
     if col_center is None:
+        # Chưa dò được cột mã -> KHÔNG nới mã 1 chữ số (guard §7.1): nới khi
+        # chưa chắc cột sẽ bắt nhầm cột số thứ tự. find_code giữ strict.
         return find_code(words, valid_codes)
     best, best_d = None, tol
     for wd in words:
         code = _token_code(wd, valid_codes)
+        if code is None:
+            # §7.1 thu hẹp: chấp nhận mã 1 chữ số ('1'->'01') CHỈ ở đúng cột mã
+            # đã dò và trong dung sai cột -> '1' lạc ở cột số thứ tự (cx khác
+            # hẳn col_center) không lọt vì d > tol.
+            code = _canon_ma_mot_chu_so(wd["text"], valid_codes)
         if code is None:
             continue
         d = abs(wd["cx"] - col_center)
@@ -349,6 +451,176 @@ def pick_values(words, cur_c, prior_c, tol=0.045):
     return cur, prior
 
 
+# ----------------------------------------------------------------------
+# Chọn CẶP cột giá trị khi bảng có >= 3 cột số (Đợt 2, việc #1)
+# ----------------------------------------------------------------------
+# Gia đình bản in phần mềm kế toán ("Phần I. Lãi Lỗ", "Kỳ kế toán: MM/YYYY")
+# in KQHDKD/LCTT với BA cột số 'Kỳ này | Kỳ trước | Lũy kế'. Lối chọn cũ
+# `centers[-2:]` lấy (Kỳ trước, Lũy kế); trên báo cáo 6 tháng/năm Lũy kế ==
+# Kỳ này nên kết quả hoán vị hoàn hảo hai cột (kqkd_6t.pdf lệch 24/24 ô —
+# xem docs/superpowers/plans/chan-doan-dot-2.md §2). Cặp đúng: (Kỳ này,
+# Kỳ trước). Ba tín hiệu, xét theo độ tin cậy giảm dần:
+#   1. NHÃN tiêu đề cột (khi OCR đọc được) — mạnh nhất; 'lũy kế' bị LOẠI.
+#   2. Cột phải nhất TRÙNG GIÁ TRỊ cột 1 trên nhiều dòng (Lũy kế == Kỳ này).
+#   3. Kỳ báo cáo QUÝ + 3-4 cột không nhãn -> quy ước bố cục quý, lấy 2 cột
+#      TRÁI (không áp cho CDKT — bảng cân đối không có cột Lũy kế).
+# <= 2 cột: GIỮ NGUYÊN hành vi cũ. Nhãn nhập nhằng/mâu thuẫn: giữ đường cũ
+# nhưng BẮT BUỘC cảnh báo (không bao giờ im lặng).
+_NHAN_KY_NAY = ("ky nay", "quy nay", "nam nay", "so cuoi")
+_NHAN_KY_TRUOC = ("ky truoc", "quy truoc", "nam truoc", "so dau")
+_NHAN_LUY_KE = ("luy ke",)
+# Cửa sổ x quanh TÂM CỘT SỐ (right_x) để gom chữ tiêu đề của cột: nhãn nằm
+# giữa cột nên lệch TRÁI so với mép phải của các con số (đo trên kqkd_6t:
+# "Kỳ này" cx 0.61-0.64 dưới cột right_x 0.668).
+_NHAN_X_TRAI, _NHAN_X_PHAI = 0.13, 0.04
+# Ngưỡng tin "cột phải trùng giá trị cột 1": tối thiểu số dòng so sánh được
+# và tỷ lệ dòng bằng nhau (kqkd_6t đo được 12/13, BCTC-2023-KQ 5/5).
+_TRUNG_MIN_DONG = 4
+_TRUNG_MIN_TYLE = 0.6
+
+
+def doc_nhan_cot(section_lines, centers, valid_codes, col_center):
+    """Đọc nhãn tiêu đề ('Kỳ này'/'Kỳ trước'/'Lũy kế'...) cho từng TÂM CỘT SỐ.
+
+    Chỉ quét các dòng PHÍA TRÊN dòng dữ liệu đầu tiên có mã số (dải tiêu đề
+    bảng); chữ trong cửa sổ x quanh mỗi tâm cột được ghép lại rồi norm() để
+    so mốc. Trả về list cùng thứ tự với centers, mỗi phần tử là set con của
+    {"cur", "prior", "cum"} (rỗng = không đọc được nhãn — OCR nát là chuyện
+    thường trên gia đình bản in này).
+    """
+    nhan = [set() for _ in centers]
+    if not centers:
+        return nhan
+    for ln, _split, _vtoks in section_lines:
+        if find_code_at(ln, valid_codes, col_center):
+            break                      # đã chạm thân bảng -> hết dải tiêu đề
+        for ci, c in enumerate(centers):
+            toks = [wd["text"] for wd in ln
+                    if c - _NHAN_X_TRAI <= wd["cx"] <= c + _NHAN_X_PHAI]
+            if not toks:
+                continue
+            text = norm(" ".join(toks))
+            if any(m in text for m in _NHAN_LUY_KE):
+                nhan[ci].add("cum")
+            if any(m in text for m in _NHAN_KY_NAY):
+                nhan[ci].add("cur")
+            if any(m in text for m in _NHAN_KY_TRUOC):
+                nhan[ci].add("prior")
+    return nhan
+
+
+def dem_cot_trung(section_lines, centers, digit_pass, tol=0.045):
+    """Đếm theo từng CẶP cột (i, j): (số dòng hai giá trị BẰNG NHAU, số dòng
+    cả hai cột cùng có số). Token số của mỗi dòng được gán vào tâm cột gần
+    nhất trong tol — cùng cách gán với pick_values để hai nơi nhìn thấy cùng
+    một bảng. Dùng để nhận diện cột Lũy kế trùng cột Kỳ này (báo cáo 6T/năm).
+    """
+    rows = []
+    for ln, _split, vtoks in section_lines:
+        words = vtoks if (digit_pass and vtoks) else ln
+        gia_tri = {}                  # cột -> (khoảng cách, giá trị) gần nhất
+        for wd in words:
+            if wd["cx"] < 0.55:
+                continue
+            tok = wd["text"].strip().strip("[]{}|")
+            if not looks_like_value(tok):
+                continue
+            v = parse_number(tok)
+            if v is None:
+                continue
+            rx = wd["right"]
+            for ci, c in enumerate(centers):
+                d = abs(rx - c)
+                if d < tol and (ci not in gia_tri or d < gia_tri[ci][0]):
+                    gia_tri[ci] = (d, v)
+        if len(gia_tri) >= 2:
+            rows.append({ci: dv[1] for ci, dv in gia_tri.items()})
+    ket = {}
+    for i in range(len(centers)):
+        for j in range(i + 1, len(centers)):
+            bang = so_sanh = 0
+            for gia_tri in rows:
+                if i in gia_tri and j in gia_tri:
+                    so_sanh += 1
+                    if gia_tri[i] == gia_tri[j]:
+                        bang += 1
+            ket[(i, j)] = (bang, so_sanh)
+    return ket
+
+
+def chon_cap_cot(centers, nhan, ky_bao_cao, trung, bao_cao=None):
+    """Chọn cặp (tâm cột Kỳ-này, tâm cột Kỳ-trước) khi có >= 3 cột số.
+
+    centers   : tâm (right_x) các cột số, trái -> phải (detect_value_columns)
+    nhan      : nhãn từng cột từ doc_nhan_cot (list các set {"cur","prior","cum"})
+    ky_bao_cao: detect_period(...)["kind"] ('quarter'/'year'/'unknown')
+    trung     : bảng đếm trùng giá trị từ dem_cot_trung
+    bao_cao   : mã báo cáo ('CDKT'/'KQHDKD'/'LCTT') — quy ước quý không áp
+                cho CDKT
+
+    Trả (sel, canh_bao): sel = [tâm kỳ này, tâm kỳ trước] hoặc None (giữ
+    đường cũ '2 cột phải nhất'); canh_bao = list chuỗi tiếng Việt (chỉ khi
+    nhãn nhập nhằng/mâu thuẫn — không bao giờ chọn khác đi một cách im lặng).
+    """
+    if len(centers) <= 2:
+        return None, []
+    nhan = list(nhan or []) + [set()] * (len(centers) - len(nhan or []))
+
+    # 1) NHÃN tiêu đề — căn cứ mạnh nhất khi đọc được
+    vai = []
+    for tags in nhan[:len(centers)]:
+        if "cum" in tags:
+            # 'Lũy kế' thắng mọi nhãn con trong cùng cột (header 2 tầng kiểu
+            # 'Lũy kế từ đầu năm' đè trên 'Năm nay/Năm trước')
+            vai.append("cum")
+        elif "cur" in tags and "prior" in tags:
+            return None, ["nhãn cột giá trị NHẬP NHẰNG (một cột khớp cả "
+                          "'kỳ này' lẫn 'kỳ trước') — giữ cách chọn cũ "
+                          "(2 cột phải nhất), số liệu 2 cột cần soát lại."]
+        elif "cur" in tags:
+            vai.append("cur")
+        elif "prior" in tags:
+            vai.append("prior")
+        else:
+            vai.append(None)
+    if vai.count("cur") > 1 or vai.count("prior") > 1:
+        return None, ["nhãn cột giá trị MÂU THUẪN (nhiều cột cùng khớp một "
+                      "nhãn kỳ) — giữ cách chọn cũ (2 cột phải nhất), số "
+                      "liệu 2 cột cần soát lại."]
+    if vai.count("cur") == 1 and vai.count("prior") == 1:
+        return [centers[vai.index("cur")], centers[vai.index("prior")]], []
+    con = [ci for ci, v in enumerate(vai) if v != "cum"]
+    if len(con) == 2:
+        # nhãn 'Lũy kế' loại được cột dồn — còn đúng 2 cột; thứ tự theo nhãn
+        # nếu đọc được một phía, mặc định trái = kỳ này
+        a, b = con
+        if vai[a] == "prior" or vai[b] == "cur":
+            a, b = b, a
+        return [centers[a], centers[b]], []
+    if len(con) < 2:
+        return None, ["nhãn 'Lũy kế' khớp gần hết các cột số — giữ cách "
+                      "chọn cũ (2 cột phải nhất), số liệu 2 cột cần soát lại."]
+
+    # 2) Cột phải nhất TRÙNG GIÁ TRỊ cột 1 (Lũy kế == Kỳ này trên báo cáo
+    #    6T/năm của gia đình bản in này) -> loại dần từ phải
+    trung = trung or {}
+    while len(con) > 2:
+        bang, so_sanh = trung.get((con[0], con[-1]), (0, 0))
+        if so_sanh >= _TRUNG_MIN_DONG and bang >= so_sanh * _TRUNG_MIN_TYLE:
+            con = con[:-1]
+        else:
+            break
+    if len(con) == 2:
+        return [centers[con[0]], centers[con[1]]], []
+
+    # 3) Kỳ báo cáo QUÝ + 3-4 cột không nhãn -> quy ước bố cục quý
+    #    (Kỳ này | Kỳ trước | Lũy kế [| Lũy kế trước]): lấy 2 cột TRÁI.
+    #    CDKT không có cột Lũy kế nên không áp quy ước này.
+    if ky_bao_cao == "quarter" and bao_cao != "CDKT" and len(con) in (3, 4):
+        return [centers[con[0]], centers[con[1]]], []
+    return None, []
+
+
 def estimate_split(all_words):
     """Tìm ranh giới giữa 2 cột số từ phân bố mép phải các con số (mặc định 0.84)."""
     rights = sorted(wd["right"] for wd in all_words
@@ -402,24 +674,421 @@ def assign_value_tokens(lines, digit_tokens, tol=DIGIT_BAND_TOL):
 # ----------------------------------------------------------------------
 # Định vị các trang chứa báo cáo (quét nhanh dải đầu trang)
 # ----------------------------------------------------------------------
-def _scan_strip(doc, i, lang, scan_dpi):
-    """OCR dải đầu 1 trang -> (i, title_key_or_None)."""
-    from PIL import Image
+# V1 Đợt 2: CĐKT/LCTT dài 2-3 trang nhưng trang TIẾP DIỄN không lặp tiêu đề
+# nên trước đây bị vứt vĩnh viễn (BCTC 6T Tân Bình mất CĐKT p4-p5, LCTT p8 —
+# docs/superpowers/plans/chan-doan-dot-2.md §1). Sau khi định vị, scope được
+# mở rộng: trang nằm giữa một trang báo cáo và mốc kế tiếp thuộc về báo cáo
+# đứng TRƯỚC nó, có trần số trang để chặn chi phí.
+TRAN_TIEP_DIEN = 3          # trần số trang tiếp diễn cho MỖI báo cáo
+
+# Cụm nhận trang mở đầu phần THUYẾT MINH (mốc dừng mở rộng) trong MỘT dòng
+# ngắn. KHÔNG dùng chữ "thuyết minh" trơ trọi: header bảng của chính trang
+# báo cáo (và trang tiếp diễn) có CỘT 'Thuyết minh' sẽ dính oan.
+_DUNG_THUYET_MINH = ("ban thuyet minh", "notes to the financial statements")
+
+
+# ----------------------------------------------------------------------
+# V5 Đợt 2: bộ nhớ — render XÁM tại nguồn, trần điểm ảnh, máy bơm
+# render→OCR có chặn, dọn kho cache ảnh của MuPDF (spec §8.1–8.3)
+# ----------------------------------------------------------------------
+# Ba nguồn chiếm RAM đo được trước V5 (RSS đỉnh ~1072 MB trên lượt n=30):
+#   1. extract giữ ảnh RGB của MỌI trang scope cùng lúc rồi mới OCR;
+#   2. mỗi ảnh RGB to gấp 3 ảnh xám (OCR chỉ cần xám);
+#   3. kho cache của MuPDF (fz store, trần mặc định 256 MB) giữ ảnh nhúng
+#      ĐÃ GIẢI MÃ của mọi trang từng render — file scan nặng (17–26 MB
+#      giải mã mỗi trang, đo trong .superpowers/sdd/dot2-v5-bo-nho.md) một
+#      mình đẩy RSS lên hàng trăm MB và KHÔNG tự nhả khi doc.close().
+# An toàn luồng: fitz.Document KHÔNG an toàn đa luồng — sau V5 mọi lời gọi
+# get_pixmap/textlayer nằm trên MỘT luồng (luồng gọi locate/extract); các
+# luồng pool chỉ đụng ảnh PIL + tesseract (tiến trình riêng).
+
+TRAN_MP_RENDER = 6.0   # triệu điểm ảnh: trần render hàng loạt. Phải nằm TRÊN
+                       # phong bì sản xuất A4@235 = 5,34 MP (đo 9 file corpus:
+                       # mọi trang đều A4) để kết quả bóc tách KHÔNG đổi —
+                       # spec §8.3 viết ~4 MP theo giả định 300 DPI, nhưng
+                       # 4 MP sẽ chặn cả A4@235 và làm đổi kết quả mọi file.
+TRAN_MP_CUU = 11.0     # trần cho lượt cứu DPI cao: A4@330 = 10,5 MP là hành
+                       # vi V2 sẵn có, chỉ render 1 ảnh một lúc trên luồng chính.
+NGUONG_KHO_ANH_MB = 64.0   # dọn fz store khi ước lượng ảnh giải mã vượt mức
+
+_MUPDF = None          # cache module mupdf tầng thấp (False = không có)
+
+
+def _mupdf_module():
+    """Tầng mupdf thấp, nạp TRỄ (không kéo fitz vào lúc import module).
+    TOOLS.store_shrink của PyMuPDF 1.28 HỎNG (luôn trả 0, không dọn gì) —
+    phải gọi thẳng mupdf.fz_shrink_store."""
+    global _MUPDF
+    if _MUPDF is None:
+        try:
+            from pymupdf import mupdf
+            _MUPDF = mupdf
+        except Exception:
+            _MUPDF = False
+    return _MUPDF if _MUPDF is not False else None
+
+
+class _KhoAnh(object):
+    """Kiểm soát kho cache ảnh giải mã của MuPDF (chỉ dùng từ luồng render).
+
+    Ước lượng dung lượng đã giải mã bằng METADATA ảnh nhúng (get_images —
+    không tốn giải mã), mỗi xref đếm một lần; vượt ngưỡng thì dọn trắng kho.
+    File thường không chạm ngưỡng nên cache giữa 2 lượt DPI còn nguyên;
+    file scan nặng bị dọn định kỳ thay vì phình tới trần 256 MB của kho."""
+
+    def __init__(self, nguong_mb=None):
+        self.nguong = nguong_mb
+        self.uoc_mb = 0.0
+        self.da_dem = set()
+
+    def ghi_nhan(self, page):
+        """Gọi ngay trước khi render một trang. Trả danh sách metadata ảnh
+        nhúng đọc được (None nếu lỗi) để nơi gọi tái dùng, khỏi đọc lần hai."""
+        try:
+            ims = page.get_images(full=False)
+        except Exception:
+            ims = None
+            self.uoc_mb += 8.0   # thiếu metadata: ước thô một trang scan
+        for im in (ims or []):
+            if im[0] in self.da_dem:
+                continue
+            self.da_dem.add(im[0])
+            kenh = 1 if "GRAY" in str(im[5]).upper() else 3
+            self.uoc_mb += im[2] * im[3] * kenh / 1e6
+        nguong = self.nguong if self.nguong is not None else NGUONG_KHO_ANH_MB
+        if self.uoc_mb >= nguong:
+            self.don()
+        return ims
+
+    def don(self):
+        """Dọn trắng kho — gọi khi vượt ngưỡng và khi xong một file."""
+        m = _mupdf_module()
+        if m is not None:
+            try:
+                m.fz_shrink_store(100)
+            except Exception:
+                pass             # bản PyMuPDF khác API: kho tự trần 256 MB
+        self.uoc_mb = 0.0
+        self.da_dem.clear()
+
+
+_KHO_ANH = _KhoAnh()
+
+
+def _dpi_theo_tran(w_pt, h_pt, dpi, tran_mp=None):
+    """DPI hiệu dụng sao cho render trang w×h (đơn vị pt) không vượt tran_mp
+    triệu điểm ảnh (§8.3). Trang lọt trần giữ NGUYÊN DPI."""
+    tran = (TRAN_MP_RENDER if tran_mp is None else tran_mp) * 1e6
+    w_in = max(1e-6, w_pt / 72.0)
+    h_in = max(1e-6, h_pt / 72.0)
+    if w_in * h_in * dpi * dpi <= tran:
+        return dpi
+    return max(1, int(math.sqrt(tran / (w_in * h_in))))
+
+
+def _anh_nhung_xam(ims):
+    """True nếu trang CHỈ chứa ảnh nhúng colorspace XÁM — khi đó render
+    GRAY trực tiếp cho điểm ảnh Y HỆT đường cũ RGB→xám Pillow (nguồn xám:
+    hai công thức trùng nhau từng byte — đo 0,0% khác trên corpus).
+
+    Trang có ảnh MÀU (DeviceRGB/ICC/Indexed), KHÔNG ảnh (vector) hay thiếu
+    metadata phải đi đường RGB→Pillow như trước V5: công thức trộn kênh của
+    MuPDF khác ITU-601 của Pillow tới ±vài chục mức xám trên nội dung màu
+    (mộc đỏ, nhiễu chroma scan màu) — đủ lật OCR trên scan xấu, làm ĐỔI
+    kết quả bóc tách (vi phạm ràng buộc cứng của V5)."""
+    if not ims:
+        return False
+    for im in ims:
+        if "GRAY" not in str(im[5]).upper():
+            return False
+    return True
+
+
+def _render_trang_xam(doc, p, dpi, tran_mp=None, log=None):
+    """Render trang p thành ảnh XÁM ("L") ở DPI bị chặn trần điểm ảnh.
+
+    §8.1: trang nguồn xám (đa số scan) đi pixmap GRAY — nhỏ bằng 1/3 RGB và
+    bỏ được lượt chuyển xám Pillow; trang có nội dung màu render RGB rồi
+    chuyển xám NGAY (ảnh RGB chỉ sống tạm thời từng trang một) để điểm ảnh
+    y hệt đường cũ. Trả (ảnh, DPI hiệu dụng). CHỈ gọi từ luồng render."""
+    from PIL import Image, ImageOps
+    page = doc[p]
+    ims = _KHO_ANH.ghi_nhan(page)
+    r = page.rect
+    dpi_hd = _dpi_theo_tran(r.width, r.height, dpi, tran_mp)
+    if dpi_hd < dpi and log is not None:
+        tran = TRAN_MP_RENDER if tran_mp is None else tran_mp
+        log("   ↓ trang %d: giới hạn %d MP (DPI %d->%d)"
+            % (p + 1, int(tran), dpi, dpi_hd))
+    if _anh_nhung_xam(ims):
+        pix = page.get_pixmap(dpi=dpi_hd, colorspace="GRAY")
+        anh = Image.frombytes("L", (pix.width, pix.height), pix.samples)
+    else:
+        pix = page.get_pixmap(dpi=dpi_hd)
+        anh = ImageOps.grayscale(
+            Image.frombytes("RGB", (pix.width, pix.height), pix.samples))
+    return anh, dpi_hd
+
+
+def _bom_ocr(pages, render_trang, ocr_trang, nw):
+    """Máy bơm §8.2: render TUẦN TỰ trên luồng gọi (fitz không an toàn đa
+    luồng) → nw luồng OCR tiêu thụ; semaphore nw+1 chặn số ảnh sống trong
+    RAM (trước V5: ảnh của TOÀN BỘ trang scope cùng lúc).
+
+    render_trang(p) -> ảnh;  ocr_trang(p, ảnh) -> kết quả.
+    Trả {trang: kết quả} — gom theo KHOÁ trang nên bất biến với thứ tự hoàn
+    thành của các luồng; lỗi ở luồng OCR lan lên nguyên vẹn, không bao giờ
+    nuốt lặng lẽ."""
+    ket = {}
+    if not pages:
+        return ket
+    nw = max(1, int(nw))
+    cho = threading.BoundedSemaphore(nw + 1)
+
+    def _mot_trang(p, anh):
+        try:
+            return p, ocr_trang(p, anh)
+        finally:
+            cho.release()
+
+    hen = []
+    with ThreadPoolExecutor(max_workers=nw) as ex:
+        for p in pages:
+            cho.acquire()            # chặn khi đã đủ nw+1 ảnh đang sống
+            hen.append(ex.submit(_mot_trang, p, render_trang(p)))
+        for h in hen:
+            p, kq = h.result()       # lỗi của luồng OCR lan lên tại đây
+            ket[p] = kq
+    return ket
+
+
+def _dau_hieu_dung(line_texts):
+    """Dấu hiệu DỪNG mở rộng scope trên dải đầu trang.
+
+    Trả 'thuyet minh' (trang mở đầu phần thuyết minh), 'muc luc', hoặc None.
+    Tiêu đề thuyết minh là DÒNG NGẮN chứa cả cụm 'thuyết minh' lẫn 'báo cáo
+    tài chính' (hoặc 'bản thuyết minh' / bản tiếng Anh); câu văn dài kiểu
+    'Các thuyết minh ... là bộ phận hợp thành của báo cáo tài chính này'
+    (chân trang báo cáo) không tính.
+    """
+    lines_norm = [norm(t) for t in line_texts]
+    if any("muc luc" in nl for nl in lines_norm):
+        return "muc luc"
+    for nl in lines_norm:
+        if len(nl.split()) > MAX_HEADING_WORDS:
+            continue
+        if ("thuyet minh" in nl and "bao cao tai chinh" in nl) \
+                or any(p in nl for p in _DUNG_THUYET_MINH):
+            return "thuyet minh"
+    return None
+
+
+# ----------------------------------------------------------------------
+# V4a Đợt 2: định vị CĐKT bị bỏ sót (nhóm LOCATE_FAIL, 60% file bóc-0)
+# ----------------------------------------------------------------------
+# Ba cơ chế lỗi đo trên corpus (.superpowers/sdd/dot2-v4a-locate.md):
+#   (a) Tiêu đề CĐKT (báo cáo ĐẦU) bị letterhead công ty đẩy XUỐNG ~0,47–0,66
+#       -> dải quét 42% cũ bỏ sót. Nhìn thêm DẢI DƯỚI (0,42–0,66). Dải TRÊN
+#       render RIÊNG y đúc như cũ (fitz_rect 0,42) -> điểm ảnh + OCR BYTE-IDENTICAL
+#       nên trang đang chạy tốt KHÔNG đổi (crop từ một ảnh cao hơn KHÔNG bằng
+#       điểm ảnh — raster lệch dưới-điểm-ảnh, đã đo lật tiêu đề LCTT ở Phú Nhuận).
+#       Dải dưới CHỈ cứu CĐKT (KQKD/LCTT luôn ở đầu trang) và chỉ render+OCR khi
+#       (i) CHƯA thấy CĐKT trong tài liệu, (ii) dải trên trống + không phải
+#       trang thuyết minh -> ghìm chi phí (bơm lười, dừng ngay khi có CĐKT).
+#   (b) Lớp text VNI/TCVN 8-bit lọt is_usable -> đã chặn ở textlayer (đòi tiêu
+#       đề đọc được); các file đó nay đi OCR, và OCR đọc glyph HIỂN THỊ đúng.
+#   (c) Tiêu đề bị OCR đọc sai ("TOÁN"->"T0AN") hoặc trang bảng KHÔNG có dòng
+#       tiêu đề (mảnh 1 trang) -> nhận trang theo CỤM MÃ cấu trúc CĐKT.
+LOCATE_TITLE_TOP = 0.42    # dải TRÊN: bằng đúng dải 42% cũ (byte-identical)
+LOCATE_BAND_BOT = 0.66     # đáy dải DƯỚI khi cứu CĐKT bị letterhead đẩy xuống
+
+# Mã "cấu trúc" RIÊNG của Bảng cân đối kế toán (3 chữ số, tận cùng 0):
+# 100/110/.../440. Không trùng khung KQKD/LCTT (mã 01–70) và KHÔNG phải số
+# hiệu tài khoản CDPS (111,112,131...). >= _CUM_MA_CDKT_MIN mã phân biệt trên
+# một trang -> gần như chắc chắn là bảng cân đối.
+_CDKT_MA_CAU_TRUC = {"100", "110", "120", "130", "140", "150",
+                     "200", "210", "220", "230", "240", "250", "260", "270",
+                     "300", "310", "320", "330", "340",
+                     "400", "410", "420", "430", "440"}
+_CUM_MA_CDKT_MIN = 4
+
+
+def _texts(lines):
+    return [" ".join(wd["text"] for wd in ln) for ln in lines]
+
+
+def _cum_ma_cdkt(lines):
+    """True nếu các dòng chứa CỤM mã cấu trúc CĐKT đủ dày (>= _CUM_MA_CDKT_MIN
+    mã phân biệt) — nhận trang bảng cân đối kể cả khi tiêu đề vỡ/thiếu."""
+    codes = set()
+    for ln in lines:
+        for wd in ln:
+            t = wd["text"].strip().rstrip(".")
+            if t in _CDKT_MA_CAU_TRUC:
+                codes.add(t)
+                if len(codes) >= _CUM_MA_CDKT_MIN:
+                    return True
+    return False
+
+
+def _quyet_dinh_cdkt(tren, rong_fn):
+    """Tiêu đề của một trang từ dải TRÊN + dải RỘNG (lười).
+
+    Quy tắc: heading(dải trên) — Y HỆT hành vi cũ nên KHÔNG hồi quy; trống thì
+    tới cụm mã cấu trúc CĐKT ở dải trên (tiêu đề vỡ/thiếu); vẫn trống thì gọi
+    rong_fn() lấy dải RỘNG và CHỈ nhận CĐKT (cả dải có đúng tiêu đề CĐKT, hoặc
+    cụm mã cấu trúc đủ dày). rong_fn() trả list dòng, hoặc None để bỏ qua dải
+    rộng (vd trang thuyết minh — không có CĐKT ở đó, khỏi tốn OCR)."""
+    t = heading_in_lines(_texts(tren))
+    if t is not None:
+        return t
+    if _cum_ma_cdkt(tren):
+        return "CDKT"
+    rong = rong_fn()
+    if rong is not None and (heading_in_lines(_texts(rong)) == "CDKT"
+                             or _cum_ma_cdkt(rong)):
+        return "CDKT"
+    return None
+
+
+def _dinh_vi_trang(lines, quet_dai=True):
+    """Từ các DÒNG (list từ; mỗi từ có 'cy' theo phân số TRANG), trả
+    (tiêu_đề | None, mốc_dừng | None). Dùng cho ĐƯỜNG TEXT (đọc cả trang) và
+    cho unit test. Mốc dừng CHỈ tính ở dải trên (giữ mở rộng tiếp diễn của V1);
+    có mốc dừng thì bỏ qua dải rộng.
+
+    V8 §B: dải RỘNG bị KẸP tới LOCATE_BAND_BOT và chịu cùng cổng `quet_dai`
+    như đường OCR. Trước đây đường text lấy CẢ trang và không có cổng nào ->
+    một câu văn xuôi nhắc tên báo cáo ('... trình bày tại Bảng cân đối kế
+    toán') hay cụm mã ở CHÂN trang cũng đủ gán nhãn CĐKT cho trang thuyết
+    minh — vừa sai nhãn vừa kéo trang vô ích vào scope."""
+    tren = [ln for ln in lines
+            if ln and min(wd["cy"] for wd in ln) <= LOCATE_TITLE_TOP]
+    stop = _dau_hieu_dung(_texts(tren))
+
+    def _rong():
+        if not quet_dai:        # đã có CĐKT / đang dò mốc tiếp diễn -> khỏi quét
+            return None
+        return [ln for ln in lines
+                if ln and min(wd["cy"] for wd in ln) <= LOCATE_BAND_BOT]
+
+    title = _quyet_dinh_cdkt(tren, _rong if stop is None else (lambda: None))
+    return title, stop
+
+
+def _render_dai(page, top_frac, bot_frac, scan_dpi, xam):
+    """Render một DẢI [top_frac, bot_frac] của trang thành ảnh XÁM."""
+    from PIL import Image, ImageOps
+    import fitz
+    r = page.rect
+    clip = fitz.Rect(r.x0, r.y0 + (r.y1 - r.y0) * top_frac,
+                     r.x1, r.y0 + (r.y1 - r.y0) * bot_frac)
+    dpi_hd = _dpi_theo_tran(clip.width, clip.height, scan_dpi)
+    if xam:
+        pix = page.get_pixmap(dpi=dpi_hd, colorspace="GRAY", clip=clip)
+        return Image.frombytes("L", (pix.width, pix.height), pix.samples)
+    pix = page.get_pixmap(dpi=dpi_hd, clip=clip)
+    return ImageOps.grayscale(
+        Image.frombytes("RGB", (pix.width, pix.height), pix.samples))
+
+
+def _scan_strip_render(doc, i, scan_dpi, quet_dai=True):
+    """Phần ĐỤNG fitz của quét dải đầu — chỉ gọi từ luồng render duy nhất
+    (fitz không an toàn đa luồng). Trả ("text", DÒNG-từ toàn trang) khi có lớp
+    text tin cậy; ("anh", (ảnh dải TRÊN, ảnh dải DƯỚI | None)) khi OCR.
+
+    Dải TRÊN render RIÊNG qua fitz_rect(0,42) -> BYTE-IDENTICAL dải 42% cũ (không
+    hồi quy OCR). Dải DƯỚI [0,42–0,66] chỉ render khi quet_dai (còn cần tìm CĐKT
+    bị đẩy xuống) -> ghìm chi phí khi đã có CĐKT / đang mở rộng tiếp diễn."""
     page = doc[i]
-
     if getattr(doc, "_bctc_dung_lop_text", False):
-        # Có lớp text tin cậy -> lấy chữ ở dải đầu trang, khỏi OCR.
-        gioi_han = page.rect.y0 + (page.rect.y1 - page.rect.y0) * 0.42
-        line_texts = [" ".join(w["text"] for w in ln)
-                      for ln in textlayer.page_lines(page)
-                      if ln and ln[0]["top"] <= gioi_han]
-        return i, heading_in_lines(line_texts)
+        # Có lớp text tin cậy -> lấy TOÀN trang (đọc text gần như miễn phí);
+        # _dinh_vi_trang tự lọc dải trên/rộng theo toạ độ cy. V8 §B: mang
+        # theo `quet_dai` để đường text kẹp dải rộng ĐÚNG như đường OCR.
+        return "text", (textlayer.page_lines(page), quet_dai)
+    ims = _KHO_ANH.ghi_nhan(page)
+    xam = _anh_nhung_xam(ims)
+    tren = _render_dai(page, 0.0, LOCATE_TITLE_TOP, scan_dpi, xam)
+    duoi = (_render_dai(page, LOCATE_TITLE_TOP, LOCATE_BAND_BOT, scan_dpi, xam)
+            if quet_dai else None)
+    return "anh", (tren, duoi)
 
-    pix = page.get_pixmap(dpi=scan_dpi, clip=fitz_rect(page, top_frac=0.42))
-    img = ocr.preprocess(Image.frombytes("RGB", (pix.width, pix.height), pix.samples))
-    _, _, lines = ocr.ocr_lines(img, lang=lang, psm=6, min_conf=20)
-    line_texts = [" ".join(w["text"] for w in ln) for ln in lines]
-    return i, heading_in_lines(line_texts)
+
+def _scan_strip_doc(nd, lang):
+    """Phần KHÔNG đụng fitz (OCR dải / đọc chữ) — an toàn chạy trong pool.
+    Trả (tiêu đề, mốc dừng)."""
+    kieu, du_lieu = nd
+    if kieu == "text":
+        lines, quet_dai = du_lieu               # DÒNG-từ toàn trang (cy phân số)
+        return _dinh_vi_trang(lines, quet_dai=quet_dai)
+    img_tren, img_duoi = du_lieu
+    _, _, tren = ocr.ocr_lines(ocr.preprocess(img_tren), lang=lang,
+                               psm=6, min_conf=20)
+    stop = _dau_hieu_dung(_texts(tren))
+
+    def _duoi():
+        if img_duoi is None:                    # dải dưới không render (ghìm chi phí)
+            return None
+        _, _, ll = ocr.ocr_lines(ocr.preprocess(img_duoi), lang=lang,
+                                 psm=6, min_conf=20)
+        return ll
+    title = _quyet_dinh_cdkt(tren, _duoi if stop is None else (lambda: None))
+    return title, stop
+
+
+def _scan_strip(doc, i, lang, scan_dpi, nd=None, quet_dai=True):
+    """OCR dải đầu 1 trang -> (i, tiêu đề báo cáo | None, dấu hiệu dừng | None).
+
+    nd: kết quả _scan_strip_render có sẵn (vòng batch của locate render
+    trước trên luồng chính rồi mới đẩy phần OCR vào pool); None -> tự
+    render (đường tuần tự như _mo_rong_tiep_dien, vốn chạy luồng chính).
+    quet_dai: có render+OCR dải dưới không (chỉ dùng khi nd=None)."""
+    if nd is None:
+        nd = _scan_strip_render(doc, i, scan_dpi, quet_dai=quet_dai)
+    return (i,) + _scan_strip_doc(nd, lang)
+
+
+def _mo_rong_tiep_dien(doc, scope, quet, lang, scan_dpi, hi, log):
+    """Gán trang TIẾP DIỄN (không lặp tiêu đề) vào báo cáo đứng trước nó.
+
+    Mốc dừng cho mỗi báo cáo đã định vị: (a) trang tiêu đề kế tiếp — kể cả
+    tiêu đề chỉ lộ ra khi quét thêm sau điểm dừng sớm; (b) trang thuyết minh
+    / mục lục (dấu hiệu trên dải đầu); (c) trần TRAN_TIEP_DIEN trang.
+
+    Ở đây KHÔNG lọc được theo mật độ mã số (quét dải đầu giá rẻ chưa biết
+    thân trang có mã hay không). Trang trống/văn xuôi lọt vào scope KHÔNG hề
+    vô hại: mỗi trang như vậy tốn một lượt render+OCR TRỌN TRANG cho MỖI lượt
+    DPI, cộng tối đa 2 lượt cứu OCR nữa nếu bị coi là trang sập. Bộ lọc thật
+    nằm ở extract: lượt DPI ĐẦU đo số mã thực tế mỗi trang, trang 0 mã bị bỏ
+    khỏi các lượt sau (xem `page_meta["_trang_khong_ma"]` và `_bo_trang_khong_ma`).
+
+    Quyết định mở rộng chỉ dùng quét DẢI ĐẦU giá rẻ: trang đã quét trong vòng
+    batch được tái dùng qua `quet` (trang -> (tiêu đề, dấu hiệu)), chỉ trang
+    CHƯA quét (nằm sau điểm dừng sớm) mới được quét thêm. Giữ nguyên hình
+    dạng trả về [(trang, nhãn báo cáo)] và thứ tự trang tăng dần — mọi tầng
+    dưới (extract lượt 1, sidecar) không phải đổi gì.
+    """
+    if not scope:
+        return scope
+    ket = []
+    for idx, (p, t) in enumerate(scope):
+        ket.append((p, t))
+        # biên phải: trang tiêu đề kế tiếp đã định vị, hoặc hết vùng quét
+        bien = scope[idx + 1][0] if idx + 1 < len(scope) else hi
+        for q in range(p + 1, min(p + 1 + TRAN_TIEP_DIEN, bien)):
+            if q in quet:
+                title_q, dau_hieu = quet[q]
+            else:
+                # Mở rộng tiếp diễn dò MỐC (tiêu đề kế tiếp/thuyết minh) ở dải
+                # TRÊN — không cần dải dưới -> quet_dai=False (ghìm chi phí).
+                _, title_q, dau_hieu = _scan_strip(doc, q, lang, scan_dpi,
+                                                   quet_dai=False)
+                quet[q] = (title_q, dau_hieu)
+            if title_q or dau_hieu:
+                break               # gặp mốc dừng -> trang đó không thuộc t
+            ket.append((q, t))
+            log(f"   + trang {q+1}: tiếp diễn {t}")
+    return ket
 
 
 def locate_pages(doc, lang="vie", scan_dpi=135, page_range=None, log=lambda *_: None,
@@ -441,25 +1110,197 @@ def locate_pages(doc, lang="vie", scan_dpi=135, page_range=None, log=lambda *_: 
     pages = list(range(lo, hi))
 
     scope, found = [], set()
+    quet = {}          # trang -> (tiêu đề, dấu hiệu dừng): tái dùng khi mở rộng
     with ThreadPoolExecutor(max_workers=nw) as ex:
         for b in range(0, len(pages), nw):
             chunk = pages[b:b + nw]
-            res = sorted(ex.map(lambda i: _scan_strip(doc, i, lang, scan_dpi), chunk))
+            # V5: render dải trên LUỒNG CHÍNH (fitz không an toàn đa luồng —
+            # trước đây get_pixmap chạy ngay trong pool), pool chỉ nhận phần
+            # OCR thuần PIL/tesseract. Ảnh dải xám ~0,5 MB nên giữ nw dải
+            # một lúc không đáng kể.
+            # V4a: chỉ render dải DƯỚI (cứu CĐKT bị letterhead đẩy xuống) khi
+            # CHƯA thấy CĐKT -> file có CĐKT đầu trang không tốn gì thêm.
+            quet_dai = "CDKT" not in found
+            nds = [_scan_strip_render(doc, i, scan_dpi, quet_dai=quet_dai)
+                   for i in chunk]
+            res = sorted(ex.map(
+                lambda cap: _scan_strip(doc, cap[0], lang, scan_dpi, nd=cap[1]),
+                zip(chunk, nds)))
             had_stmt = False
-            for i, title in res:
+            for i, title, dau_hieu in res:
+                quet[i] = (title, dau_hieu)
                 if title:
                     scope.append((i, title)); found.add(title); had_stmt = True
                     log(f"   • trang {i+1}: {title}")
             # đã đủ 3 báo cáo và batch này không còn -> dừng (đã sang phần thuyết minh)
             if len(found) >= 3 and not had_stmt and scope:
                 break
-    return scope
+    # V1: trang tiếp diễn không lặp tiêu đề — mở rộng SAU vòng batch để cơ chế
+    # dừng sớm giữ nguyên; chỉ dùng kết quả quét dải giá rẻ đã có.
+    return _mo_rong_tiep_dien(doc, scope, quet, lang, scan_dpi, hi, log)
 
 
 def fitz_rect(page, top_frac=0.34):
     import fitz
     r = page.rect
     return fitz.Rect(r.x0, r.y0, r.x1, r.y0 + (r.y1 - r.y0) * top_frac)
+
+
+# ----------------------------------------------------------------------
+# V2 Đợt 2: cứu OCR trang SẬP
+# ----------------------------------------------------------------------
+# Trang được ĐỊNH VỊ đúng nhưng OCR ra gần-không (BCTC 2023: thân bảng LCTT
+# thành ký tự ống, 0-1 token mã -> trọn 23 ô sót). Probe (.superpowers/sdd/
+# dot2-v2-cuu-ocr.md §1) cho thấy psm=4 GIỮ NGUYÊN DPI đọc lại được 16 mã,
+# còn DPI cao hơn với psm=4 lại TỆ đi; trang cuối run 0 mã là trang CHỮ KÝ,
+# mọi biến thể vẫn 0 mã -> cứu chỉ tốn CPU. Từ đó ba luật:
+#   1. SẬP = trang có < NGUONG_TRANG_SAP dòng chứa token mã khớp khung của
+#      nhãn trang. Chỉ cứu (a) trang TIÊU ĐỀ của run mà tổng mã cả run mỏng
+#      bất thường, (b) trang GIỮA run (lỗ hổng giữa bảng). KHÔNG cứu trang
+#      CUỐI run — không cứu tràn lan để chi phí không nổ.
+#   2. Tối đa 2 lượt OCR thêm mỗi trang: psm=4 giữ DPI (tái dùng ảnh đã
+#      render, khỏi render lại) rồi psm=6 ở min(DPI+100, TRAN_DPI_CUU).
+#   3. Chọn biến thể NHIỀU mã nhất và chỉ thay khi HƠN hẳn bản gốc; mọi
+#      quyết định đều được log (không bao giờ im lặng).
+NGUONG_TRANG_SAP = 2        # sập khi < 2 dòng có token mã của khung
+NGUONG_BAO_CAO_MONG = 8     # run "mỏng bất thường" khi tổng dòng-mã < 8
+TRAN_DPI_CUU = 330          # trần DPI cho lượt cứu render lại
+
+
+def _dem_ma_trang(lines, valid_codes):
+    """Số DÒNG chứa ít nhất một token mã khớp khung — tín hiệu sức khoẻ OCR."""
+    n = 0
+    for ln in lines:
+        if any(_token_code(wd, valid_codes) for wd in ln):
+            n += 1
+    return n
+
+
+def _trang_sap(scope, page_lines, valid):
+    """Danh sách (trang, nhãn) SẬP đáng cứu, theo luật ở khối chú thích trên.
+
+    Run = dãy trang LIỀN KỀ cùng nhãn trong scope (trang đầu run là trang
+    tiêu đề — cách _mo_rong_tiep_dien dựng scope bảo đảm điều đó).
+    """
+    ket = []
+    runs = []
+    for p, t in scope:
+        if runs and runs[-1][1] == t and runs[-1][0][-1] == p - 1:
+            runs[-1][0].append(p)
+        else:
+            runs.append(([p], t))
+    for pages_run, t in runs:
+        dem = {p: _dem_ma_trang(page_lines.get(p) or [], valid[t])
+               for p in pages_run}
+        tong = sum(dem.values())
+        for i, p in enumerate(pages_run):
+            if dem[p] >= NGUONG_TRANG_SAP:
+                continue
+            la_tieu_de = (i == 0)
+            la_giua = 0 < i < len(pages_run) - 1
+            if (la_tieu_de and tong < NGUONG_BAO_CAO_MONG) or la_giua:
+                ket.append((p, t))
+    return ket
+
+
+def _bien_the_tot_nhat(n_goc, ket_qua):
+    """Chọn biến thể cứu ra NHIỀU mã nhất trong ket_qua [(psm, dpi, lines,
+    n_ma)]. Trả None nếu không biến thể nào HƠN bản gốc (giữ nguyên, không
+    bao giờ thay bằng bản ngang/kém). Hoà giữa các biến thể -> lượt thử đầu."""
+    best = None
+    for bt in ket_qua:
+        if bt[3] > n_goc and (best is None or bt[3] > best[3]):
+            best = bt
+    return best
+
+
+def _cuu_trang_sap(doc, sap, page_lines, dpi, lang, valid, log):
+    """Cứu từng trang sập: tối đa 2 lượt OCR, thay page_lines[p] khi biến thể
+    thắng. Trả danh sách trang ĐÃ THAY (để dọn token pass-số cũ).
+
+    V5: máy bơm streaming không giữ ảnh trang nào trong RAM, nên lượt 1
+    render LẠI đúng ảnh của lượt chính (cùng DPI hiệu dụng, cùng nguồn xám
+    -> cùng điểm ảnh; render lại tốn vài chục ms, rẻ hơn hẳn giữ ảnh mọi
+    trang chỉ để có thể cứu 0–1 trang). Mọi render nằm trên luồng gọi."""
+    da_thay = []
+    for p, t in sap:
+        n_goc = _dem_ma_trang(page_lines.get(p) or [], valid[t])
+        bien_the = []
+        # Lượt 1: psm=4 (một cột, cỡ chữ thay đổi — hợp bảng hơn psm=6 trên
+        # trang scan xấu), giữ DPI của lượt chính.
+        anh1, dpi1 = _render_trang_xam(doc, p, dpi)
+        _, _, lines1 = ocr.ocr_lines(ocr.preprocess(anh1), lang=lang,
+                                     psm=4, min_conf=25)
+        bien_the.append((4, dpi1, lines1, _dem_ma_trang(lines1, valid[t])))
+        anh1 = None
+        # Lượt 2: render lại ở DPI cao hơn (chặn trần DPI cứu), psm=6. Trần
+        # điểm ảnh dùng mức CỨU rộng hơn: A4@330 = 10,5 MP là hành vi V2
+        # sẵn có và chỉ có 1 ảnh sống một lúc.
+        dpi_cao = min(dpi + 100, TRAN_DPI_CUU)
+        if dpi_cao > dpi:
+            anh2, dpi2 = _render_trang_xam(doc, p, dpi_cao, tran_mp=TRAN_MP_CUU)
+            _, _, lines2 = ocr.ocr_lines(ocr.preprocess(anh2), lang=lang,
+                                         psm=6, min_conf=25)
+            bien_the.append((6, dpi2, lines2,
+                             _dem_ma_trang(lines2, valid[t])))
+            anh2 = None
+        best = _bien_the_tot_nhat(n_goc, bien_the)
+        if best is not None:
+            psm_b, dpi_b, lines_b, n_b = best
+            page_lines[p] = lines_b
+            da_thay.append(p)
+            log("   ⛑ trang %d: OCR lại (psm=%d dpi=%d) — %d mã"
+                % (p + 1, psm_b, dpi_b, n_b))
+        else:
+            log("   ✕ trang %d: cứu OCR không cải thiện" % (p + 1))
+    return da_thay
+
+
+# ----------------------------------------------------------------------
+# V8: hợp nhất một Ô — KHÔNG BAO GIỜ ghi đè giá trị đã đọc được
+# ----------------------------------------------------------------------
+# Dùng chung cho hai chỗ:
+#   (1) trong MỘT lượt bóc tách: nhiều TRANG cùng scope có thể cùng đòi một mã
+#       (trang tiếp diễn / trang định vị bằng dải rộng có số rơi cạnh cột mã).
+#       Trước V8 chỗ này là ghi-đè-người-cuối-thắng KHÔNG ĐIỀU KIỆN: một trang
+#       sau ghi số RÁC lên giá trị ĐÚNG mà không cảnh báo gì, và bộ dò xung đột
+#       giữa các DPI cũng không thấy (hai lượt DPI dùng chung scope nên cùng sai
+#       giống nhau -> "đồng thuận" trên số rác).
+#   (2) giữa các lượt DPI trong extract_consensus (hành vi vốn có).
+# Luật: giá trị ĐẦU TIÊN đọc được thắng; lượt sau chỉ ĐIỀN vào ô còn trống;
+# hai bên đọc ra số KHÁC nhau -> ghi 'nghi ngờ' (tô cam ở Excel), không im lặng.
+def _hop_nhat_o(cu, moi, key, code, ghi_nghi_ngo):
+    """
+    Hợp nhất cặp (cuối kỳ, đầu kỳ) cũ với cặp mới. Giá trị ĐÃ CÓ thắng; cặp
+    mới chỉ ĐIỀN vào ô còn trống; lệch nhau -> ghi 'nghi ngờ' (tô cam ở
+    Excel), không bao giờ im lặng.
+
+    Vì sao KHÔNG lấy giá trị sau: hàm này dùng chung cho cả hợp nhất GIỮA CÁC
+    LƯỢT DPI, nơi hợp đồng sẵn có là "các DPI sau chỉ ĐIỀN vào ô còn trống,
+    KHÔNG ghi đè giá trị đã có (tránh mang lỗi của DPI cao vào)". Đổi thành
+    lấy-giá-trị-sau sẽ để lượt DPI 2 ĐÈ lên lượt DPI chính — đã kiểm chứng:
+    DPI đầu đọc (100, 200), DPI 2 đọc lệch (999, 888) thì kết quả ra (999,
+    888) thay vì (100, 200).
+
+    Chú ý (đã chẩn đoán bằng phép đo, đừng lặp lại nhầm lẫn này): tỷ lệ cân
+    đối tụt 69,7% -> 64,5% ở lần đo đầu KHÔNG phải do luật "giữ giá trị
+    trước" giữa các TRANG. Nguyên nhân thật là va chạm TRONG CÙNG MỘT TRANG ở
+    02_Cty CP TM Ben Thanh BC quyet toan Q3 2013.pdf trang 4: mẫu cũ (QĐ15)
+    đánh 270 = 'Tài sản dài hạn khác' còn tổng là 280, nên forced_total_code
+    phải ép dòng 'TỔNG CỘNG TÀI SẢN' về 270 và đè lên dòng 270 gốc ngay trên
+    nó. Chỗ xử lý va chạm cùng-trang nằm ở `extract` (biến `trang_dat`), và
+    chỉ riêng nó đã đưa file đó về đúng 4/6 như trước.
+    """
+    if cu is None:
+        return moi
+    ecur, eprior = cu
+    cur, prior = moi
+    if ecur is not None and cur is not None and ecur != cur:
+        ghi_nghi_ngo((key, code, "cuối năm/năm nay", ecur, cur))
+    if eprior is not None and prior is not None and eprior != prior:
+        ghi_nghi_ngo((key, code, "đầu năm/năm trước", eprior, prior))
+    return (ecur if ecur is not None else cur,
+            eprior if eprior is not None else prior)
 
 
 # ----------------------------------------------------------------------
@@ -502,7 +1343,6 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
 
     page_meta = {}          # phục vụ kiểm tra/chẩn đoán
     current = None
-    from PIL import Image
 
     dung_lop_text = getattr(doc, "_bctc_dung_lop_text", None)
     if dung_lop_text is None:
@@ -519,36 +1359,49 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
         log("   ⚡ Dùng lớp text sẵn có (bỏ qua OCR)")
         page_lines = {p: textlayer.page_lines(doc[p]) for p in pages}
     else:
-        nw = workers or MAX_WORKERS
-        # render (tuần tự) rồi OCR (song song) các trang đã định vị
-        rendered = []
-        for p in pages:
-            pix = doc[p].get_pixmap(dpi=dpi)
-            rendered.append((p, Image.frombytes("RGB", (pix.width, pix.height), pix.samples)))
+        nw = max(1, workers or MAX_WORKERS)
 
-        def _ocr(item):
-            p, img = item
-            _, _, lines = ocr.ocr_lines(ocr.preprocess(img), lang=lang, psm=6, min_conf=25)
-            return p, lines
+        # V5 §8.1–8.2: render XÁM tuần tự trên luồng này → máy bơm OCR song
+        # song, tối đa nw+1 ảnh sống trong RAM — thay cho "render TẤT CẢ
+        # trang scope rồi mới OCR" (giữ mọi ảnh RGB cùng lúc).
+        def _render(p):
+            anh, _ = _render_trang_xam(doc, p, dpi, log=log)
+            return anh
 
-        with ThreadPoolExecutor(max_workers=nw) as ex:
-            page_lines = dict(ex.map(_ocr, rendered))
+        def _ocr_tron_trang(p, anh):
+            xam = ocr.preprocess(anh)
+            _, _, lines = ocr.ocr_lines(xam, lang=lang, psm=6, min_conf=25)
+            if not digit_pass:
+                return lines, []
+            # PASS CHỈ-CHỮ-SỐ (B-A1): OCR lại với whitelist số NGAY khi ảnh
+            # còn trên tay — khỏi giữ ảnh mọi trang cho một pool thứ hai.
+            _, _, dlines = ocr.ocr_lines(xam, lang=lang, psm=6,
+                                         min_conf=0, whitelist=DIGIT_WHITELIST)
+            return lines, [wd for ln in dlines for wd in ln]
 
-        # PASS CHỈ-CHỮ-SỐ (B-A1): OCR lại trang với whitelist số -> token số sạch hơn.
-        if digit_pass:
-            def _ocr_digits(item):
-                p, img = item
-                _, _, dlines = ocr.ocr_lines(ocr.preprocess(img), lang=lang, psm=6,
-                                             min_conf=0, whitelist=DIGIT_WHITELIST)
-                return p, [wd for ln in dlines for wd in ln]
-            with ThreadPoolExecutor(max_workers=nw) as ex:
-                page_digits = dict(ex.map(_ocr_digits, rendered))
+        ket_ocr = _bom_ocr(pages, _render, _ocr_tron_trang, nw)
+        page_lines = {p: ket_ocr[p][0] for p in pages}
+        page_digits = {p: ket_ocr[p][1] for p in pages}
+
+        # V2 Đợt 2: trang SẬP (định vị được nhưng OCR ra gần-không) — cứu
+        # bằng tối đa 2 biến thể OCR trước khi gán dòng, chỉ trên trang đáng
+        # cứu (xem _trang_sap). Trang khoẻ không bị đụng tới. V5: ảnh không
+        # còn giữ lại — lượt cứu tự render lại đúng trang cần (hiếm).
+        sap = _trang_sap(scope, page_lines, valid)
+        if sap:
+            for p in _cuu_trang_sap(doc, sap, page_lines, dpi, lang, valid, log):
+                page_digits[p] = []   # token pass-số của lượt OCR sập là rác
 
     # ---- Lượt 1: gán mỗi dòng vào đúng báo cáo ----
     # Mỗi trang đã được locate gán 1 báo cáo (đáng tin); dùng làm mốc đầu trang,
     # rồi cho phép chuyển nếu trong trang gặp tiêu đề báo cáo khác (trang chuyển tiếp).
     page_title = dict(scope)
     section_lines = {k: [] for k in T.STATEMENTS}
+    # V8 §A: giữ TRANG của từng dòng song song với section_lines (không đổi
+    # hình dạng bộ ba (dòng, split, vtoks) mà detect_code_column/
+    # detect_value_columns/... đang dùng) để lượt 2 đếm được mỗi trang góp
+    # bao nhiêu mã.
+    section_pages = {k: [] for k in T.STATEMENTS}
     for p in pages:
         lines = page_lines[p]
         split = estimate_split([wd for ln in lines for wd in ln])
@@ -563,22 +1416,52 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
                 continue
             if current is not None:
                 section_lines[current].append((ln, split, line_vtoks[li]))
+                section_pages[current].append(p)
 
     # ---- Lượt 2: dò cột Mã số cho từng báo cáo rồi bóc số ----
+    # Kỳ báo cáo (quý/năm) tính MỘT lần trên toàn bộ dòng: vừa là metadata
+    # (page_meta["period"]) vừa là tín hiệu chọn cặp cột khi bảng >= 3 cột số.
+    all_line_texts = [" ".join(wd["text"] for wd in ln)
+                      for p in pages for ln in page_lines[p]]
+    period = detect_period(all_line_texts)
+    # §7.3: đơn vị tính -> ghi vào A2 + cảnh báo khi khác VND (không quy đổi).
+    unit = detect_unit(all_line_texts)
+    w_unit = unit_warning(unit)
+    if w_unit:
+        warnings.append(w_unit)
     cols = {}
+    dong_gop = {p: 0 for p in pages}      # V8 §A: số mã mỗi TRANG góp được
+    xung_dot = []                          # V8 §C: ô bị TRANG SAU đòi ghi đè
+    trang_dat = {k: {} for k in T.STATEMENTS}   # mã -> trang đã đặt giá trị
     for key in T.STATEMENTS:
         col = detect_code_column(section_lines[key], valid[key], ORDER[key])
         cols[key] = col
-        # Báo cáo QUÝ có 4 cột (Quý này/Quý trước/Lũy kế nay/trước) -> lấy 2 cột PHẢI
-        # NHẤT ('Lũy kế') theo tâm cột. Báo cáo NĂM (<=2 cột) giữ split_values như cũ.
+        # Bảng >= 3 cột số (bản in 'Kỳ này | Kỳ trước | Lũy kế' hoặc báo cáo
+        # quý 4 cột) -> chọn cặp theo NGỮ NGHĨA (nhãn tiêu đề / cột trùng giá
+        # trị / quy ước quý); không tín hiệu nào thì giữ đường cũ 2 cột phải
+        # nhất. Báo cáo NĂM (<=2 cột) giữ split_values như cũ.
         centers = detect_value_columns(section_lines[key], digit_pass)
-        sel = centers[-2:] if len(centers) > 2 else None
-        for ln, split, vtoks in section_lines[key]:
+        if len(centers) > 2:
+            sel, canh_bao = chon_cap_cot(
+                centers,
+                doc_nhan_cot(section_lines[key], centers, valid[key], col),
+                period.get("kind"),
+                dem_cot_trung(section_lines[key], centers, digit_pass),
+                bao_cao=key)
+            for cb in canh_bao:
+                warnings.append("%s: %s" % (T.STATEMENTS[key][0], cb))
+            if sel is None:
+                sel = centers[-2:]          # đường cũ: 2 cột phải nhất
+        else:
+            sel = None
+        for (ln, split, vtoks), p_dong in zip(section_lines[key],
+                                              section_pages[key]):
             code = find_code_at(ln, valid[key], col)
             if not code:
                 code = forced_total_code(ln, key)   # dòng "TỔNG CỘNG ... (270=...)"
             if not code:
                 continue
+            dong_gop[p_dong] = dong_gop.get(p_dong, 0) + 1
             # ưu tiên token pass-số; không có thì fallback về pass chữ (không thụt lùi)
             value_words = vtoks if (digit_pass and vtoks) else ln
             if sel:
@@ -587,13 +1470,53 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
                 cur, prior = split_values(value_words, split)
             if cur is None and prior is None:
                 results[key].setdefault(code, (None, None))
-            else:
+            elif trang_dat[key].get(code) in (None, p_dong):
+                # Lần đầu, hoặc CÙNG MỘT TRANG: giữ NGUYÊN hành vi cũ (dòng
+                # sau thắng). Trong một trang, thứ tự đọc mang thông tin cấu
+                # trúc và hành vi này đang GÁNH việc thật: bảng mẫu cũ (QĐ15)
+                # đánh 270 = 'Tài sản dài hạn khác' còn tổng là 280, nên
+                # forced_total_code phải ép dòng 'TỔNG CỘNG TÀI SẢN' về 270 và
+                # ĐÈ LÊN dòng 270 gốc đứng trước nó — đo trên 02_Cty CP TM Ben
+                # Thanh BC quyet toan Q3 2013.pdf: chặn cú đè này làm hỏng cả
+                # 6 phép kiểm tra cân đối.
                 results[key][code] = (cur, prior)
+                trang_dat[key][code] = p_dong
+            else:
+                # TRANG KHÁC đòi ghi đè -> giữ giá trị đã có, ghi 'nghi ngờ'.
+                results[key][code] = _hop_nhat_o(
+                    results[key].get(code), (cur, prior),
+                    key, code, xung_dot.append)
     page_meta["_code_columns"] = cols
-    page_meta["period"] = detect_period(
-        [" ".join(wd["text"] for wd in ln) for p in pages for ln in page_lines[p]]
-    )
+    page_meta["period"] = period
+    page_meta["unit"] = unit
+    page_meta["_xung_dot"] = xung_dot
+    # V8 §A: trang scope KHÔNG góp mã nào ở lượt này thì theo định nghĩa không
+    # đóng góp gì -> báo lên để extract_consensus bỏ khỏi các lượt DPI sau
+    # (và khỏi diện cứu OCR). Vẫn đòi _dem_ma_trang == 0 nữa cho chắc: có mã
+    # lệch cột thì lượt DPI khác còn cơ hội đọc đúng, KHÔNG được bỏ.
+    page_meta["_trang_khong_ma"] = [
+        p for p in pages
+        if dong_gop.get(p, 0) == 0
+        and _dem_ma_trang(page_lines.get(p) or [],
+                          valid.get(page_title.get(p)) or set()) == 0]
     return results, warnings, page_meta
+
+
+def _bo_trang_khong_ma(scope, meta, log):
+    """V8 §A: bỏ khỏi scope các trang mà lượt DPI ĐẦU đã chứng minh là KHÔNG
+    cho mã nào.
+
+    Lượt đầu vẫn soi đủ mọi trang (không nhìn thì không thể biết), kể cả lượt
+    CỨU OCR của V2 — nên trang chỉ bị loại sau khi đã được cứu mà vẫn 0 mã.
+    Trang đã cho mã giữ NGUYÊN chế độ đầy đủ (vẫn được cứu ở lượt sau). Mỗi
+    trang bị bỏ đều được ghi log, không bao giờ âm thầm."""
+    bo = set(meta.get("_trang_khong_ma") or ())
+    if not bo:
+        return scope
+    for p in sorted(bo):
+        log("   - trang %d: không có mã số ở lượt đầu, bỏ khỏi các lượt sau"
+            % (p + 1))
+    return [(p, t) for p, t in scope if p not in bo]
 
 
 def extract_consensus(doc, lang="vie", dpis=(185, 240), page_range=None,
@@ -622,45 +1545,52 @@ def extract_consensus(doc, lang="vie", dpis=(185, 240), page_range=None,
         scope = locate_pages(doc, lang=lang, page_range=page_range, log=log,
                              workers=workers)
 
+        scope_luot = scope
         for idx, dpi in enumerate(dpis):
             primary = (idx == 0)
             res, warns, meta = extract(
                 doc, lang=lang, dpi=dpi, page_range=page_range,
-                log=(log if primary else (lambda *_: None)), scope=scope,
+                log=(log if primary else (lambda *_: None)), scope=scope_luot,
                 digit_pass=digit_pass, workers=workers)
             if primary:
                 base_warnings, base_meta = warns, meta
+                # V8 §A: cắt trang vô ích TRƯỚC các lượt DPI sau (log ở đây vì
+                # lượt sau chạy với log câm). Chỉ có 1 DPI thì không cắt gì —
+                # khỏi ghi log "bỏ khỏi các lượt sau" trong khi chẳng còn lượt nào.
+                if len(dpis) > 1:
+                    scope_luot = _bo_trang_khong_ma(scope_luot, meta, log)
+            for xd in (meta.get("_xung_dot") or ()):
+                if xd not in conflicts:      # V8 §C: nghi ngờ TRONG một lượt
+                    conflicts.append(xd)
             for key in res:
                 for code, (cur, prior) in res[key].items():
-                    if code not in merged[key]:
-                        merged[key][code] = (cur, prior)
-                        continue
-                    ecur, eprior = merged[key][code]
-                    if ecur is not None and cur is not None and ecur != cur:
-                        conflicts.append((key, code, "cuối năm/năm nay", ecur, cur))
-                    if eprior is not None and prior is not None and eprior != prior:
-                        conflicts.append((key, code, "đầu năm/năm trước", eprior, prior))
-                    merged[key][code] = (ecur if ecur is not None else cur,
-                                         eprior if eprior is not None else prior)
+                    merged[key][code] = _hop_nhat_o(
+                        merged[key].get(code), (cur, prior),
+                        key, code, conflicts.append)
             on_pass(idx + 1, len(dpis))
         return merged, base_warnings, base_meta, conflicts
 
-    merged, base_warnings, base_meta, conflicts = _mot_luot()
-
-    # Lớp text tuy qua được bộ lọc chất lượng nhưng vẫn có thể không cho parser
-    # bóc ra giá trị nào (hình học dòng/cột lệch chuẩn, thậm chí không định vị
-    # nổi trang). Khi đó quay về OCR thay vì trả kết quả trống. Cấu trúc thẳng
-    # dòng (không đệ quy) nên chỉ thử lại ĐÚNG MỘT lần.
-    khong_co_gia_tri = not any(
-        v is not None
-        for bang in merged.values()
-        for cap in bang.values()
-        for v in cap)
-    if getattr(doc, "_bctc_dung_lop_text", False) and khong_co_gia_tri:
-        log("   ↻ Lớp text không cho ra số liệu — thử lại bằng OCR.")
-        try:
-            doc._bctc_dung_lop_text = False
-        except Exception:
-            pass
+    try:
         merged, base_warnings, base_meta, conflicts = _mot_luot()
-    return merged, base_warnings, base_meta, conflicts
+
+        # Lớp text tuy qua được bộ lọc chất lượng nhưng vẫn có thể không cho parser
+        # bóc ra giá trị nào (hình học dòng/cột lệch chuẩn, thậm chí không định vị
+        # nổi trang). Khi đó quay về OCR thay vì trả kết quả trống. Cấu trúc thẳng
+        # dòng (không đệ quy) nên chỉ thử lại ĐÚNG MỘT lần.
+        khong_co_gia_tri = not any(
+            v is not None
+            for bang in merged.values()
+            for cap in bang.values()
+            for v in cap)
+        if getattr(doc, "_bctc_dung_lop_text", False) and khong_co_gia_tri:
+            log("   ↻ Lớp text không cho ra số liệu — thử lại bằng OCR.")
+            try:
+                doc._bctc_dung_lop_text = False
+            except Exception:
+                pass
+            merged, base_warnings, base_meta, conflicts = _mot_luot()
+        return merged, base_warnings, base_meta, conflicts
+    finally:
+        # V5: xong một file thì dọn kho cache ảnh giải mã của MuPDF — kho
+        # KHÔNG tự nhả khi doc.close(), để nguyên sẽ cộng dồn RSS qua các file.
+        _KHO_ANH.don()
