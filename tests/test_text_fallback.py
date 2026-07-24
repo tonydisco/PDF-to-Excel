@@ -163,9 +163,13 @@ def test_locate_pages_van_tinh_co_khi_chua_dat(monkeypatch):
 
 
 # ----------------------------------------------------------------------
-# Corpus: file hồi quy thật — text qua bộ lọc nhưng bóc ra 0 giá trị
+# Corpus: file hồi quy thật — kqkd_6t.pdf là lớp text MOJIBAKE (TCVN3:
+# "kot qu¶ ho1t ®eng" = "Kết quả hoạt động"). TRƯỚC V4a nó lọt is_usable (tỷ
+# lệ dấu > 0) rồi phải QUAY VỀ OCR qua đường fallback; TỪ V4a, bộ lọc tiêu-đề
+# của is_usable bắt được nó ngay -> đi thẳng OCR (khỏi lượt text phí), kết quả
+# giữ nguyên (vẫn bóc được số liệu). Đây là bằng chứng corpus cho fix (b).
 # ----------------------------------------------------------------------
-def test_corpus_kqkd_6t_quay_ve_ocr_va_co_so_lieu(corpus_root, tmp_path):
+def test_corpus_kqkd_6t_mojibake_di_thang_ocr_va_co_so_lieu(corpus_root, tmp_path):
     hits = glob.glob(os.path.join(corpus_root, "**", "kqkd_6t.pdf"),
                      recursive=True)
     if not hits:
@@ -179,10 +183,15 @@ def test_corpus_kqkd_6t_quay_ve_ocr_va_co_so_lieu(corpus_root, tmp_path):
     if not ocr.has_vietnamese():
         pytest.skip("Tesseract chưa có gói tiếng Việt (vie)")
 
-    logs = []
-    r = engine.convert_pdf(sorted(hits)[0], str(tmp_path), log=logs.append)
+    # V4a: is_usable phải TỪ CHỐI lớp text mojibake này (không có tiêu đề đọc được)
+    d = fitz.open(sorted(hits)[0])
+    try:
+        assert parser.textlayer.is_usable(d) is False, \
+            "lớp text mojibake phải bị is_usable từ chối (đi OCR)"
+    finally:
+        d.close()
 
-    assert any("↻" in m for m in logs), "phải có dòng log quay về OCR"
+    r = engine.convert_pdf(sorted(hits)[0], str(tmp_path))
     so_gia_tri = sum(1 for bang in r["results"].values()
                      for cap in bang.values() for v in cap if v is not None)
-    assert so_gia_tri > 0, "OCR fallback phải bóc được ít nhất một giá trị"
+    assert so_gia_tri > 0, "đường OCR phải bóc được ít nhất một giá trị"

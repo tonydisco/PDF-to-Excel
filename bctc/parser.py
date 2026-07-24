@@ -783,51 +783,154 @@ def _dau_hieu_dung(line_texts):
     return None
 
 
-def _scan_strip_render(doc, i, scan_dpi):
-    """Phần ĐỤNG fitz của quét dải đầu — chỉ gọi từ luồng render duy nhất
-    (fitz không an toàn đa luồng). Trả ("text", các dòng chữ) khi có lớp
-    text tin cậy; ("anh", ảnh dải XÁM) khi phải OCR — trần điểm ảnh áp
-    trên diện tích DẢI đã cắt."""
-    from PIL import Image
-    page = doc[i]
-    if getattr(doc, "_bctc_dung_lop_text", False):
-        # Có lớp text tin cậy -> lấy chữ ở dải đầu trang, khỏi OCR.
-        gioi_han = page.rect.y0 + (page.rect.y1 - page.rect.y0) * 0.42
-        return "text", [" ".join(w["text"] for w in ln)
-                        for ln in textlayer.page_lines(page)
-                        if ln and ln[0]["top"] <= gioi_han]
-    ims = _KHO_ANH.ghi_nhan(page)
-    clip = fitz_rect(page, top_frac=0.42)
+# ----------------------------------------------------------------------
+# V4a Đợt 2: định vị CĐKT bị bỏ sót (nhóm LOCATE_FAIL, 60% file bóc-0)
+# ----------------------------------------------------------------------
+# Ba cơ chế lỗi đo trên corpus (.superpowers/sdd/dot2-v4a-locate.md):
+#   (a) Tiêu đề CĐKT (báo cáo ĐẦU) bị letterhead công ty đẩy XUỐNG ~0,47–0,66
+#       -> dải quét 42% cũ bỏ sót. Nhìn thêm DẢI DƯỚI (0,42–0,66). Dải TRÊN
+#       render RIÊNG y đúc như cũ (fitz_rect 0,42) -> điểm ảnh + OCR BYTE-IDENTICAL
+#       nên trang đang chạy tốt KHÔNG đổi (crop từ một ảnh cao hơn KHÔNG bằng
+#       điểm ảnh — raster lệch dưới-điểm-ảnh, đã đo lật tiêu đề LCTT ở Phú Nhuận).
+#       Dải dưới CHỈ cứu CĐKT (KQKD/LCTT luôn ở đầu trang) và chỉ render+OCR khi
+#       (i) CHƯA thấy CĐKT trong tài liệu, (ii) dải trên trống + không phải
+#       trang thuyết minh -> ghìm chi phí (bơm lười, dừng ngay khi có CĐKT).
+#   (b) Lớp text VNI/TCVN 8-bit lọt is_usable -> đã chặn ở textlayer (đòi tiêu
+#       đề đọc được); các file đó nay đi OCR, và OCR đọc glyph HIỂN THỊ đúng.
+#   (c) Tiêu đề bị OCR đọc sai ("TOÁN"->"T0AN") hoặc trang bảng KHÔNG có dòng
+#       tiêu đề (mảnh 1 trang) -> nhận trang theo CỤM MÃ cấu trúc CĐKT.
+LOCATE_TITLE_TOP = 0.42    # dải TRÊN: bằng đúng dải 42% cũ (byte-identical)
+LOCATE_BAND_BOT = 0.66     # đáy dải DƯỚI khi cứu CĐKT bị letterhead đẩy xuống
+
+# Mã "cấu trúc" RIÊNG của Bảng cân đối kế toán (3 chữ số, tận cùng 0):
+# 100/110/.../440. Không trùng khung KQKD/LCTT (mã 01–70) và KHÔNG phải số
+# hiệu tài khoản CDPS (111,112,131...). >= _CUM_MA_CDKT_MIN mã phân biệt trên
+# một trang -> gần như chắc chắn là bảng cân đối.
+_CDKT_MA_CAU_TRUC = {"100", "110", "120", "130", "140", "150",
+                     "200", "210", "220", "230", "240", "250", "260", "270",
+                     "300", "310", "320", "330", "340",
+                     "400", "410", "420", "430", "440"}
+_CUM_MA_CDKT_MIN = 4
+
+
+def _texts(lines):
+    return [" ".join(wd["text"] for wd in ln) for ln in lines]
+
+
+def _cum_ma_cdkt(lines):
+    """True nếu các dòng chứa CỤM mã cấu trúc CĐKT đủ dày (>= _CUM_MA_CDKT_MIN
+    mã phân biệt) — nhận trang bảng cân đối kể cả khi tiêu đề vỡ/thiếu."""
+    codes = set()
+    for ln in lines:
+        for wd in ln:
+            t = wd["text"].strip().rstrip(".")
+            if t in _CDKT_MA_CAU_TRUC:
+                codes.add(t)
+                if len(codes) >= _CUM_MA_CDKT_MIN:
+                    return True
+    return False
+
+
+def _quyet_dinh_cdkt(tren, rong_fn):
+    """Tiêu đề của một trang từ dải TRÊN + dải RỘNG (lười).
+
+    Quy tắc: heading(dải trên) — Y HỆT hành vi cũ nên KHÔNG hồi quy; trống thì
+    tới cụm mã cấu trúc CĐKT ở dải trên (tiêu đề vỡ/thiếu); vẫn trống thì gọi
+    rong_fn() lấy dải RỘNG và CHỈ nhận CĐKT (cả dải có đúng tiêu đề CĐKT, hoặc
+    cụm mã cấu trúc đủ dày). rong_fn() trả list dòng, hoặc None để bỏ qua dải
+    rộng (vd trang thuyết minh — không có CĐKT ở đó, khỏi tốn OCR)."""
+    t = heading_in_lines(_texts(tren))
+    if t is not None:
+        return t
+    if _cum_ma_cdkt(tren):
+        return "CDKT"
+    rong = rong_fn()
+    if rong is not None and (heading_in_lines(_texts(rong)) == "CDKT"
+                             or _cum_ma_cdkt(rong)):
+        return "CDKT"
+    return None
+
+
+def _dinh_vi_trang(lines):
+    """Từ các DÒNG (list từ; mỗi từ có 'cy' theo phân số TRANG), trả
+    (tiêu_đề | None, mốc_dừng | None). Dùng cho ĐƯỜNG TEXT (đọc cả trang) và
+    cho unit test. Mốc dừng CHỈ tính ở dải trên (giữ mở rộng tiếp diễn của V1);
+    có mốc dừng thì bỏ qua dải rộng."""
+    tren = [ln for ln in lines
+            if ln and min(wd["cy"] for wd in ln) <= LOCATE_TITLE_TOP]
+    stop = _dau_hieu_dung(_texts(tren))
+    title = _quyet_dinh_cdkt(
+        tren, (lambda: lines) if stop is None else (lambda: None))
+    return title, stop
+
+
+def _render_dai(page, top_frac, bot_frac, scan_dpi, xam):
+    """Render một DẢI [top_frac, bot_frac] của trang thành ảnh XÁM."""
+    from PIL import Image, ImageOps
+    import fitz
+    r = page.rect
+    clip = fitz.Rect(r.x0, r.y0 + (r.y1 - r.y0) * top_frac,
+                     r.x1, r.y0 + (r.y1 - r.y0) * bot_frac)
     dpi_hd = _dpi_theo_tran(clip.width, clip.height, scan_dpi)
-    if _anh_nhung_xam(ims):
+    if xam:
         pix = page.get_pixmap(dpi=dpi_hd, colorspace="GRAY", clip=clip)
-        return "anh", Image.frombytes("L", (pix.width, pix.height), pix.samples)
-    from PIL import ImageOps
+        return Image.frombytes("L", (pix.width, pix.height), pix.samples)
     pix = page.get_pixmap(dpi=dpi_hd, clip=clip)
-    return "anh", ImageOps.grayscale(
+    return ImageOps.grayscale(
         Image.frombytes("RGB", (pix.width, pix.height), pix.samples))
 
 
+def _scan_strip_render(doc, i, scan_dpi, quet_dai=True):
+    """Phần ĐỤNG fitz của quét dải đầu — chỉ gọi từ luồng render duy nhất
+    (fitz không an toàn đa luồng). Trả ("text", DÒNG-từ toàn trang) khi có lớp
+    text tin cậy; ("anh", (ảnh dải TRÊN, ảnh dải DƯỚI | None)) khi OCR.
+
+    Dải TRÊN render RIÊNG qua fitz_rect(0,42) -> BYTE-IDENTICAL dải 42% cũ (không
+    hồi quy OCR). Dải DƯỚI [0,42–0,66] chỉ render khi quet_dai (còn cần tìm CĐKT
+    bị đẩy xuống) -> ghìm chi phí khi đã có CĐKT / đang mở rộng tiếp diễn."""
+    page = doc[i]
+    if getattr(doc, "_bctc_dung_lop_text", False):
+        # Có lớp text tin cậy -> lấy TOÀN trang (đọc text gần như miễn phí);
+        # _dinh_vi_trang tự lọc dải trên/rộng theo toạ độ cy.
+        return "text", textlayer.page_lines(page)
+    ims = _KHO_ANH.ghi_nhan(page)
+    xam = _anh_nhung_xam(ims)
+    tren = _render_dai(page, 0.0, LOCATE_TITLE_TOP, scan_dpi, xam)
+    duoi = (_render_dai(page, LOCATE_TITLE_TOP, LOCATE_BAND_BOT, scan_dpi, xam)
+            if quet_dai else None)
+    return "anh", (tren, duoi)
+
+
 def _scan_strip_doc(nd, lang):
-    """Phần KHÔNG đụng fitz (OCR dải / đọc chữ) — an toàn chạy trong pool."""
+    """Phần KHÔNG đụng fitz (OCR dải / đọc chữ) — an toàn chạy trong pool.
+    Trả (tiêu đề, mốc dừng)."""
     kieu, du_lieu = nd
     if kieu == "text":
-        line_texts = du_lieu
-    else:
-        _, _, lines = ocr.ocr_lines(ocr.preprocess(du_lieu), lang=lang,
-                                    psm=6, min_conf=20)
-        line_texts = [" ".join(w["text"] for w in ln) for ln in lines]
-    return heading_in_lines(line_texts), _dau_hieu_dung(line_texts)
+        return _dinh_vi_trang(du_lieu)          # DÒNG-từ toàn trang (cy phân số)
+    img_tren, img_duoi = du_lieu
+    _, _, tren = ocr.ocr_lines(ocr.preprocess(img_tren), lang=lang,
+                               psm=6, min_conf=20)
+    stop = _dau_hieu_dung(_texts(tren))
+
+    def _duoi():
+        if img_duoi is None:                    # dải dưới không render (ghìm chi phí)
+            return None
+        _, _, ll = ocr.ocr_lines(ocr.preprocess(img_duoi), lang=lang,
+                                 psm=6, min_conf=20)
+        return ll
+    title = _quyet_dinh_cdkt(tren, _duoi if stop is None else (lambda: None))
+    return title, stop
 
 
-def _scan_strip(doc, i, lang, scan_dpi, nd=None):
+def _scan_strip(doc, i, lang, scan_dpi, nd=None, quet_dai=True):
     """OCR dải đầu 1 trang -> (i, tiêu đề báo cáo | None, dấu hiệu dừng | None).
 
     nd: kết quả _scan_strip_render có sẵn (vòng batch của locate render
     trước trên luồng chính rồi mới đẩy phần OCR vào pool); None -> tự
-    render (đường tuần tự như _mo_rong_tiep_dien, vốn chạy luồng chính)."""
+    render (đường tuần tự như _mo_rong_tiep_dien, vốn chạy luồng chính).
+    quet_dai: có render+OCR dải dưới không (chỉ dùng khi nd=None)."""
     if nd is None:
-        nd = _scan_strip_render(doc, i, scan_dpi)
+        nd = _scan_strip_render(doc, i, scan_dpi, quet_dai=quet_dai)
     return (i,) + _scan_strip_doc(nd, lang)
 
 
@@ -857,7 +960,10 @@ def _mo_rong_tiep_dien(doc, scope, quet, lang, scan_dpi, hi, log):
             if q in quet:
                 title_q, dau_hieu = quet[q]
             else:
-                _, title_q, dau_hieu = _scan_strip(doc, q, lang, scan_dpi)
+                # Mở rộng tiếp diễn dò MỐC (tiêu đề kế tiếp/thuyết minh) ở dải
+                # TRÊN — không cần dải dưới -> quet_dai=False (ghìm chi phí).
+                _, title_q, dau_hieu = _scan_strip(doc, q, lang, scan_dpi,
+                                                   quet_dai=False)
                 quet[q] = (title_q, dau_hieu)
             if title_q or dau_hieu:
                 break               # gặp mốc dừng -> trang đó không thuộc t
@@ -893,7 +999,11 @@ def locate_pages(doc, lang="vie", scan_dpi=135, page_range=None, log=lambda *_: 
             # trước đây get_pixmap chạy ngay trong pool), pool chỉ nhận phần
             # OCR thuần PIL/tesseract. Ảnh dải xám ~0,5 MB nên giữ nw dải
             # một lúc không đáng kể.
-            nds = [_scan_strip_render(doc, i, scan_dpi) for i in chunk]
+            # V4a: chỉ render dải DƯỚI (cứu CĐKT bị letterhead đẩy xuống) khi
+            # CHƯA thấy CĐKT -> file có CĐKT đầu trang không tốn gì thêm.
+            quet_dai = "CDKT" not in found
+            nds = [_scan_strip_render(doc, i, scan_dpi, quet_dai=quet_dai)
+                   for i in chunk]
             res = sorted(ex.map(
                 lambda cap: _scan_strip(doc, cap[0], lang, scan_dpi, nd=cap[1]),
                 zip(chunk, nds)))

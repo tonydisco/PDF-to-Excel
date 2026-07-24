@@ -37,6 +37,34 @@ SIGNATURE_MARKERS = (
     "ky boi",
 )
 
+# V4a: neo TIÊU ĐỀ báo cáo (đã bỏ dấu) — đồng bộ với parser.TITLES. Lớp text
+# VNI/TCVN 8-bit lọt hai bộ lọc ký-tự + tỷ-lệ-dấu (glyph phân rã ra chữ Latin
+# CÓ dấu nên tỷ lệ dấu vẫn > 0) nhưng KHÔNG normalize ra tiếng Việt thật, nên
+# mọi tiêu đề đều vỡ ("Baûng caân ñoái" != "bang can doi"). Đòi ÍT NHẤT một
+# tiêu đề đọc được thì mới TIN lớp text; không có -> ép OCR (OCR đọc glyph
+# HIỂN THỊ đúng của các file này).
+_TITLE_ANCHORS = (
+    "bang can doi ke toan",
+    "bao cao tinh hinh tai chinh",
+    "ket qua hoat dong kinh doanh",
+    "ket qua kinh doanh",
+    "luu chuyen tien te",
+)
+
+
+def _bo_dau(s):
+    """Bỏ dấu tiếng Việt + hạ chữ thường + gộp khoảng trắng (khớp parser.norm)."""
+    s = s.replace("đ", "d").replace("Đ", "D")
+    nfkd = unicodedata.normalize("NFKD", s)
+    s = "".join(c for c in nfkd if not unicodedata.combining(c))
+    return re.sub(r"\s+", " ", s).strip().lower()
+
+
+def has_report_title(text):
+    """True nếu văn bản (sau bỏ dấu) chứa ÍT NHẤT một tiêu đề báo cáo."""
+    n = _bo_dau(text)
+    return any(a in n for a in _TITLE_ANCHORS)
+
 
 def diacritic_ratio(text):
     """Tỷ lệ ký tự chữ cái mang dấu tiếng Việt trên tổng ký tự chữ cái."""
@@ -76,7 +104,12 @@ def is_usable(doc):
     text = strip_signature_text(raw)
     if len(text.strip()) < MIN_CHARS_PER_PAGE * max(1, doc.page_count) * 0.25:
         return False
-    return diacritic_ratio(text) >= MIN_DIACRITIC_RATIO
+    if diacritic_ratio(text) < MIN_DIACRITIC_RATIO:
+        return False
+    # V4a: bộ lọc THỨ TƯ — lớp text phải có ít nhất một TIÊU ĐỀ báo cáo đọc
+    # được. Chặn họ mojibake VNI/TCVN qua được tỷ lệ dấu nhưng không định vị
+    # nổi báo cáo nào (đo trên corpus: 100% file 0-tiêu-đề đều là mojibake).
+    return has_report_title(text)
 
 
 def page_lines(page):
