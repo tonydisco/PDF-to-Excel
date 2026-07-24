@@ -134,6 +134,48 @@ def detect_period(line_texts):
 
 
 # ----------------------------------------------------------------------
+# §7.3: nhận diện ĐƠN VỊ TÍNH (KHÔNG tự quy đổi — chỉ ghi nhận + cảnh báo)
+# ----------------------------------------------------------------------
+# excel_writer ghi cứng 'Đơn vị tính: VND'; báo cáo ghi 'nghìn/triệu/tỷ đồng'
+# lệch 10^3..10^9. Tự nhân giá trị là BỊA ĐỘ CHÍNH XÁC không có trong nguồn ->
+# CHỈ ghi đúng đơn vị phát hiện vào ô A2 và CẢNH BÁO khi khác VND, để người
+# dùng tự nhân hệ số khi đối chiếu.
+_DVT_BASE_RE = re.compile(r"\b(dong|vnd)\b")
+
+
+def detect_unit(line_texts):
+    """Quét dòng các trang báo cáo tìm 'Đơn vị tính: ...'. Trả:
+      'VND'  — đồng/VND trơn (mặc định, không cảnh báo);
+      'nghìn đồng' / 'triệu đồng' / 'tỷ đồng' — có hệ số (cần cảnh báo);
+      None   — không thấy dòng đơn vị tính.
+    CHỈ nhận khi trong ~24 ký tự sau cụm 'đơn vị[ tính]' có gốc tiền tệ
+    (đồng/VND) -> tránh dính chữ 'đơn vị' trong ngữ cảnh khác."""
+    joined = " ".join(norm(t) for t in line_texts)
+    for m in re.finditer(r"don vi(?:\s*tinh)?", joined):
+        window = joined[m.end():m.end() + 24]
+        if not _DVT_BASE_RE.search(window):
+            continue
+        if "trieu" in window:
+            return "triệu đồng"
+        if "nghin" in window or "ngan" in window:
+            return "nghìn đồng"
+        if re.search(r"\bty\b", window):
+            return "tỷ đồng"
+        return "VND"
+    return None
+
+
+def unit_warning(unit):
+    """Cảnh báo (tiếng Việt) khi đơn vị KHÁC VND; None nếu VND/không rõ.
+    Tách riêng để test được và để extract dùng chung."""
+    if unit and unit != "VND":
+        return ("Đơn vị tính phát hiện: '%s' (KHÁC VND). Số liệu GIỮ NGUYÊN "
+                "theo nguồn, KHÔNG tự quy đổi — cần nhân hệ số khi đối chiếu."
+                % unit)
+    return None
+
+
+# ----------------------------------------------------------------------
 # Phân tích con số kiểu Việt Nam:  1.234.567  (1.234)  -   =>  int / None
 # ----------------------------------------------------------------------
 # Chấp nhận cả dấu CHẤM (Việt: 1.234.567) lẫn dấu PHẨY (Anh: 1,234,567) phân cách nghìn.
@@ -222,13 +264,37 @@ def detect_code_column(section_lines, valid_codes, order_index):
     return best_center
 
 
+def _canon_ma_mot_chu_so(text, valid_codes):
+    """Mã in dạng '1' quy về khung '01' — CHỈ mã 1 chữ số và chỉ khi dạng đệm
+    0 có trong khung. Trả None nếu không áp dụng.
+
+    §7.1 (thu hẹp): báo cáo in mã số '1','2' còn template ghi '01','02', nên
+    so khớp CHUỖI CHÍNH XÁC trong _token_code trượt -> MẤT trọn dòng 01-09 ở
+    KQHDKD/LCTT (mã 01 = Doanh thu, dòng đầu KQKD). Chỉ dùng trong find_code_at
+    TẠI cột mã đã dò; KHÔNG đụng detect_code_column (chẩn đoán chứng minh nới ở
+    đó bắt nhầm cột SỐ THỨ TỰ '1|2|3')."""
+    t = text.strip().rstrip(".")
+    if len(t) == 1 and t.isdigit():
+        padded = "0" + t
+        if padded in valid_codes:
+            return padded
+    return None
+
+
 def find_code_at(words, valid_codes, col_center, tol=0.07):
     """Lấy mã số ở đúng cột đã dò (gần col_center nhất)."""
     if col_center is None:
+        # Chưa dò được cột mã -> KHÔNG nới mã 1 chữ số (guard §7.1): nới khi
+        # chưa chắc cột sẽ bắt nhầm cột số thứ tự. find_code giữ strict.
         return find_code(words, valid_codes)
     best, best_d = None, tol
     for wd in words:
         code = _token_code(wd, valid_codes)
+        if code is None:
+            # §7.1 thu hẹp: chấp nhận mã 1 chữ số ('1'->'01') CHỈ ở đúng cột mã
+            # đã dò và trong dung sai cột -> '1' lạc ở cột số thứ tự (cx khác
+            # hẳn col_center) không lọt vì d > tol.
+            code = _canon_ma_mot_chu_so(wd["text"], valid_codes)
         if code is None:
             continue
         d = abs(wd["cx"] - col_center)
@@ -1249,9 +1315,14 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
     # ---- Lượt 2: dò cột Mã số cho từng báo cáo rồi bóc số ----
     # Kỳ báo cáo (quý/năm) tính MỘT lần trên toàn bộ dòng: vừa là metadata
     # (page_meta["period"]) vừa là tín hiệu chọn cặp cột khi bảng >= 3 cột số.
-    period = detect_period(
-        [" ".join(wd["text"] for wd in ln) for p in pages for ln in page_lines[p]]
-    )
+    all_line_texts = [" ".join(wd["text"] for wd in ln)
+                      for p in pages for ln in page_lines[p]]
+    period = detect_period(all_line_texts)
+    # §7.3: đơn vị tính -> ghi vào A2 + cảnh báo khi khác VND (không quy đổi).
+    unit = detect_unit(all_line_texts)
+    w_unit = unit_warning(unit)
+    if w_unit:
+        warnings.append(w_unit)
     cols = {}
     for key in T.STATEMENTS:
         col = detect_code_column(section_lines[key], valid[key], ORDER[key])
@@ -1292,6 +1363,7 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
                 results[key][code] = (cur, prior)
     page_meta["_code_columns"] = cols
     page_meta["period"] = period
+    page_meta["unit"] = unit
     return results, warnings, page_meta
 
 
