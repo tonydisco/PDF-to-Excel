@@ -119,16 +119,22 @@ def convert_pdf(pdf_path, out_dir, lang="vie", dpis=(180, 235), log=lambda *_: N
         "pdf": pdf_path, "name": name, "out_path": out_path,
         "rows": n_rows, "warnings": warnings, "checks": checks,
         "conflicts": conflicts,
+        "unit": unit,                # <-- V8 §D: bản sao phải ghi ĐÚNG đơn vị
         "results": results,          # <-- THÊM: phục vụ bộ đo hồi quy
     }
 
 
 def _luu_ban_sao(pdf_path, out_dir, ket_qua_goc, log):
-    """Ghi lại kết quả của file gốc dưới tên của file trùng nội dung."""
+    """Ghi lại kết quả của file gốc dưới tên của file trùng nội dung.
+
+    V8 §D: phải chuyền cả `unit`. Thiếu nó thì file trùng nội dung của một báo
+    cáo 'triệu đồng' bị ghi 'Đơn vị tính: VND' — sai đơn vị 10^6 một cách âm
+    thầm, lại còn MÂU THUẪN với cảnh báo đơn vị vốn được chép sang."""
     name = os.path.splitext(os.path.basename(pdf_path))[0]
     out_path = os.path.join(out_dir, name + ".xlsx")
     excel_writer.save(name, ket_qua_goc["results"], out_path,
-                      conflicts=ket_qua_goc.get("conflicts"))
+                      conflicts=ket_qua_goc.get("conflicts"),
+                      unit=ket_qua_goc.get("unit"))
     log("↩ %s — trùng nội dung với %s, dùng lại kết quả."
         % (name, ket_qua_goc["name"]))
     r = dict(ket_qua_goc)

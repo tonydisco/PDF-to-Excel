@@ -158,6 +158,78 @@ def test_moc_dung_tren_dai_tren_van_bat():
 
 
 # ======================================================================
+# V8 §B — dải RỘNG của ĐƯỜNG TEXT phải kẹp đúng [0,42–0,66] và chịu cùng
+# cổng `quet_dai` như đường OCR.
+#
+# Trước khi sửa: đường text truyền CẢ trang (`lambda: lines`) làm dải rộng và
+# không có cổng nào -> mọi tín hiệu CĐKT ở BẤT KỲ đâu trên trang (câu văn xuôi
+# nhắc tên báo cáo, cụm mã ở chân trang) đều gán nhãn CĐKT cho trang đó. Đo
+# được: tín hiệu ở cy 0,95 vẫn ra 'CDKT'.
+# ======================================================================
+def test_tin_hieu_cdkt_duoi_day_trang_khong_con_gan_nhan():
+    """Dòng nhắc tên CĐKT ở cy 0,85 (NGOÀI dải 0,66) -> không nhận là CĐKT."""
+    lines = [line("Công ty Cổ phần ABC", 0.05),
+             line("Báo cáo của Ban Giám đốc", 0.20),
+             line("Chi tiết xem Bảng cân đối kế toán", 0.85)]
+    title, _ = P._dinh_vi_trang(lines)
+    assert title is None, "tín hiệu ngoài dải 0,66 không được gán nhãn, được %r" % title
+
+
+def test_cum_ma_cdkt_o_chan_trang_khong_con_gan_nhan():
+    """Cụm mã cấu trúc nằm hẳn ở CHÂN trang (0,75–0,90) -> ngoài dải, bỏ qua."""
+    lines = [line("Công ty Cổ phần ABC", 0.05),
+             line("Báo cáo của Ban Giám đốc", 0.20)] + \
+        dong_ma_cdkt(["100", "110", "120", "200", "270", "440"], cy0=0.75, step=0.03)
+    title, _ = P._dinh_vi_trang(lines)
+    assert title is None
+
+
+def test_tieu_de_trong_dai_rong_van_nhan_nhu_v4a():
+    """Không hồi quy V4a: tiêu đề thật trong dải [0,42–0,66] vẫn nhận."""
+    lines = [line("Công ty Cổ phần ABC", 0.05),
+             line("Địa chỉ: 123 Đường XYZ", 0.12),
+             line("BẢNG CÂN ĐỐI KẾ TOÁN", 0.60),
+             line("Tại ngày 30/06/2025", 0.66)]
+    title, _ = P._dinh_vi_trang(lines)
+    assert title == "CDKT"
+
+
+def test_quet_dai_tat_thi_bo_qua_dai_rong():
+    """quet_dai=False (đã có CĐKT / đang dò mốc tiếp diễn) -> chỉ nhìn dải
+    TRÊN, y như đường OCR không render dải dưới."""
+    lines = [line("Công ty Cổ phần ABC", 0.05),
+             line("BẢNG CÂN ĐỐI KẾ TOÁN", 0.60)]
+    assert P._dinh_vi_trang(lines, quet_dai=True)[0] == "CDKT"
+    assert P._dinh_vi_trang(lines, quet_dai=False)[0] is None
+
+
+def test_quet_dai_tat_khong_anh_huong_dai_tren():
+    """Tiêu đề ở dải TRÊN luôn nhận được, bất kể quet_dai."""
+    lines = [line("BẢNG CÂN ĐỐI KẾ TOÁN", 0.10), line("Tại ngày ...", 0.18)]
+    assert P._dinh_vi_trang(lines, quet_dai=False)[0] == "CDKT"
+
+
+def test_duong_text_chuyen_quet_dai_qua_scan_strip(monkeypatch):
+    """_scan_strip_render mang `quet_dai` sang _scan_strip_doc trên đường TEXT
+    (không thì cổng ở trên là vô nghĩa khi chạy thật)."""
+    lines = [line("Công ty Cổ phần ABC", 0.05),
+             line("BẢNG CÂN ĐỐI KẾ TOÁN", 0.60)]
+
+    class _Doc(object):
+        _bctc_dung_lop_text = True
+
+        def __getitem__(self, i):
+            return object()
+
+    monkeypatch.setattr(P.textlayer, "page_lines", lambda page: lines)
+    doc = _Doc()
+    nd_rong = P._scan_strip_render(doc, 0, 135, quet_dai=True)
+    nd_hep = P._scan_strip_render(doc, 0, 135, quet_dai=False)
+    assert P._scan_strip_doc(nd_rong, "vie")[0] == "CDKT"
+    assert P._scan_strip_doc(nd_hep, "vie")[0] is None
+
+
+# ======================================================================
 # (b) is_usable ép OCR khi lớp text KHÔNG có tiêu đề báo cáo đọc được
 # ======================================================================
 def _doc_text(txt, times=12):

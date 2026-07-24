@@ -141,20 +141,54 @@ def detect_period(line_texts):
 # CHỈ ghi đúng đơn vị phát hiện vào ô A2 và CẢNH BÁO khi khác VND, để người
 # dùng tự nhân hệ số khi đối chiếu.
 _DVT_BASE_RE = re.compile(r"\b(dong|vnd)\b")
+# V8 §E: nhãn 'Đơn vị tính' cũng hay viết TẮT là 'ĐVT:' / 'Đvt:' (rất phổ biến
+# trên bản in Việt) -> trước đây không nhận, trả None và mất luôn cảnh báo.
+_DVT_NHAN_RE = re.compile(r"don vi(?:\s*tinh)?|\bdvt\b")
+# V8 §E: hệ số viết bằng SỐ ('Đơn vị tính: 1.000 đồng') là cách ghi nghìn phổ
+# biến NHẤT ở Việt Nam, trước đây bị đọc thành 'VND' -> lệch 10^3 mà KHÔNG có
+# cảnh báo nào. Số mũ 10 (số chữ số 0) -> nhãn đơn vị.
+_DVT_HE_SO = {3: "nghìn đồng", 6: "triệu đồng", 9: "tỷ đồng"}
+_DVT_SO_RE = re.compile(r"\d[\d.,]*")
+
+
+def _he_so_bang_so(window):
+    """Hệ số dạng SỐ đứng TRƯỚC gốc tiền tệ trong cửa sổ: '1.000 đồng' ->
+    'nghìn đồng', '1.000.000 đồng' -> 'triệu đồng', '1.000.000.000' -> 'tỷ'.
+    Nhận cả '1000' và '1,000' (dấu phẩy kiểu Anh). Hệ số LẠ (vd '10.000
+    đồng') KHÔNG im lặng coi là VND mà trả nguyên văn theo nguồn để
+    unit_warning vẫn cảnh báo. None nếu không có hệ số bằng số."""
+    m = _DVT_BASE_RE.search(window)
+    if not m:
+        return None
+    for sm in _DVT_SO_RE.finditer(window[:m.start()]):
+        so = sm.group(0).rstrip(".,")
+        digits = re.sub(r"\D", "", so)
+        # chỉ nhận dạng 1 rồi toàn số 0 (1.000 / 1000000...), không nhận ngày
+        # tháng hay số hiệu ('31/12/2024', 'B01-DN')
+        if len(digits) < 2 or digits[0] != "1" or set(digits[1:]) != {"0"}:
+            continue
+        return _DVT_HE_SO.get(len(digits) - 1) or ("%s đồng" % so)
+    return None
 
 
 def detect_unit(line_texts):
-    """Quét dòng các trang báo cáo tìm 'Đơn vị tính: ...'. Trả:
+    """Quét dòng các trang báo cáo tìm 'Đơn vị tính: ...' (hoặc 'ĐVT:'). Trả:
       'VND'  — đồng/VND trơn (mặc định, không cảnh báo);
-      'nghìn đồng' / 'triệu đồng' / 'tỷ đồng' — có hệ số (cần cảnh báo);
+      'nghìn đồng' / 'triệu đồng' / 'tỷ đồng' — có hệ số (cần cảnh báo),
+      dù hệ số ghi bằng CHỮ ('nghìn đồng') hay bằng SỐ ('1.000 đồng');
       None   — không thấy dòng đơn vị tính.
-    CHỈ nhận khi trong ~24 ký tự sau cụm 'đơn vị[ tính]' có gốc tiền tệ
-    (đồng/VND) -> tránh dính chữ 'đơn vị' trong ngữ cảnh khác."""
+    CHỈ nhận khi trong ~24 ký tự sau cụm nhãn có gốc tiền tệ (đồng/VND) ->
+    tránh dính chữ 'đơn vị' trong ngữ cảnh khác."""
     joined = " ".join(norm(t) for t in line_texts)
-    for m in re.finditer(r"don vi(?:\s*tinh)?", joined):
+    for m in _DVT_NHAN_RE.finditer(joined):
         window = joined[m.end():m.end() + 24]
         if not _DVT_BASE_RE.search(window):
             continue
+        # hệ số bằng SỐ xét TRƯỚC: '1.000 đồng' không chứa chữ nghìn/triệu nào
+        # nên đường chữ bên dưới sẽ trả nhầm 'VND'.
+        he_so = _he_so_bang_so(window)
+        if he_so:
+            return he_so
         if "trieu" in window:
             return "triệu đồng"
         if "nghin" in window or "ngan" in window:
@@ -917,16 +951,28 @@ def _quyet_dinh_cdkt(tren, rong_fn):
     return None
 
 
-def _dinh_vi_trang(lines):
+def _dinh_vi_trang(lines, quet_dai=True):
     """Từ các DÒNG (list từ; mỗi từ có 'cy' theo phân số TRANG), trả
     (tiêu_đề | None, mốc_dừng | None). Dùng cho ĐƯỜNG TEXT (đọc cả trang) và
     cho unit test. Mốc dừng CHỈ tính ở dải trên (giữ mở rộng tiếp diễn của V1);
-    có mốc dừng thì bỏ qua dải rộng."""
+    có mốc dừng thì bỏ qua dải rộng.
+
+    V8 §B: dải RỘNG bị KẸP tới LOCATE_BAND_BOT và chịu cùng cổng `quet_dai`
+    như đường OCR. Trước đây đường text lấy CẢ trang và không có cổng nào ->
+    một câu văn xuôi nhắc tên báo cáo ('... trình bày tại Bảng cân đối kế
+    toán') hay cụm mã ở CHÂN trang cũng đủ gán nhãn CĐKT cho trang thuyết
+    minh — vừa sai nhãn vừa kéo trang vô ích vào scope."""
     tren = [ln for ln in lines
             if ln and min(wd["cy"] for wd in ln) <= LOCATE_TITLE_TOP]
     stop = _dau_hieu_dung(_texts(tren))
-    title = _quyet_dinh_cdkt(
-        tren, (lambda: lines) if stop is None else (lambda: None))
+
+    def _rong():
+        if not quet_dai:        # đã có CĐKT / đang dò mốc tiếp diễn -> khỏi quét
+            return None
+        return [ln for ln in lines
+                if ln and min(wd["cy"] for wd in ln) <= LOCATE_BAND_BOT]
+
+    title = _quyet_dinh_cdkt(tren, _rong if stop is None else (lambda: None))
     return title, stop
 
 
@@ -957,8 +1003,9 @@ def _scan_strip_render(doc, i, scan_dpi, quet_dai=True):
     page = doc[i]
     if getattr(doc, "_bctc_dung_lop_text", False):
         # Có lớp text tin cậy -> lấy TOÀN trang (đọc text gần như miễn phí);
-        # _dinh_vi_trang tự lọc dải trên/rộng theo toạ độ cy.
-        return "text", textlayer.page_lines(page)
+        # _dinh_vi_trang tự lọc dải trên/rộng theo toạ độ cy. V8 §B: mang
+        # theo `quet_dai` để đường text kẹp dải rộng ĐÚNG như đường OCR.
+        return "text", (textlayer.page_lines(page), quet_dai)
     ims = _KHO_ANH.ghi_nhan(page)
     xam = _anh_nhung_xam(ims)
     tren = _render_dai(page, 0.0, LOCATE_TITLE_TOP, scan_dpi, xam)
@@ -972,7 +1019,8 @@ def _scan_strip_doc(nd, lang):
     Trả (tiêu đề, mốc dừng)."""
     kieu, du_lieu = nd
     if kieu == "text":
-        return _dinh_vi_trang(du_lieu)          # DÒNG-từ toàn trang (cy phân số)
+        lines, quet_dai = du_lieu               # DÒNG-từ toàn trang (cy phân số)
+        return _dinh_vi_trang(lines, quet_dai=quet_dai)
     img_tren, img_duoi = du_lieu
     _, _, tren = ocr.ocr_lines(ocr.preprocess(img_tren), lang=lang,
                                psm=6, min_conf=20)
@@ -1005,9 +1053,14 @@ def _mo_rong_tiep_dien(doc, scope, quet, lang, scan_dpi, hi, log):
 
     Mốc dừng cho mỗi báo cáo đã định vị: (a) trang tiêu đề kế tiếp — kể cả
     tiêu đề chỉ lộ ra khi quét thêm sau điểm dừng sớm; (b) trang thuyết minh
-    / mục lục (dấu hiệu trên dải đầu); (c) trần TRAN_TIEP_DIEN trang. KHÔNG
-    lọc theo mật độ mã số: trang không có mã vào scope cũng vô hại vì lượt 2
-    của extract chỉ map mã thuộc khung chuẩn — trần (c) đã chặn chi phí.
+    / mục lục (dấu hiệu trên dải đầu); (c) trần TRAN_TIEP_DIEN trang.
+
+    Ở đây KHÔNG lọc được theo mật độ mã số (quét dải đầu giá rẻ chưa biết
+    thân trang có mã hay không). Trang trống/văn xuôi lọt vào scope KHÔNG hề
+    vô hại: mỗi trang như vậy tốn một lượt render+OCR TRỌN TRANG cho MỖI lượt
+    DPI, cộng tối đa 2 lượt cứu OCR nữa nếu bị coi là trang sập. Bộ lọc thật
+    nằm ở extract: lượt DPI ĐẦU đo số mã thực tế mỗi trang, trang 0 mã bị bỏ
+    khỏi các lượt sau (xem `page_meta["_trang_khong_ma"]` và `_bo_trang_khong_ma`).
 
     Quyết định mở rộng chỉ dùng quét DẢI ĐẦU giá rẻ: trang đã quét trong vòng
     batch được tái dùng qua `quet` (trang -> (tiêu đề, dấu hiệu)), chỉ trang
@@ -1204,6 +1257,53 @@ def _cuu_trang_sap(doc, sap, page_lines, dpi, lang, valid, log):
 
 
 # ----------------------------------------------------------------------
+# V8: hợp nhất một Ô — KHÔNG BAO GIỜ ghi đè giá trị đã đọc được
+# ----------------------------------------------------------------------
+# Dùng chung cho hai chỗ:
+#   (1) trong MỘT lượt bóc tách: nhiều TRANG cùng scope có thể cùng đòi một mã
+#       (trang tiếp diễn / trang định vị bằng dải rộng có số rơi cạnh cột mã).
+#       Trước V8 chỗ này là ghi-đè-người-cuối-thắng KHÔNG ĐIỀU KIỆN: một trang
+#       sau ghi số RÁC lên giá trị ĐÚNG mà không cảnh báo gì, và bộ dò xung đột
+#       giữa các DPI cũng không thấy (hai lượt DPI dùng chung scope nên cùng sai
+#       giống nhau -> "đồng thuận" trên số rác).
+#   (2) giữa các lượt DPI trong extract_consensus (hành vi vốn có).
+# Luật: giá trị ĐẦU TIÊN đọc được thắng; lượt sau chỉ ĐIỀN vào ô còn trống;
+# hai bên đọc ra số KHÁC nhau -> ghi 'nghi ngờ' (tô cam ở Excel), không im lặng.
+def _hop_nhat_o(cu, moi, key, code, ghi_nghi_ngo):
+    """
+    Hợp nhất cặp (cuối kỳ, đầu kỳ) cũ với cặp mới. Giá trị ĐÃ CÓ thắng; cặp
+    mới chỉ ĐIỀN vào ô còn trống; lệch nhau -> ghi 'nghi ngờ' (tô cam ở
+    Excel), không bao giờ im lặng.
+
+    Vì sao KHÔNG lấy giá trị sau: hàm này dùng chung cho cả hợp nhất GIỮA CÁC
+    LƯỢT DPI, nơi hợp đồng sẵn có là "các DPI sau chỉ ĐIỀN vào ô còn trống,
+    KHÔNG ghi đè giá trị đã có (tránh mang lỗi của DPI cao vào)". Đổi thành
+    lấy-giá-trị-sau sẽ để lượt DPI 2 ĐÈ lên lượt DPI chính — đã kiểm chứng:
+    DPI đầu đọc (100, 200), DPI 2 đọc lệch (999, 888) thì kết quả ra (999,
+    888) thay vì (100, 200).
+
+    Chú ý (đã chẩn đoán bằng phép đo, đừng lặp lại nhầm lẫn này): tỷ lệ cân
+    đối tụt 69,7% -> 64,5% ở lần đo đầu KHÔNG phải do luật "giữ giá trị
+    trước" giữa các TRANG. Nguyên nhân thật là va chạm TRONG CÙNG MỘT TRANG ở
+    02_Cty CP TM Ben Thanh BC quyet toan Q3 2013.pdf trang 4: mẫu cũ (QĐ15)
+    đánh 270 = 'Tài sản dài hạn khác' còn tổng là 280, nên forced_total_code
+    phải ép dòng 'TỔNG CỘNG TÀI SẢN' về 270 và đè lên dòng 270 gốc ngay trên
+    nó. Chỗ xử lý va chạm cùng-trang nằm ở `extract` (biến `trang_dat`), và
+    chỉ riêng nó đã đưa file đó về đúng 4/6 như trước.
+    """
+    if cu is None:
+        return moi
+    ecur, eprior = cu
+    cur, prior = moi
+    if ecur is not None and cur is not None and ecur != cur:
+        ghi_nghi_ngo((key, code, "cuối năm/năm nay", ecur, cur))
+    if eprior is not None and prior is not None and eprior != prior:
+        ghi_nghi_ngo((key, code, "đầu năm/năm trước", eprior, prior))
+    return (ecur if ecur is not None else cur,
+            eprior if eprior is not None else prior)
+
+
+# ----------------------------------------------------------------------
 # Trích xuất đầy đủ 3 báo cáo
 # ----------------------------------------------------------------------
 def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
@@ -1297,6 +1397,11 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
     # rồi cho phép chuyển nếu trong trang gặp tiêu đề báo cáo khác (trang chuyển tiếp).
     page_title = dict(scope)
     section_lines = {k: [] for k in T.STATEMENTS}
+    # V8 §A: giữ TRANG của từng dòng song song với section_lines (không đổi
+    # hình dạng bộ ba (dòng, split, vtoks) mà detect_code_column/
+    # detect_value_columns/... đang dùng) để lượt 2 đếm được mỗi trang góp
+    # bao nhiêu mã.
+    section_pages = {k: [] for k in T.STATEMENTS}
     for p in pages:
         lines = page_lines[p]
         split = estimate_split([wd for ln in lines for wd in ln])
@@ -1311,6 +1416,7 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
                 continue
             if current is not None:
                 section_lines[current].append((ln, split, line_vtoks[li]))
+                section_pages[current].append(p)
 
     # ---- Lượt 2: dò cột Mã số cho từng báo cáo rồi bóc số ----
     # Kỳ báo cáo (quý/năm) tính MỘT lần trên toàn bộ dòng: vừa là metadata
@@ -1324,6 +1430,9 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
     if w_unit:
         warnings.append(w_unit)
     cols = {}
+    dong_gop = {p: 0 for p in pages}      # V8 §A: số mã mỗi TRANG góp được
+    xung_dot = []                          # V8 §C: ô bị TRANG SAU đòi ghi đè
+    trang_dat = {k: {} for k in T.STATEMENTS}   # mã -> trang đã đặt giá trị
     for key in T.STATEMENTS:
         col = detect_code_column(section_lines[key], valid[key], ORDER[key])
         cols[key] = col
@@ -1345,12 +1454,14 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
                 sel = centers[-2:]          # đường cũ: 2 cột phải nhất
         else:
             sel = None
-        for ln, split, vtoks in section_lines[key]:
+        for (ln, split, vtoks), p_dong in zip(section_lines[key],
+                                              section_pages[key]):
             code = find_code_at(ln, valid[key], col)
             if not code:
                 code = forced_total_code(ln, key)   # dòng "TỔNG CỘNG ... (270=...)"
             if not code:
                 continue
+            dong_gop[p_dong] = dong_gop.get(p_dong, 0) + 1
             # ưu tiên token pass-số; không có thì fallback về pass chữ (không thụt lùi)
             value_words = vtoks if (digit_pass and vtoks) else ln
             if sel:
@@ -1359,12 +1470,53 @@ def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
                 cur, prior = split_values(value_words, split)
             if cur is None and prior is None:
                 results[key].setdefault(code, (None, None))
-            else:
+            elif trang_dat[key].get(code) in (None, p_dong):
+                # Lần đầu, hoặc CÙNG MỘT TRANG: giữ NGUYÊN hành vi cũ (dòng
+                # sau thắng). Trong một trang, thứ tự đọc mang thông tin cấu
+                # trúc và hành vi này đang GÁNH việc thật: bảng mẫu cũ (QĐ15)
+                # đánh 270 = 'Tài sản dài hạn khác' còn tổng là 280, nên
+                # forced_total_code phải ép dòng 'TỔNG CỘNG TÀI SẢN' về 270 và
+                # ĐÈ LÊN dòng 270 gốc đứng trước nó — đo trên 02_Cty CP TM Ben
+                # Thanh BC quyet toan Q3 2013.pdf: chặn cú đè này làm hỏng cả
+                # 6 phép kiểm tra cân đối.
                 results[key][code] = (cur, prior)
+                trang_dat[key][code] = p_dong
+            else:
+                # TRANG KHÁC đòi ghi đè -> giữ giá trị đã có, ghi 'nghi ngờ'.
+                results[key][code] = _hop_nhat_o(
+                    results[key].get(code), (cur, prior),
+                    key, code, xung_dot.append)
     page_meta["_code_columns"] = cols
     page_meta["period"] = period
     page_meta["unit"] = unit
+    page_meta["_xung_dot"] = xung_dot
+    # V8 §A: trang scope KHÔNG góp mã nào ở lượt này thì theo định nghĩa không
+    # đóng góp gì -> báo lên để extract_consensus bỏ khỏi các lượt DPI sau
+    # (và khỏi diện cứu OCR). Vẫn đòi _dem_ma_trang == 0 nữa cho chắc: có mã
+    # lệch cột thì lượt DPI khác còn cơ hội đọc đúng, KHÔNG được bỏ.
+    page_meta["_trang_khong_ma"] = [
+        p for p in pages
+        if dong_gop.get(p, 0) == 0
+        and _dem_ma_trang(page_lines.get(p) or [],
+                          valid.get(page_title.get(p)) or set()) == 0]
     return results, warnings, page_meta
+
+
+def _bo_trang_khong_ma(scope, meta, log):
+    """V8 §A: bỏ khỏi scope các trang mà lượt DPI ĐẦU đã chứng minh là KHÔNG
+    cho mã nào.
+
+    Lượt đầu vẫn soi đủ mọi trang (không nhìn thì không thể biết), kể cả lượt
+    CỨU OCR của V2 — nên trang chỉ bị loại sau khi đã được cứu mà vẫn 0 mã.
+    Trang đã cho mã giữ NGUYÊN chế độ đầy đủ (vẫn được cứu ở lượt sau). Mỗi
+    trang bị bỏ đều được ghi log, không bao giờ âm thầm."""
+    bo = set(meta.get("_trang_khong_ma") or ())
+    if not bo:
+        return scope
+    for p in sorted(bo):
+        log("   - trang %d: không có mã số ở lượt đầu, bỏ khỏi các lượt sau"
+            % (p + 1))
+    return [(p, t) for p, t in scope if p not in bo]
 
 
 def extract_consensus(doc, lang="vie", dpis=(185, 240), page_range=None,
@@ -1393,26 +1545,28 @@ def extract_consensus(doc, lang="vie", dpis=(185, 240), page_range=None,
         scope = locate_pages(doc, lang=lang, page_range=page_range, log=log,
                              workers=workers)
 
+        scope_luot = scope
         for idx, dpi in enumerate(dpis):
             primary = (idx == 0)
             res, warns, meta = extract(
                 doc, lang=lang, dpi=dpi, page_range=page_range,
-                log=(log if primary else (lambda *_: None)), scope=scope,
+                log=(log if primary else (lambda *_: None)), scope=scope_luot,
                 digit_pass=digit_pass, workers=workers)
             if primary:
                 base_warnings, base_meta = warns, meta
+                # V8 §A: cắt trang vô ích TRƯỚC các lượt DPI sau (log ở đây vì
+                # lượt sau chạy với log câm). Chỉ có 1 DPI thì không cắt gì —
+                # khỏi ghi log "bỏ khỏi các lượt sau" trong khi chẳng còn lượt nào.
+                if len(dpis) > 1:
+                    scope_luot = _bo_trang_khong_ma(scope_luot, meta, log)
+            for xd in (meta.get("_xung_dot") or ()):
+                if xd not in conflicts:      # V8 §C: nghi ngờ TRONG một lượt
+                    conflicts.append(xd)
             for key in res:
                 for code, (cur, prior) in res[key].items():
-                    if code not in merged[key]:
-                        merged[key][code] = (cur, prior)
-                        continue
-                    ecur, eprior = merged[key][code]
-                    if ecur is not None and cur is not None and ecur != cur:
-                        conflicts.append((key, code, "cuối năm/năm nay", ecur, cur))
-                    if eprior is not None and prior is not None and eprior != prior:
-                        conflicts.append((key, code, "đầu năm/năm trước", eprior, prior))
-                    merged[key][code] = (ecur if ecur is not None else cur,
-                                         eprior if eprior is not None else prior)
+                    merged[key][code] = _hop_nhat_o(
+                        merged[key].get(code), (cur, prior),
+                        key, code, conflicts.append)
             on_pass(idx + 1, len(dpis))
         return merged, base_warnings, base_meta, conflicts
 
