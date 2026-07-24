@@ -16,8 +16,37 @@ permissions:
   contents: write
 
 jobs:
+  # ------------------------------------------------------------------- Test
+  # Cổng chất lượng: bộ cài CHỈ được build khi test xanh (windows/macos đều
+  # `needs: test`). Trước đây 301 test chưa từng chạy trên CI ở bất kỳ commit
+  # nào — một lỗi làm vỡ bóc tách sẽ đi thẳng vào bộ cài phát cho người dùng.
+  #
+  # Máy CI không có corpus BCTC lẫn Tesseract: 285/301 test vẫn chạy, 16 test
+  # cần corpus/tesseract tự bỏ qua (pytest.skip) — đo tại máy trước khi thêm.
+  #
+  # Ma trận 3.9 = SÀN mà README cam kết. Trước đây sàn này chỉ được kiểm bằng
+  # ast.parse (cú pháp), chưa bao giờ CHẠY THẬT trên 3.9.
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cài thư viện (chạy + phát triển)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r requirements-dev.txt
+      - name: Chạy test
+        run: python -m pytest tests/ -v --tb=short
+
   # ---------------------------------------------------------------- Windows
   windows:
+    needs: test
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -87,6 +116,7 @@ jobs:
 
   # ------------------------------------------------------------------ macOS
   macos:
+    needs: test
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
