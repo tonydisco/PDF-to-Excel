@@ -98,15 +98,47 @@ phải xác minh tay".
 
 ## 4. Đề xuất, xếp theo (tác động × khả thi) ÷ rủi ro
 
-### Đ1 — Deskew trước khi OCR *(tác động cao nhất, rủi ro thấp)*
+### ~~Đ1 — Deskew trước khi OCR~~ → **ĐÃ THỬ, ĐÃ BÁC BỎ (24/07/2026)**
 
-38,4% file có trang xoay và pipeline hiện KHÔNG có bước nắn nghiêng nào. Áp
-dụng thứ tự chuẩn của OCRmyPDF: **xoay theo `/Rotate` → deskew → OCR**.
+Đề xuất ban đầu dựa trên hai giả định, **cả hai đều sai khi đo thật**:
 
-- Không cần thư viện mới nếu dùng Leptonica qua Tesseract, hoặc tự tính góc
-  nghiêng bằng phép chiếu (projection profile) trên ảnh xám đã có.
-- Đo bằng chính bộ đo sẵn có: phủ + tỷ lệ cân đối trên sweep 300.
-- Rủi ro thấp: bước tiền xử lý thuần, không đụng logic bóc tách.
+**Giả định 1: "38,4% file có trang xoay nên cần nắn."** Sai — con số đó nói về
+`/Rotate` (xoay vuông góc 90/180/270), mà **PyMuPDF đã tự xử lý**: `get_pixmap`
+trả ảnh đã đứng thẳng (kiểm chứng trên file `/Rotate 270`: pixmap 596×842 khớp
+`page.rect` 595×842). Không có vấn đề gì để sửa.
+
+**Giả định 2: "ảnh scan nghiêng đáng kể, hại OCR."** Sai — đo 25 trang scan
+ngẫu nhiên: **trung vị |góc| = 0,25°**, chỉ 1/25 trang vượt 1°, max 2,5°.
+
+| |góc| | Số trang |
+|---|---|
+| > 0,25° | 7/25 |
+| > 1,0° | 1/25 |
+| > 2,0° | 1/25 |
+
+**Thử A/B trên chính các trang nghiêng ≥0,5°** (đếm mã số Tesseract nhận được,
+trước vs sau khi xoay bù):
+
+```
+TỔNG mã số: trước = 85   sau deskew = 85   (+0)
+```
+
+Một trang được thêm 1 mã, một trang mất 1 mã. **Lợi ích ròng bằng 0** —
+Tesseract vốn đã chịu nghiêng tới 2,5° tốt trên loại tài liệu này.
+
+**Thử tiếp trên đúng nhóm đích cuối cùng** (trang định vị được nhưng OCR ra 0
+mã — nơi deskew sẽ đóng vai biến thể cứu hộ của V2): quét 60 file chỉ tìm được
+**1 trang** như vậy, và trang đó nghiêng **0,00°** → deskew không thể cứu.
+Tổng mã cứu được: **0**.
+
+**Kết luận: KHÔNG làm deskew.** Nó sẽ thêm chi phí CPU (ước lượng góc + xoay
+ảnh) vào một dự án vốn đã vượt ngân sách CPU 84%, để đổi lấy 0 ô dữ liệu.
+
+> Bài học lặp lại lần thứ tư trong dự án này: mọi đề xuất dựa trên số liệu
+> *mô tả corpus* ("38,4% file có trang xoay") phải được kiểm chứng bằng thí
+> nghiệm *đo lợi ích thật* trước khi viết code. Ba lần trước: lớp text 12,2%
+> (không phải "phần lớn"), khung QĐ15 (0 file — cùng mã với TT200), mojibake
+> (OCR rác chứ không phải lỗi bảng mã).
 
 ### Đ2 — Thử img2table cho việc dò cột *(tác động cao, rủi ro trung bình)*
 
