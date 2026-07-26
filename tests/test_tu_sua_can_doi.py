@@ -28,21 +28,10 @@ def test_khoanh_o_440_sai():
     assert P.khoanh_o_lech_can_doi(cdkt, 0) == ("440", 100)
 
 
-def test_khoanh_thanh_phan_200_sai():
-    # 270 tin cậy (==440, và 300+400==440); 100+200 lệch; chỉ 200 bù được
-    # đúng 1 chữ số (68->63), còn 100 phải đổi 2 chữ số -> khoanh 200.
-    cdkt = _cdkt(**{"100": 40, "200": 68, "270": 103,
-                    "300": 50, "400": 53, "440": 103})
-    assert P.khoanh_o_lech_can_doi(cdkt, 0) == ("200", 63)
-
-
-def test_khong_khoanh_khi_hai_thanh_phan_deu_bu_duoc():
-    # 100+200 lệch nhưng CẢ HAI thành phần đều bù được 1 chữ số -> nhập nhằng
-    cdkt = _cdkt(**{"100": 40, "200": 60, "270": 100,
+def test_khong_khoanh_khi_thanh_phan_cung_lech():
+    # 100+200 = 95 != 440 = 100 -> không vế nào soi chiếu chắc chắn -> None
+    cdkt = _cdkt(**{"100": 40, "200": 55, "270": 100,
                     "300": 30, "400": 70, "440": 100})
-    # 100 đọc nhầm thành 10 (đúng phải 40): 100+200=70!=100. target_100=40
-    # (10->40, 1 số), target_200=90 (60->90, 1 số) -> cả hai -> None
-    cdkt["100"] = (10, None)
     assert P.khoanh_o_lech_can_doi(cdkt, 0) is None
 
 
