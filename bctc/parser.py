@@ -1304,53 +1304,6 @@ def _hop_nhat_o(cu, moi, key, code, ghi_nghi_ngo):
 
 
 # ----------------------------------------------------------------------
-# Tự sửa lỗi OCR 1 chữ số ở Ô TỔNG bằng chính phương trình cân đối của Bảng
-# cân đối kế toán. "Đáp án" ở đây là NỘI TẠI của bảng (270=440, 100+200=270,
-# 300+400=440) — chỉ cần bản thân PDF, không cần bất kỳ file đối chiếu nào.
-# ----------------------------------------------------------------------
-def _gia_tri(cdkt, code, idx):
-    v = cdkt.get(code)
-    return v[idx] if v and v[idx] is not None else None
-
-
-def khoanh_o_lech_can_doi(cdkt, idx):
-    """
-    Dùng 3 phương trình cân đối để KHOANH đúng MỘT ô tổng đọc sai và suy ra giá
-    trị đúng của nó — CHỈ khi giá trị đó được HAI nguồn độc lập xác nhận.
-
-    Trả (code_tong, gia_tri_dung) hoặc None.
-
-    Hai trường hợp an toàn (ô TỔNG sai, hai vế còn lại soi chiếu lẫn nhau):
-      A) 270 sai: 100+200 == 440 nhưng 270 khác giá trị đó -> đúng là 100+200.
-      B) 440 sai: 300+400 == 270 nhưng 440 khác giá trị đó -> đúng là 300+400.
-    Nhập nhằng (cả hai cùng thoả, hoặc thiếu số) -> None, KHÔNG đoán bừa.
-    """
-    a100, a200, a270 = (_gia_tri(cdkt, c, idx) for c in ("100", "200", "270"))
-    n300, n400, n440 = (_gia_tri(cdkt, c, idx) for c in ("300", "400", "440"))
-
-    ung_vien = []
-    if None not in (a100, a200, n440, a270) and a100 + a200 == n440 and a270 != n440:
-        ung_vien.append(("270", a100 + a200))
-    if None not in (n300, n400, a270, n440) and n300 + n400 == a270 and n440 != a270:
-        ung_vien.append(("440", n300 + n400))
-    return ung_vien[0] if len(ung_vien) == 1 else None
-
-
-def khe_mot_chu_so(cu, moi):
-    """
-    True nếu `moi` khác `cu` ĐÚNG một chữ số (cùng số chữ số, đúng một vị trí
-    khác). Đây là hình dạng của lỗi OCR một ký tự số — mọi ca đã kiểm chứng đều
-    thuộc dạng này (vd 172.125.135.754 đọc nhầm số 7 thành 1).
-    """
-    if cu is None or moi is None:
-        return False
-    sc, sm = str(abs(int(cu))), str(abs(int(moi)))
-    if len(sc) != len(sm):
-        return False
-    return sum(1 for x, y in zip(sc, sm) if x != y) == 1
-
-
-# ----------------------------------------------------------------------
 # Trích xuất đầy đủ 3 báo cáo
 # ----------------------------------------------------------------------
 def extract(doc, lang="vie", dpi=300, page_range=None, log=lambda *_: None,
