@@ -30,21 +30,18 @@ Ngày 26/07/2026. Tính năng: commit `e26ab4f` (+ lõi `e04ab28`). Đo thuần 
 3. **Oracle nghiêm ngặt**: re-OCR phải khớp CHÍNH XÁC mục tiêu; ô scan xấu đọc
    lại vẫn sai thì không nhận.
 
-## Vì sao GIỮ LẠI (dù lợi ích nhỏ)
+## Quyết định: ĐÃ REVERT (26/07/2026)
 
-Khác với deskew / img2table / khử nhiễu (đã bỏ vì **lợi ích 0 hoặc âm** — tốn
-CPU không đổi lấy gì), tính năng này là **lợi ích dương nhỏ ở chi phí gần 0**:
+Sau khi có con số chính thức, người dùng chọn **bỏ** tính năng để giữ code gọn
+— lợi ích +1/300 file quá nhỏ so với ~120 dòng thêm trong `parser.py`. Đã
+revert hai commit code (`e04ab28`, `e26ab4f`); giữ lại tài liệu chẩn đoán và
+kết quả này làm hồ sơ.
 
-- **Chỉ tốn OCR khi cân đối HỎNG + lệch đúng 1 chữ số** — file bình thường tốn 0;
-  CPU toàn sweep không tăng (đo được −5,6%, tức trong nhiễu).
-- Khi kích hoạt, nó **sửa một lỗi vật chất** (ví dụ 6 tỷ đồng) và **tô cam +
-  ghi log** để người soát — không âm thầm.
-- **An toàn ba lớp** (khoanh + cổng 1-chữ-số + oracle) và bọc try/except: không
-  bao giờ làm bóc tách tệ đi. Đã xác nhận: không file nào tệ đi, độ phủ không đổi.
-- CI xanh cả 4 job trên `main`.
-
-Đây là bản vá **độ chính xác điểm** (precision), không phải phủ diện rộng. Nó
-đúng tinh thần "không lệch data" cho những ô nó chạm tới, chỉ là số ô ít.
+Ghi nhận cho công bằng: khác deskew/img2table/khử nhiễu (bỏ vì lợi ích 0/âm),
+tính năng này thực sự **an toàn và lợi ích dương** — chỉ là quá nhỏ để đáng độ
+phức tạp. Hạ tầng "cân đối làm oracle" là ý tưởng đúng; nếu sau này có engine
+OCR mạnh hơn (đọc lại ô chính xác hơn) thì đáng cân nhắc lại. Con số +1 phần lớn
+do bản chất lỗi cân đối là cấu trúc/nhiều chữ số, không phải 1 chữ số.
 
 ## Bài học lặp lại
 
