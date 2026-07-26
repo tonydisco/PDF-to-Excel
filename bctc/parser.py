@@ -1315,25 +1315,48 @@ def _gia_tri(cdkt, code, idx):
 
 def khoanh_o_lech_can_doi(cdkt, idx):
     """
-    Dùng 3 phương trình cân đối để KHOANH đúng MỘT ô tổng đọc sai và suy ra giá
-    trị đúng của nó — CHỈ khi giá trị đó được HAI nguồn độc lập xác nhận.
+    Dùng 3 phương trình cân đối để KHOANH đúng MỘT ô đọc sai (ô TỔNG hoặc ô
+    THÀNH PHẦN) và suy ra giá trị đúng — CHỈ khi được các vế còn lại soi chiếu.
 
-    Trả (code_tong, gia_tri_dung) hoặc None.
+    Trả (code, gia_tri_dung) hoặc None (nhập nhằng/thiếu số -> KHÔNG đoán bừa).
 
-    Hai trường hợp an toàn (ô TỔNG sai, hai vế còn lại soi chiếu lẫn nhau):
-      A) 270 sai: 100+200 == 440 nhưng 270 khác giá trị đó -> đúng là 100+200.
-      B) 440 sai: 300+400 == 270 nhưng 440 khác giá trị đó -> đúng là 300+400.
-    Nhập nhằng (cả hai cùng thoả, hoặc thiếu số) -> None, KHÔNG đoán bừa.
+    Ô TỔNG sai (giá trị đúng được hai vế kia xác nhận):
+      A) 270 sai: 300+400 == 440 và 100+200 == 440, nhưng 270 khác -> = 100+200.
+      B) 440 sai: 100+200 == 270 và 300+400 == 270, nhưng 440 khác -> = 300+400.
+    Ô THÀNH PHẦN sai (tổng phía đó ĐÃ tin cậy; thành phần nào bù đúng 1 chữ số
+    làm khớp tổng thì là ô đó — cả hai cùng bù được -> nhập nhằng, bỏ):
+      C) 100 hoặc 200 sai khi 270 tin cậy (270==440 và 300+400==440).
+      D) 300 hoặc 400 sai khi 440 tin cậy (440==270 và 100+200==270).
     """
     a100, a200, a270 = (_gia_tri(cdkt, c, idx) for c in ("100", "200", "270"))
     n300, n400, n440 = (_gia_tri(cdkt, c, idx) for c in ("300", "400", "440"))
+    uv = []
 
-    ung_vien = []
-    if None not in (a100, a200, n440, a270) and a100 + a200 == n440 and a270 != n440:
-        ung_vien.append(("270", a100 + a200))
-    if None not in (n300, n400, a270, n440) and n300 + n400 == a270 and n440 != a270:
-        ung_vien.append(("440", n300 + n400))
-    return ung_vien[0] if len(ung_vien) == 1 else None
+    if None not in (a100, a200, n300, n400, n440, a270):
+        if n300 + n400 == n440 and a100 + a200 == n440 and a270 != n440:
+            uv.append(("270", a100 + a200))
+        if a100 + a200 == a270 and n300 + n400 == a270 and n440 != a270:
+            uv.append(("440", n300 + n400))
+
+    def _thanh_phan(x, y, cx, cy, tong):
+        if None in (x, y, tong) or x + y == tong:
+            return
+        cand = []
+        if khe_mot_chu_so(x, tong - y):
+            cand.append((cx, tong - y))
+        if khe_mot_chu_so(y, tong - x):
+            cand.append((cy, tong - x))
+        if len(cand) == 1:
+            uv.append(cand[0])
+
+    tong_ts = a270 if (a270 is not None and a270 == n440
+                       and None not in (n300, n400) and n300 + n400 == n440) else None
+    tong_nv = n440 if (n440 is not None and n440 == a270
+                       and None not in (a100, a200) and a100 + a200 == a270) else None
+    _thanh_phan(a100, a200, "100", "200", tong_ts)
+    _thanh_phan(n300, n400, "300", "400", tong_nv)
+
+    return uv[0] if len(uv) == 1 else None
 
 
 def khe_mot_chu_so(cu, moi):
@@ -1348,6 +1371,73 @@ def khe_mot_chu_so(cu, moi):
     if len(sc) != len(sm):
         return False
     return sum(1 for x, y in zip(sc, sm) if x != y) == 1
+
+
+def _doc_lai_o_tong(doc, cdkt_pages, code, idx, lang, dpi=200):
+    """
+    Định vị dòng có mã `code` trên trang CĐKT rồi RE-OCR đúng DẢI dòng đó ở DPI
+    cao + whitelist chữ số. Trả giá trị cột `idx` (0=cuối năm, 1=đầu năm) đọc
+    lại, hoặc None. CHỈ đọc ảnh PDF — không dùng bất kỳ file đối chiếu nào.
+    """
+    valid = {code}
+    for p in cdkt_pages:
+        anh, _ = _render_trang_xam(doc, p, dpi)
+        _, _, lines = ocr.ocr_lines(ocr.preprocess(anh), lang=lang,
+                                    psm=6, min_conf=25)
+        for ln in lines:
+            if not any(_token_code(wd, valid) for wd in ln):
+                continue
+            cy = sum(wd["cy"] for wd in ln) / len(ln)
+            band = _render_dai(doc[p], max(0.0, cy - 0.02),
+                               min(1.0, cy + 0.02), TRAN_DPI_CUU, True)
+            _, _, blines = ocr.ocr_lines(band, lang=lang, psm=6, min_conf=0,
+                                         whitelist=DIGIT_WHITELIST)
+            words = [wd for bl in blines for wd in bl]
+            cur, prior = split_values(words, estimate_split(words))
+            val = cur if idx == 0 else prior
+            if val is not None:
+                return val
+    return None
+
+
+def _tu_sua_can_doi(doc, scope, merged, conflicts, lang, log):
+    """
+    Tự sửa lỗi OCR MỘT chữ số ở ô TỔNG của Bảng cân đối kế toán, dùng chính
+    phương trình cân đối làm 'đáp án nội tại' (thuần PDF).
+
+    Ba lớp khoá an toàn:
+      1) khoanh_o_lech_can_doi — hai vế còn lại soi chiếu -> đúng MỘT ô tổng nghi;
+      2) khe_mot_chu_so — giá trị đang có lệch đúng 1 chữ số so mục tiêu;
+      3) ORACLE — re-OCR ô đó ở DPI cao + whitelist số, CHỈ nhận nếu đọc lại ra
+         ĐÚNG mục tiêu (khớp cả toán cân đối lẫn lần đọc sạch). Không thì giữ
+         nguyên -> KHÔNG bao giờ che một lệch thật, không thay số đúng bằng sai.
+    Toàn bộ bọc try/except: mọi trục trặc -> giữ nguyên, không hại bóc tách.
+    """
+    cdkt = merged.get("CDKT") or {}
+    cdkt_pages = [p for p, k in scope if k == "CDKT"]
+    if not cdkt_pages:
+        return
+    nhan = {0: "cuối năm/năm nay", 1: "đầu năm/năm trước"}
+    for idx in (0, 1):
+        try:
+            kq = khoanh_o_lech_can_doi(cdkt, idx)
+            if not kq:
+                continue
+            code, muc_tieu = kq
+            hien = _gia_tri(cdkt, code, idx)
+            if not khe_mot_chu_so(hien, muc_tieu):
+                continue
+            doc_lai = _doc_lai_o_tong(doc, cdkt_pages, code, idx, lang)
+            if doc_lai != muc_tieu:      # oracle: chỉ nhận khi khớp mục tiêu
+                continue
+            cu = cdkt[code]
+            cdkt[code] = (doc_lai, cu[1]) if idx == 0 else (cu[0], doc_lai)
+            conflicts.append(("CDKT", code, nhan[idx], hien, doc_lai))
+            log("   ⚖ tự sửa %s (%s) theo cân đối: %s -> %s"
+                % (code, nhan[idx].split("/")[0],
+                   format(hien, ","), format(doc_lai, ",")))
+        except Exception:
+            continue
 
 
 # ----------------------------------------------------------------------
@@ -1615,10 +1705,10 @@ def extract_consensus(doc, lang="vie", dpis=(185, 240), page_range=None,
                         merged[key].get(code), (cur, prior),
                         key, code, conflicts.append)
             on_pass(idx + 1, len(dpis))
-        return merged, base_warnings, base_meta, conflicts
+        return merged, base_warnings, base_meta, conflicts, scope
 
     try:
-        merged, base_warnings, base_meta, conflicts = _mot_luot()
+        merged, base_warnings, base_meta, conflicts, scope = _mot_luot()
 
         # Lớp text tuy qua được bộ lọc chất lượng nhưng vẫn có thể không cho parser
         # bóc ra giá trị nào (hình học dòng/cột lệch chuẩn, thậm chí không định vị
@@ -1635,7 +1725,12 @@ def extract_consensus(doc, lang="vie", dpis=(185, 240), page_range=None,
                 doc._bctc_dung_lop_text = False
             except Exception:
                 pass
-            merged, base_warnings, base_meta, conflicts = _mot_luot()
+            merged, base_warnings, base_meta, conflicts, scope = _mot_luot()
+
+        # Tự sửa lỗi OCR 1 chữ số ở ô TỔNG bằng phương trình cân đối (thuần
+        # PDF). Chỉ tốn OCR khi cân đối HỎNG + lệch đúng 1 chữ số; file đã cân
+        # đối không tốn gì. Bọc an toàn: không bao giờ làm bóc tách tệ đi.
+        _tu_sua_can_doi(doc, scope, merged, conflicts, lang, log)
         return merged, base_warnings, base_meta, conflicts
     finally:
         # V5: xong một file thì dọn kho cache ảnh giải mã của MuPDF — kho
